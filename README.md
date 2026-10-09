@@ -20,12 +20,15 @@ Supported model families: Krea 2, Qwen-Image 2.1, Anima, SDXL, Wan 2.1.
 
 ## Install
 
-1. Get the [ComfyUI portable build for Windows](https://github.com/comfyanonymous/ComfyUI/releases) and unzip it.
-2. Download `Image Forge.exe` from [Releases](../../releases) and put it in the ComfyUI portable folder, next to `run_nvidia_gpu.bat`.
-3. Run `Image Forge.exe`. It starts ComfyUI for you.
-4. Open **Models** and download a model to start with (Krea 2 Turbo is a good first one).
+1. Download `Image.Forge.exe` from [Releases](../../releases/latest) and run it.
+   If Windows says it protected your PC, click **More info** → **Run anyway** (the app isn't code-signed).
+2. Press **Set up ComfyUI** and pick a folder with about 12 GB free. The app downloads the official [ComfyUI](https://github.com/Comfy-Org/ComfyUI/releases) portable build (2 GB) and sets it up there.
+   Already have the ComfyUI portable build? Pick its folder instead.
+3. Open **Models** and download a model to start with (Krea 2 Turbo is a good first one).
 
-Needs Windows 10/11 x64 and an NVIDIA GPU (tested on an RTX 3060 12 GB).
+The app updates itself: when a new version is out, it downloads in the background and installs when you close the app, or right away with the **Update** button.
+
+Needs Windows 10/11 x64 and an NVIDIA GPU (tested on an RTX 3060 12 GB). If Windows can't unpack ComfyUI by itself (older Windows 10), the app asks you to install [7-Zip](https://www.7-zip.org/).
 
 ## Recommended models
 

@@ -78,6 +78,7 @@ public class Settings
     public string VideoModel { get; set; } = "";
     public string VideoSize { get; set; } = "832x480";
     public int VideoFrames { get; set; } = 49;
+    public string ComfyDir { get; set; } = "";                   // the ComfyUI portable folder, when the exe doesn't sit in one
 
     static readonly string File = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ImageForge", "settings.json");
     public static string FilePath => File;
@@ -175,7 +176,7 @@ public class Shot : INotifyPropertyChanged
 public partial class MainWindow : Window
 {
     const string Api = "http://127.0.0.1:8188";
-    static readonly string Root = AppContext.BaseDirectory;                 // the ComfyUI folder
+    static string Root = AppContext.BaseDirectory;                          // the ComfyUI portable folder: the exe's own, or the one set up from the app
     string Output => string.IsNullOrWhiteSpace(settings.OutputDir) ? Path.Combine(Root, "ComfyUI", "output") : settings.OutputDir;
     static readonly Dictionary<string, string> Stages = new() { ["4"] = "Loading model", ["11"] = "Reading photo", ["3"] = "Painting", ["8"] = "Decoding", ["15"] = "Blending", ["9"] = "Saving", ["20"] = "Reading image", ["22"] = "Upscaling", ["23"] = "Resizing", ["40"] = "Making the video", ["41"] = "Saving the video" };
 
@@ -207,6 +208,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if (!IsComfy(Root) && FindComfy(settings.ComfyDir) is string comfy) Root = comfy;
         galleryView = new ListCollectionView(shots) { Filter = o => InView((Shot)o) };
         Gallery.ItemsSource = galleryView;
         Strip.ItemsSource = shots;
@@ -232,9 +234,10 @@ public partial class MainWindow : Window
                 try { server = Process.GetProcessById(pid); } catch { }
             if (args.Length > 1 && File.Exists(args[1])) { EditMode.IsChecked = true; LoadPhoto(args[1]); }
             _ = LoadGallery();
+            _ = CheckForUpdate();
             await StartUp();
         };
-        Closing += (_, _) => { closing = true; RememberWindow(); SaveSettings(); if (!settings.KeepComfyRunning && !restarting) StopServer(); };
+        Closing += (_, _) => { closing = true; RememberWindow(); SaveSettings(); if (!settings.KeepComfyRunning && !restarting) StopServer(); ApplyUpdate(); };
     }
 
     // reopen where it was closed, unless that spot is no longer on any screen
@@ -744,7 +747,8 @@ public partial class MainWindow : Window
             if (!File.Exists(python) || !File.Exists(Path.Combine(Root, "ComfyUI", "main.py")))
             {
                 SetState("Not set up", Brush("Danger"));
-                Note("Image Forge.exe must sit in the ComfyUI portable folder, next to run_nvidia_gpu.bat.", true);
+                Note("ComfyUI isn't set up yet. Press Set up ComfyUI and pick your ComfyUI folder, or any folder to download it into (2 GB).", true);
+                SetupPanel.Visibility = Visibility.Visible;
                 return;
             }
             Note("Starting ComfyUI on your graphics card. This takes about half a minute.");
@@ -819,7 +823,7 @@ public partial class MainWindow : Window
             otherModel = ModelBox.SelectedItem as string != (showingVideoModels ? settings.VideoModel : settings.Model);   // the saved one is gone or hidden: its guidance and sampler don't fit
             Fill(SamplerBox, ComboOptions(ks["KSampler"]["input"]["required"]["sampler_name"]), settings.Sampler, "dpmpp_2m");
             Fill(SchedulerBox, ComboOptions(ks["KSampler"]["input"]["required"]["scheduler"]), settings.Scheduler, "karras");
-            if (ModelBox.Items.Count == 0) Note("No model found. Put a .safetensors checkpoint in ComfyUI\\models\\checkpoints.", true);
+            if (ModelBox.Items.Count == 0) Note("No model yet. Open Models and download one: Krea 2 Turbo is a good start.", true);
             var up = JsonNode.Parse(await http.GetStringAsync("/object_info/UpscaleModelLoader"))?["UpscaleModelLoader"]?["input"]?["required"]?["model_name"];
             upscaleModel = ComboOptions(up).FirstOrDefault();
             var lo = JsonNode.Parse(await http.GetStringAsync("/object_info/LoraLoader"))?["LoraLoader"]?["input"]?["required"]?["lora_name"];
