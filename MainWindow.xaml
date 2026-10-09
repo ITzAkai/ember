@@ -1,0 +1,1049 @@
+<Window x:Class="ImageForge.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        Title="Image Forge" Width="1320" Height="860" MinWidth="980" MinHeight="640"
+        WindowStartupLocation="CenterScreen" Icon="forge.ico"
+        Background="{DynamicResource Bg}" Foreground="{DynamicResource Ink}"
+        FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display" PreviewKeyDown="Window_PreviewKeyDown">
+  <Window.TaskbarItemInfo>
+    <TaskbarItemInfo x:Name="Taskbar"/>
+  </Window.TaskbarItemInfo>
+  <Window.Resources>
+    <sys:Double x:Key="Card">236</sys:Double>
+
+    <!-- one image card, used by the gallery and by the editor's results strip -->
+    <DataTemplate x:Key="CardTemplate">
+      <!-- a button, so cards work from the keyboard (Tab, Enter) and screen readers read the prompt -->
+      <Button x:Name="Card" Width="{DynamicResource Card}" Height="{DynamicResource Card}" Margin="6" Cursor="Hand" Click="Card_Click"
+              PreviewMouseLeftButtonDown="Card_MouseDown" PreviewMouseMove="Card_MouseMove"
+              FocusVisualStyle="{x:Null}" AutomationProperties.Name="{Binding Caption}">
+        <Button.Template>
+          <ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate>
+        </Button.Template>
+        <Button.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="Open" Tag="&#xE8A7;" Click="MenuOpen_Click"/>
+            <MenuItem Header="Edit this image" Tag="&#xE70F;" Click="MenuEdit_Click"/>
+            <MenuItem Header="Use this prompt" Tag="&#xE8D2;" Click="MenuPrompt_Click"/>
+            <MenuItem Header="{Binding FavoriteLabel}" Tag="&#xE734;" Click="MenuFavorite_Click"/>
+            <MenuItem Header="Remove background" Tag="&#xE8C6;" Click="MenuCutout_Click"/>
+            <MenuItem Header="Copy image" Tag="&#xE8C8;" Click="MenuCopy_Click"/>
+            <MenuItem Header="Show in folder" Tag="&#xE838;" Click="MenuFolder_Click"/>
+            <MenuItem Header="Move to Recycle Bin" Tag="&#xE74D;" Click="MenuDelete_Click"/>
+          </ContextMenu>
+        </Button.ContextMenu>
+        <Grid Background="Transparent">
+        <Border CornerRadius="10" Background="{DynamicResource Raised}"/>
+        <Border CornerRadius="10">
+          <Border.Background>
+            <ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/>
+          </Border.Background>
+        </Border>
+        <Border x:Name="Overlay" CornerRadius="10" Opacity="0">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+              <GradientStop Color="#00000000" Offset="0.4"/>
+              <GradientStop Color="#E6000000" Offset="1"/>
+            </LinearGradientBrush>
+          </Border.Background>
+          <TextBlock Text="{Binding Caption}" Foreground="White" FontSize="12" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                     LineHeight="17" LineStackingStrategy="BlockLineHeight" MaxHeight="34" VerticalAlignment="Bottom" Margin="12,0,12,11"/>
+        </Border>
+        <Grid x:Name="PendingFace" Visibility="Collapsed">
+          <Border CornerRadius="10" Opacity="0.3">
+            <Border.Background>
+              <RadialGradientBrush>
+                <GradientStop Color="#55F0A04B" Offset="0"/>
+                <GradientStop Color="#00F0A04B" Offset="1"/>
+              </RadialGradientBrush>
+            </Border.Background>
+            <Border.Triggers>
+              <EventTrigger RoutedEvent="Loaded">
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.3" To="1" Duration="0:0:1.2" AutoReverse="True" RepeatBehavior="Forever"/>
+                  </Storyboard>
+                </BeginStoryboard>
+              </EventTrigger>
+            </Border.Triggers>
+          </Border>
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" FontSize="22" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding Progress}" FontSize="12.5" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+          </StackPanel>
+        </Grid>
+        <Border Width="46" Height="46" CornerRadius="23" Background="#99000000" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                Visibility="{Binding IsVideo, Converter={StaticResource BoolVis}}">
+          <TextBlock Text="&#xE768;" FontFamily="{StaticResource Icons}" FontSize="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="3,0,0,0"/>
+        </Border>
+        <Border x:Name="Ring" CornerRadius="10" BorderThickness="1" BorderBrush="#18FFFFFF"/>
+        <Border x:Name="SelectTint" CornerRadius="10" Background="#38F0A04B" Visibility="Collapsed"/>
+        <Border x:Name="Check" Width="26" Height="26" CornerRadius="13" Background="#99000000" BorderBrush="White" BorderThickness="2"
+                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="9,9,0,0" Visibility="Collapsed">
+          <TextBlock x:Name="CheckGlyph" Text="&#xE73E;" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="Transparent"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+        <Border x:Name="Star" Width="30" Height="30" CornerRadius="15" Background="#99000000" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="0,8,8,0" Visibility="Collapsed" PreviewMouseLeftButtonDown="Star_Click" ToolTip="Favourite">
+          <TextBlock x:Name="StarGlyph" Text="&#xE734;" FontFamily="{StaticResource Icons}" FontSize="14" Foreground="White"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+        </Grid>
+      </Button>
+      <DataTemplate.Triggers>
+        <Trigger SourceName="Card" Property="IsKeyboardFocused" Value="True">
+          <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+          <Setter TargetName="Ring" Property="BorderThickness" Value="2"/>
+        </Trigger>
+        <DataTrigger Binding="{Binding Favorite}" Value="True">
+          <Setter TargetName="Star" Property="Visibility" Value="Visible"/>
+          <Setter TargetName="StarGlyph" Property="Text" Value="&#xE735;"/>
+          <Setter TargetName="StarGlyph" Property="Foreground" Value="{DynamicResource Accent}"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Pending}" Value="True">
+          <Setter TargetName="PendingFace" Property="Visibility" Value="Visible"/>
+          <Setter TargetName="Overlay" Property="Visibility" Value="Collapsed"/>
+          <Setter TargetName="Card" Property="Cursor" Value="Arrow"/>
+          <Setter TargetName="Ring" Property="BorderBrush" Value="#40F0A04B"/>
+        </DataTrigger>
+        <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
+          <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+          <Setter TargetName="Ring" Property="BorderThickness" Value="2"/>
+          <Setter TargetName="Star" Property="Visibility" Value="Visible"/>
+          <Trigger.EnterActions>
+            <BeginStoryboard>
+              <Storyboard><DoubleAnimation Storyboard.TargetName="Overlay" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15"/></Storyboard>
+            </BeginStoryboard>
+          </Trigger.EnterActions>
+          <Trigger.ExitActions>
+            <BeginStoryboard>
+              <Storyboard><DoubleAnimation Storyboard.TargetName="Overlay" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/></Storyboard>
+            </BeginStoryboard>
+          </Trigger.ExitActions>
+        </Trigger>
+        <DataTrigger Binding="{Binding Selecting}" Value="True">
+          <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Selected}" Value="True">
+          <Setter TargetName="Check" Property="Background" Value="{DynamicResource Accent}"/>
+          <Setter TargetName="Check" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+          <Setter TargetName="CheckGlyph" Property="Foreground" Value="{DynamicResource AccentInk}"/>
+          <Setter TargetName="SelectTint" Property="Visibility" Value="Visible"/>
+          <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+          <Setter TargetName="Ring" Property="BorderThickness" Value="3"/>
+        </DataTrigger>
+        <!-- last, so it wins over the hover and select triggers: placeholders have nothing to star or pick -->
+        <DataTrigger Binding="{Binding Pending}" Value="True">
+          <Setter TargetName="Star" Property="Visibility" Value="Collapsed"/>
+          <Setter TargetName="Check" Property="Visibility" Value="Collapsed"/>
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+  </Window.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="60"/>
+      <RowDefinition/>
+    </Grid.RowDefinitions>
+
+    <!-- header -->
+    <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+      <DockPanel Margin="20,0">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock x:Name="GpuText" Style="{StaticResource Note}" Margin="0,0,16,0"/>
+          <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Models_Click" ToolTip="Installed models and more to download" AutomationProperties.Name="Models">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE8F1;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBlock Text="Models" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource IconBtn}" Content="&#xE713;" FontSize="15" Margin="0,0,12,0" Click="Settings_Click" ToolTip="Settings" AutomationProperties.Name="Settings"/>
+          <Border x:Name="Pill" CornerRadius="13" Padding="11,5" BorderThickness="1">
+            <StackPanel Orientation="Horizontal">
+              <Ellipse x:Name="PillDot" Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"/>
+              <TextBlock x:Name="PillText" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+        <Image Source="logo.png" Width="36" Height="36" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+        <StackPanel VerticalAlignment="Center" Margin="12,0,0,0">
+          <TextBlock Text="Image Forge" FontSize="15" FontWeight="SemiBold"/>
+          <TextBlock Text="Local image generation with ComfyUI" FontSize="11.5" Foreground="{DynamicResource Muted}"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="376"/>
+        <ColumnDefinition/>
+      </Grid.ColumnDefinitions>
+
+      <!-- controls -->
+      <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="22,20,22,18">
+              <Border Style="{StaticResource SegmentHost}" Margin="0,0,0,22">
+                <UniformGrid Rows="1">
+                  <RadioButton x:Name="CreateMode" AutomationProperties.Name="Create" Style="{StaticResource Segment}" GroupName="mode" Checked="Mode_Checked">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                      <TextBlock Text="Create" FontWeight="SemiBold"/>
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="EditMode" AutomationProperties.Name="Edit photo" Style="{StaticResource Segment}" GroupName="mode" Checked="Mode_Checked">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="&#xE91B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                      <TextBlock Text="Edit photo" FontWeight="SemiBold"/>
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="VideoMode" AutomationProperties.Name="Video" Style="{StaticResource Segment}" GroupName="mode" Checked="Mode_Checked">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="&#xE714;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                      <TextBlock Text="Video" FontWeight="SemiBold"/>
+                    </StackPanel>
+                  </RadioButton>
+                </UniformGrid>
+              </Border>
+
+              <!-- edit mode: the photo being edited -->
+              <StackPanel x:Name="PhotoSection" Visibility="Collapsed" Margin="0,0,0,18">
+                <TextBlock Text="Photo" Style="{StaticResource Heading}"/>
+                <Button x:Name="ChoosePhotoBtn" Style="{StaticResource Ghost}" Height="44" Click="ChoosePhoto_Click">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="Choose a photo…" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Border x:Name="PhotoCard" Visibility="Collapsed" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                        CornerRadius="9" Padding="8">
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Padding="12,0" Content="Change" Click="ChoosePhoto_Click"/>
+                    <Border Width="44" Height="44" CornerRadius="6">
+                      <Border.Background><ImageBrush x:Name="PhotoThumb" Stretch="UniformToFill"/></Border.Background>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="12,0,8,0">
+                      <TextBlock x:Name="PhotoName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock x:Name="PhotoSize" Style="{StaticResource Note}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </StackPanel>
+
+              <DockPanel Margin="0,0,0,6">
+                <Button x:Name="HistoryBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" Margin="6,0,-6,0"
+                        Content="&#xE81C;" FontSize="14" Click="History_Click" ToolTip="Recent prompts"/>
+                <TextBlock DockPanel.Dock="Right" Text="Ctrl + Enter to generate" Style="{StaticResource Note}" Foreground="{DynamicResource Faint}"/>
+                <TextBlock x:Name="PromptHeading" Text="Prompt" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
+              </DockPanel>
+              <TextBox x:Name="PromptBox" Style="{StaticResource Input}" Height="140" AcceptsReturn="True" TextWrapping="Wrap" AllowDrop="True"
+                       PreviewDragOver="Prompt_PreviewDragOver" PreviewDrop="Prompt_PreviewDrop"
+                       VerticalScrollBarVisibility="Auto" Tag="Describe the image: subject, style, lighting, mood…"/>
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,-8">
+                <Button x:Name="DescribeFileBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,6,0" Click="DescribeFile_Click"
+                        ToolTip="Pick a picture and get a prompt that recreates it. You can also drop a picture on the prompt box." AutomationProperties.Name="Describe image">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE722;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <TextBlock Text="Describe image" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Button x:Name="EnhanceBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Click="Enhance_Click"
+                        ToolTip="Turn a short idea into a detailed prompt, written by the local Qwen model" AutomationProperties.Name="Improve prompt">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE70F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <TextBlock x:Name="EnhanceText" Text="Improve prompt" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+
+              <TextBlock Text="Negative prompt" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
+              <TextBox x:Name="NegativeBox" Style="{StaticResource Input}" Height="66" AcceptsReturn="True" TextWrapping="Wrap"
+                       VerticalScrollBarVisibility="Auto" Tag="What to keep out of the image"/>
+
+              <DockPanel Margin="0,22,0,5">
+                <TextBlock x:Name="StyleText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
+                <TextBlock Text="Style" Style="{StaticResource Heading}" Margin="0"/>
+              </DockPanel>
+              <UniformGrid x:Name="StyleGroup" Columns="4" Margin="-3,0"/>
+
+              <!-- edit mode: how far to move away from the photo -->
+              <StackPanel x:Name="StrengthSection" Visibility="Collapsed">
+                <DockPanel Margin="0,22,0,4">
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=StrengthSlider, StringFormat={}{0:P0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
+                  <TextBlock Text="Change strength" Style="{StaticResource Heading}" Margin="0"/>
+                </DockPanel>
+                <Slider x:Name="StrengthSlider" Minimum="0.1" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"/>
+                <DockPanel Margin="0,2,0,0">
+                  <TextBlock DockPanel.Dock="Right" Text="Follow the prompt" Style="{StaticResource Note}" FontSize="11" Foreground="{DynamicResource Faint}"/>
+                  <TextBlock Text="Keep the photo" Style="{StaticResource Note}" FontSize="11" Foreground="{DynamicResource Faint}"/>
+                </DockPanel>
+              </StackPanel>
+
+              <!-- create mode: output size -->
+              <StackPanel x:Name="SizeSection">
+                <DockPanel Margin="0,22,0,8">
+                  <TextBlock x:Name="SizeText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
+                  <TextBlock Text="Aspect ratio" Style="{StaticResource Heading}" Margin="0"/>
+                </DockPanel>
+                <Border Style="{StaticResource SegmentHost}">
+                  <!-- SDXL's native resolutions, about one megapixel each -->
+                  <UniformGrid x:Name="SizeGroup" Rows="1">
+                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="1024x1024" AutomationProperties.Name="Square 1:1" Checked="Size_Checked" ToolTip="Square">
+                      <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Shape}" Width="12" Height="12"/>
+                        <TextBlock Text="1:1" Margin="6,0,0,0"/>
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="832x1216" AutomationProperties.Name="Portrait 2:3" Checked="Size_Checked" ToolTip="Portrait">
+                      <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Shape}" Width="10" Height="14"/>
+                        <TextBlock Text="2:3" Margin="6,0,0,0"/>
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="768x1344" AutomationProperties.Name="Tall 9:16" Checked="Size_Checked" ToolTip="Tall (phone wallpaper)">
+                      <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Shape}" Width="8" Height="14"/>
+                        <TextBlock Text="9:16" Margin="6,0,0,0"/>
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="1216x832" AutomationProperties.Name="Landscape 3:2" Checked="Size_Checked" ToolTip="Landscape (photo)">
+                      <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Shape}" Width="14" Height="10"/>
+                        <TextBlock Text="3:2" Margin="6,0,0,0"/>
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="1344x768" AutomationProperties.Name="Wide 16:9" Checked="Size_Checked" ToolTip="Wide (desktop wallpaper)">
+                      <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Shape}" Width="15" Height="8"/>
+                        <TextBlock Text="16:9" Margin="6,0,0,0"/>
+                      </StackPanel>
+                    </RadioButton>
+                  </UniformGrid>
+                </Border>
+              </StackPanel>
+
+              <!-- video mode: clip shape and length (Wan 2.1 makes 16 frames a second) -->
+              <StackPanel x:Name="VideoSection" Visibility="Collapsed">
+                <!-- picture-to-video: the clip starts on this picture -->
+                <StackPanel x:Name="StartSection" Visibility="Collapsed" AllowDrop="True" DragOver="Start_DragOver" Drop="Start_Drop">
+                  <TextBlock Text="Start picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                  <Button x:Name="ChooseStartBtn" Style="{StaticResource Ghost}" Height="44" Click="ChooseStart_Click" AutomationProperties.Name="Choose start picture">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                      <TextBlock Text="Choose a picture…" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Border x:Name="StartCard" Visibility="Collapsed" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                          CornerRadius="9" Padding="8">
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Padding="12,0" Content="Change" Click="ChooseStart_Click"/>
+                      <Border Width="44" Height="44" CornerRadius="6">
+                        <Border.Background><ImageBrush x:Name="StartThumb" Stretch="UniformToFill"/></Border.Background>
+                      </Border>
+                      <StackPanel VerticalAlignment="Center" Margin="12,0,8,0">
+                        <TextBlock x:Name="StartName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock x:Name="StartSize" Style="{StaticResource Note}" Margin="0,2,0,0"/>
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                  <TextBlock Text="The clip begins on this picture. You can also drop a picture here, or press Make a video in the viewer."
+                             Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                </StackPanel>
+                <TextBlock Text="Video shape" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <Border Style="{StaticResource SegmentHost}">
+                  <UniformGrid x:Name="VideoSizeGroup" Rows="1">
+                    <RadioButton Style="{StaticResource Segment}" GroupName="vsize" Tag="832x480" AutomationProperties.Name="Wide video" ToolTip="Wide, 832 × 480">
+                      <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Shape}" Width="15" Height="9"/>
+                        <TextBlock Text="Wide" Margin="6,0,0,0"/>
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="vsize" Tag="480x832" AutomationProperties.Name="Tall video" ToolTip="Tall, 480 × 832 (phone)">
+                      <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Shape}" Width="9" Height="15"/>
+                        <TextBlock Text="Tall" Margin="6,0,0,0"/>
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="vsize" Tag="624x624" AutomationProperties.Name="Square video" ToolTip="Square, 624 × 624">
+                      <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Shape}" Width="12" Height="12"/>
+                        <TextBlock Text="Square" Margin="6,0,0,0"/>
+                      </StackPanel>
+                    </RadioButton>
+                  </UniformGrid>
+                </Border>
+                <TextBlock Text="Length" Style="{StaticResource Heading}" Margin="0,22,0,8" ToolTip="Longer clips take longer to make, roughly in proportion"/>
+                <Border Style="{StaticResource SegmentHost}">
+                  <UniformGrid x:Name="LengthGroup" Rows="1">
+                    <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="33" Content="2 s" AutomationProperties.Name="2 seconds"/>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="49" Content="3 s" AutomationProperties.Name="3 seconds"/>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="81" Content="5 s" AutomationProperties.Name="5 seconds"/>
+                  </UniformGrid>
+                </Border>
+              </StackPanel>
+
+              <StackPanel x:Name="CountSection">
+                <TextBlock Text="Number of images" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <Border Style="{StaticResource SegmentHost}">
+                  <UniformGrid x:Name="CountGroup" Rows="1">
+                    <RadioButton Style="{StaticResource Segment}" GroupName="count" Tag="1" Content="1"/>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="count" Tag="2" Content="2"/>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="count" Tag="3" Content="3"/>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="count" Tag="4" Content="4"/>
+                  </UniformGrid>
+                </Border>
+              </StackPanel>
+
+              <TextBlock Text="Quality" Style="{StaticResource Heading}" Margin="0,22,0,8"
+                         ToolTip="How many steps the model takes to draw. More steps add detail but take longer. Each model has its own numbers."/>
+              <Border Style="{StaticResource SegmentHost}">
+                <UniformGrid x:Name="QualityGroup" Rows="1">
+                  <RadioButton Style="{StaticResource Segment}" GroupName="quality" Tag="20" AutomationProperties.Name="Fast" Height="46">
+                    <StackPanel>
+                      <TextBlock Text="Fast" HorizontalAlignment="Center"/>
+                      <TextBlock Text="20 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton Style="{StaticResource Segment}" GroupName="quality" Tag="30" AutomationProperties.Name="Balanced" Height="46">
+                    <StackPanel>
+                      <TextBlock Text="Balanced" HorizontalAlignment="Center"/>
+                      <TextBlock Text="30 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton Style="{StaticResource Segment}" GroupName="quality" Tag="45" AutomationProperties.Name="Best" Height="46">
+                    <StackPanel>
+                      <TextBlock Text="Best" HorizontalAlignment="Center"/>
+                      <TextBlock Text="45 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </RadioButton>
+                </UniformGrid>
+              </Border>
+
+              <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Disclosure}" Margin="0,24,0,0" Content="Advanced settings"/>
+              <StackPanel Visibility="{Binding IsChecked, ElementName=AdvancedToggle, Converter={StaticResource BoolVis}}">
+                <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,16,0,8"/>
+                <ComboBox x:Name="ModelBox" SelectionChanged="Model_SelectionChanged"/>
+                <TextBlock x:Name="ModelNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+
+                <StackPanel x:Name="LoraSection">
+                  <DockPanel Margin="0,18,0,8">
+                    <Button DockPanel.Dock="Right" Content="+ Add LoRA" Style="{StaticResource Ghost}" Padding="8,3" FontSize="11" Click="AddLoraRow_Click" ToolTip="Add another LoRA to use multiple LoRAs together" AutomationProperties.Name="Add LoRA"/>
+                    <TextBlock Text="LoRA add-ons" Style="{StaticResource Heading}" Margin="0" ToolTip="Small trained styles or subjects. Multiple LoRAs are combined together."/>
+                  </DockPanel>
+                  <StackPanel x:Name="LoraRowsPanel"/>
+                </StackPanel>
+
+                <StackPanel ToolTip="How strictly the picture follows your prompt. Low: freer and more natural. High: follows the words harder, but can look harsh or over-coloured. Picking a model sets a good value; fast models want 1 to 2.">
+                  <DockPanel Margin="0,18,0,4">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=CfgSlider, StringFormat={}{0:0.0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
+                    <TextBlock Text="Prompt guidance (CFG)" Style="{StaticResource Heading}" Margin="0"/>
+                  </DockPanel>
+                  <Slider x:Name="CfgSlider" Minimum="1" Maximum="15" TickFrequency="0.5" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"/>
+                </StackPanel>
+
+                <Grid Margin="0,16,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition/>
+                  </Grid.ColumnDefinitions>
+                  <StackPanel ToolTip="The method that turns noise into a picture, step by step. Each model picks a good one; others change the look slightly.">
+                    <TextBlock Text="Sampler" Style="{StaticResource Heading}"/>
+                    <ComboBox x:Name="SamplerBox"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" ToolTip="How the steps are spread from rough shapes to fine detail. Leave the model's choice unless you're experimenting.">
+                    <TextBlock Text="Scheduler" Style="{StaticResource Heading}"/>
+                    <ComboBox x:Name="SchedulerBox"/>
+                  </StackPanel>
+                </Grid>
+
+                <DockPanel Margin="0,18,0,8">
+                  <CheckBox x:Name="RandomSeed" DockPanel.Dock="Right" Style="{StaticResource Switch}" Content="New seed each time"
+                            ToolTip="Off: the same seed again, so you can change one word or setting and compare"/>
+                  <TextBlock Text="Seed" Style="{StaticResource Heading}" Margin="0"
+                             ToolTip="The random starting point. The same seed, prompt and settings make the same picture again."/>
+                </DockPanel>
+                <TextBox x:Name="SeedBox" Style="{StaticResource Input}" Height="36" Padding="10,0" VerticalContentAlignment="Center"
+                         PreviewTextInput="Seed_PreviewTextInput" Tag="Seed number"/>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- action area -->
+          <Border Grid.Row="1" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="22,16,22,18">
+            <StackPanel>
+              <StackPanel x:Name="ProgressArea" Visibility="Collapsed" Margin="0,0,0,14">
+                <DockPanel>
+                  <TextBlock x:Name="EtaText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
+                  <TextBlock x:Name="StageText" FontSize="12.5" FontWeight="SemiBold"/>
+                </DockPanel>
+                <ProgressBar x:Name="Bar" Margin="0,9,0,0"/>
+                <DockPanel x:Name="QueueRow" Margin="0,6,0,0" Visibility="Collapsed">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="Auto" Height="24" Padding="8,0" Margin="0,0,-8,0"
+                          FontFamily="Segoe UI" FontSize="12" Content="Clear queue" Click="ClearQueue_Click"/>
+                  <TextBlock x:Name="QueueText" Style="{StaticResource Note}"/>
+                </DockPanel>
+              </StackPanel>
+              <!-- Generate stays available while busy: another click joins the queue -->
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="GenerateBtn" Style="{StaticResource Primary}" Height="46" IsEnabled="False" Click="Generate_Click">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" FontSize="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock x:Name="GenerateText" Text="Generate" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Button x:Name="CancelBtn" Grid.Column="1" Style="{StaticResource Ghost}" Width="46" Height="46" Padding="0" Margin="8,0,0,0" Visibility="Collapsed"
+                        Click="Cancel_Click" ToolTip="Stop the image being made now" AutomationProperties.Name="Stop">
+                  <TextBlock Text="&#xE71A;" FontFamily="{StaticResource Icons}" FontSize="14"/>
+                </Button>
+              </Grid>
+              <Border x:Name="LoraChip" Visibility="Collapsed" HorizontalAlignment="Center" Margin="0,10,0,0" CornerRadius="12" Padding="10,2,3,2"
+                      Background="{DynamicResource Raised2}" BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock x:Name="LoraChipText" FontSize="12" Foreground="{DynamicResource Accent}" VerticalAlignment="Center"/>
+                  <Button Style="{StaticResource IconBtn}" Width="22" Height="22" FontSize="9" Content="&#xE711;" Margin="6,0,0,0" Click="LoraOff_Click"
+                          ToolTip="Turn the add-on off" AutomationProperties.Name="Turn LoRA off"/>
+                </StackPanel>
+              </Border>
+              <TextBlock x:Name="Hint" Style="{StaticResource Note}" Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Center" Visibility="Collapsed"/>
+              <!-- shown when ComfyUI is down or didn't start -->
+              <StackPanel x:Name="RestartPanel" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0" Visibility="Collapsed">
+                <Button x:Name="RestartBtn" Style="{StaticResource Ghost}" Height="32" Click="Restart_Click">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE72C;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="Restart ComfyUI" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Click="OpenLog_Click" ToolTip="ComfyUI's own messages, for when something goes wrong">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE8A5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="Open log" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- gallery (create mode) -->
+      <Grid x:Name="GalleryPanel" Grid.Column="1">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition/>
+        </Grid.RowDefinitions>
+        <DockPanel Margin="28,20,32,12">
+          <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Width="36" Padding="0" Click="Folder_Click" ToolTip="Open the images folder" AutomationProperties.Name="Open folder">
+            <TextBlock Text="&#xE838;" FontFamily="{StaticResource Icons}" FontSize="14"/>
+          </Button>
+          <Button x:Name="SelectBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Margin="0,0,8,0" Click="Select_Click" ToolTip="Pick several images (or Ctrl+click one)">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE762;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBlock Text="Select" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+          <Grid DockPanel.Dock="Right" Width="190" Margin="0,0,8,0" VerticalAlignment="Center">
+            <TextBox x:Name="SearchBox" Style="{StaticResource Input}" Height="36" Padding="32,0,10,0" VerticalContentAlignment="Center"
+                     Tag="Search prompts" TextChanged="Search_TextChanged" AutomationProperties.Name="Search prompts"/>
+            <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="13" Foreground="{DynamicResource Muted}"
+                       VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False"/>
+          </Grid>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="Gallery" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <Border CornerRadius="10" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                    Padding="9,2" Margin="12,0,0,0" VerticalAlignment="Center">
+              <TextBlock x:Name="CountText" Text="0" FontSize="12" Foreground="{DynamicResource Muted}"/>
+            </Border>
+            <Border Style="{StaticResource SegmentHost}" Padding="2" Margin="16,0,0,0" VerticalAlignment="Center">
+              <StackPanel x:Name="ViewGroup" Orientation="Horizontal">
+                <RadioButton x:Name="AllView" Style="{StaticResource Segment}" GroupName="view" Height="28" Width="46" Tag="all" Content="All" Checked="View_Checked"/>
+                <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="70" Tag="created" Content="Created" Checked="View_Checked" ToolTip="Made from a prompt"/>
+                <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="60" Tag="edited" Content="Edited" Checked="View_Checked" ToolTip="Photo edits, variations, expansions and cut-outs"/>
+                <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="78" Tag="upscaled" Content="Upscaled" Checked="View_Checked"/>
+                <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="62" Tag="video" Content="Videos" Checked="View_Checked"/>
+                <RadioButton x:Name="FavView" AutomationProperties.Name="Favourites" Style="{StaticResource Segment}" GroupName="view" Height="28" Width="38" Tag="favourites"
+                             Checked="View_Checked" ToolTip="Favourites">
+                  <TextBlock Text="&#xE735;" FontFamily="{StaticResource Icons}" FontSize="13"/>
+                </RadioButton>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </DockPanel>
+
+        <ScrollViewer x:Name="GalleryScroll" Grid.Row="1" VerticalScrollBarVisibility="Visible" Padding="22,0,12,22" ScrollChanged="Gallery_ScrollChanged">
+          <ItemsControl x:Name="Gallery" ItemTemplate="{StaticResource CardTemplate}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+        </ScrollViewer>
+
+        <StackPanel x:Name="EmptyState" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,60">
+          <Border Width="72" Height="72" CornerRadius="36" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+            <TextBlock Text="&#xE8B9;" FontFamily="{StaticResource Icons}" FontSize="28" Foreground="{DynamicResource Muted}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <TextBlock x:Name="EmptyTitle" Text="No images yet" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,18,0,6"/>
+          <TextBlock x:Name="EmptyText" Text="Write a prompt on the left and press Generate." Foreground="{DynamicResource Muted}" HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- select mode: what to do with the picked images -->
+        <Border x:Name="SelectionBar" Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,20" Visibility="Collapsed"
+                Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="12" Padding="6">
+          <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.45"/></Border.Effect>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock x:Name="SelectionText" Text="0 selected" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,14,0" MinWidth="80"/>
+            <Button Style="{StaticResource IconBtn}" Content="&#xE8B3;" FontSize="14" Click="SelectAll_Click" ToolTip="Select all shown (Ctrl+A)" AutomationProperties.Name="Select all"/>
+            <Button Style="{StaticResource IconBtn}" Content="&#xE734;" FontSize="14" Click="FavSelected_Click" ToolTip="Favourite" AutomationProperties.Name="Favourite selected"/>
+            <Button Style="{StaticResource IconBtn}" Content="&#xE896;" FontSize="14" Click="ExportSelected_Click" ToolTip="Copy to a folder…" AutomationProperties.Name="Export selected"/>
+            <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" FontSize="14" Click="DeleteSelected_Click" ToolTip="Move to Recycle Bin" AutomationProperties.Name="Delete selected"/>
+            <Border Width="1" Background="{DynamicResource Line}" Margin="6,6"/>
+            <Button x:Name="SelectDoneBtn" Style="{StaticResource Ghost}" Height="34" Content="Done" Click="Select_Click"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- photo editor (edit mode) -->
+      <Grid x:Name="EditorPanel" Grid.Column="1" Visibility="Collapsed">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <DockPanel Margin="28,20,32,12">
+          <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Click="ChoosePhoto_Click">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBlock Text="Choose photo" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Edit photo" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="Paint over the part to change, or paint nothing to restyle the whole photo." Style="{StaticResource Note}" Margin="0,3,0,0"/>
+          </StackPanel>
+        </DockPanel>
+
+        <Border Grid.Row="1" Margin="28,0,32,0" CornerRadius="12" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                AllowDrop="True" Drop="Photo_Drop">
+          <Grid>
+            <Viewbox x:Name="EditorView" Margin="20,70,20,70" Visibility="Collapsed">
+              <Grid x:Name="EditorCanvas" PreviewMouseMove="Canvas_MouseMove" MouseLeave="Canvas_MouseLeave">
+                <Image x:Name="EditorImage" Stretch="Fill"/>
+                <Path x:Name="ShapesPath" Fill="#F0A04B" Opacity="0.55" IsHitTestVisible="False"/>
+                <InkCanvas x:Name="Ink" Background="Transparent" Opacity="0.55" UseCustomCursor="True" Cursor="None"/>
+                <!-- rectangle and lasso selections are drawn here -->
+                <Canvas x:Name="ShapeInput" Background="Transparent" IsHitTestVisible="False" Cursor="Cross" ClipToBounds="True"
+                        MouseLeftButtonDown="Shape_MouseDown" MouseMove="Shape_MouseMove" MouseLeftButtonUp="Shape_MouseUp">
+                  <Path x:Name="ShapePreview" Fill="#59F0A04B" Stroke="White" StrokeDashArray="4 3"/>
+                </Canvas>
+                <!-- brush outline in place of the cursor: a dark ring under a white one, visible on any photo -->
+                <Canvas x:Name="RingLayer" IsHitTestVisible="False" ClipToBounds="True">
+                  <Ellipse x:Name="BrushRingDark" Stroke="#A0000000" Visibility="Collapsed"/>
+                  <Ellipse x:Name="BrushRing" Stroke="White" Visibility="Collapsed"/>
+                </Canvas>
+                <!-- crop box, in photo pixels: shade outside, drag inside to move, corners to resize -->
+                <Canvas x:Name="CropLayer" Visibility="Collapsed" ClipToBounds="True" Background="Transparent">
+                  <Path x:Name="CropShade" Fill="#A6000000" IsHitTestVisible="False"/>
+                  <Thumb x:Name="CropBox" Cursor="SizeAll" DragDelta="CropMove_DragDelta">
+                    <Thumb.Template>
+                      <ControlTemplate TargetType="Thumb">
+                        <Border Background="Transparent" BorderBrush="White" BorderThickness="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
+                      </ControlTemplate>
+                    </Thumb.Template>
+                  </Thumb>
+                  <Thumb x:Name="CropTL" Style="{StaticResource CropHandle}" Cursor="SizeNWSE" DragDelta="CropCorner_DragDelta"/>
+                  <Thumb x:Name="CropTR" Style="{StaticResource CropHandle}" Cursor="SizeNESW" DragDelta="CropCorner_DragDelta"/>
+                  <Thumb x:Name="CropBL" Style="{StaticResource CropHandle}" Cursor="SizeNESW" DragDelta="CropCorner_DragDelta"/>
+                  <Thumb x:Name="CropBR" Style="{StaticResource CropHandle}" Cursor="SizeNWSE" DragDelta="CropCorner_DragDelta"/>
+                </Canvas>
+              </Grid>
+            </Viewbox>
+
+            <!-- floating toolbar -->
+            <Border x:Name="Toolbar" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,14,0,0" Visibility="Collapsed"
+                    Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="11" Padding="5">
+              <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource SegmentHost}" Padding="2">
+                  <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="BrushTool" AutomationProperties.Name="Brush" Style="{StaticResource Segment}" GroupName="tool" Height="30" Width="40" Checked="Tool_Checked" ToolTip="Brush: paint the area to change">
+                      <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" FontSize="14"/>
+                    </RadioButton>
+                    <RadioButton x:Name="EraserTool" AutomationProperties.Name="Eraser" Style="{StaticResource Segment}" GroupName="tool" Height="30" Width="40" Checked="Tool_Checked" ToolTip="Eraser: rub out brush strokes">
+                      <TextBlock Text="&#xE75C;" FontFamily="{StaticResource Icons}" FontSize="14"/>
+                    </RadioButton>
+                    <RadioButton x:Name="RectTool" AutomationProperties.Name="Rectangle" Style="{StaticResource Segment}" GroupName="tool" Height="30" Width="40" Checked="Tool_Checked" ToolTip="Rectangle: drag a box">
+                      <TextBlock Text="&#xEF20;" FontFamily="{StaticResource Icons}" FontSize="14"/>
+                    </RadioButton>
+                    <RadioButton x:Name="LassoTool" AutomationProperties.Name="Lasso" Style="{StaticResource Segment}" GroupName="tool" Height="30" Width="40" Checked="Tool_Checked" ToolTip="Lasso: draw around a shape">
+                      <TextBlock Text="&#xE9F3;" FontFamily="{StaticResource Icons}" FontSize="14"/>
+                    </RadioButton>
+                  </StackPanel>
+                </Border>
+                <TextBlock Text="Size" Style="{StaticResource Note}" Margin="14,0,10,0"/>
+                <Slider x:Name="BrushSlider" Width="110" Minimum="16" Maximum="240" Value="80" VerticalAlignment="Center" ValueChanged="BrushSlider_ValueChanged"/>
+                <Border Width="1" Background="{DynamicResource Line}" Margin="14,4,6,4"/>
+                <ToggleButton x:Name="InvertToggle" Style="{StaticResource Chip}" Content="Invert" Margin="2,0" Click="Invert_Click"
+                              ToolTip="Invert: change everything except what you marked" AutomationProperties.Name="Invert"/>
+                <Button Style="{StaticResource IconBtn}" Content="&#xE7A7;" FontSize="14" Click="Undo_Click" ToolTip="Undo (Ctrl+Z)" AutomationProperties.Name="Undo"/>
+                <Button Style="{StaticResource IconBtn}" Content="&#xE894;" FontSize="13" Click="ClearMask_Click" ToolTip="Clear all marks" AutomationProperties.Name="Clear marks"/>
+                <Border Width="1" Background="{DynamicResource Line}" Margin="6,4"/>
+                <Button x:Name="RemoveBtn" Style="{StaticResource Ghost}" Height="30" Padding="10,0" Margin="2,0" Content="Remove" Click="RemoveObject_Click"
+                        ToolTip="Remove what you marked and fill the gap from its surroundings"/>
+                <Button x:Name="FixBtn" Style="{StaticResource Ghost}" Height="30" Padding="10,0" Margin="2,0" Content="Fix detail" Click="FixDetail_Click"
+                        ToolTip="Redraw what you marked (a face, hands, a sign) at high resolution, then fit it back"/>
+              </StackPanel>
+            </Border>
+
+            <!-- photo tools: crop, rotate, flip, adjust -->
+            <Border x:Name="ImageBar" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,14" Visibility="Collapsed"
+                    Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="11" Padding="5">
+              <Grid>
+                <StackPanel x:Name="ImageTools" Orientation="Horizontal">
+                  <Button x:Name="ExpandBtn" Style="{StaticResource IconBtn}" Content="&#xE9A6;" FontSize="15" Click="Expand_Click" ToolTip="Expand: paint more picture around it" AutomationProperties.Name="Expand"/>
+                  <Button x:Name="CropBtn" Style="{StaticResource IconBtn}" Content="&#xE7A8;" FontSize="15" Click="Crop_Click" ToolTip="Crop" AutomationProperties.Name="Crop"/>
+                  <Button Style="{StaticResource IconBtn}" FontSize="15" Click="RotateLeft_Click" ToolTip="Rotate left" AutomationProperties.Name="Rotate left">
+                    <TextBlock Text="&#xE7AD;" RenderTransformOrigin="0.5,0.5"><TextBlock.RenderTransform><ScaleTransform ScaleX="-1"/></TextBlock.RenderTransform></TextBlock>
+                  </Button>
+                  <Button Style="{StaticResource IconBtn}" Content="&#xE7AD;" FontSize="15" Click="RotateRight_Click" ToolTip="Rotate right" AutomationProperties.Name="Rotate right"/>
+                  <Button Style="{StaticResource IconBtn}" Content="&#xE8AB;" FontSize="15" Click="Flip_Click" ToolTip="Flip left to right" AutomationProperties.Name="Flip"/>
+                  <Button x:Name="AdjustBtn" Style="{StaticResource IconBtn}" Content="&#xE793;" FontSize="15" Click="Adjust_Click" ToolTip="Brightness, contrast and saturation" AutomationProperties.Name="Adjust"/>
+                  <Border Width="1" Background="{DynamicResource Line}" Margin="6,4"/>
+                  <Button x:Name="ResetPhotoBtn" Style="{StaticResource IconBtn}" Content="&#xE777;" FontSize="15" Click="ResetPhoto_Click" ToolTip="Undo all changes to the photo" AutomationProperties.Name="Reset photo"/>
+                </StackPanel>
+                <StackPanel x:Name="CropTools" Orientation="Horizontal" Visibility="Collapsed">
+                  <TextBlock Text="Drag the box or its corners" Style="{StaticResource Note}" Margin="10,0,14,0"/>
+                  <Button Style="{StaticResource Ghost}" Height="34" Content="Cancel" Click="CropCancel_Click"/>
+                  <Button x:Name="CropApplyBtn" Style="{StaticResource Primary}" Height="34" FontSize="13" Margin="6,0,0,0" Content="Apply crop" Click="CropApply_Click"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Popup x:Name="AdjustPopup" PlacementTarget="{Binding ElementName=AdjustBtn}" Placement="Top" VerticalOffset="-10" HorizontalOffset="-110"
+                   StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+              <Border Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="10" Padding="16,12" Width="260"
+                      TextElement.Foreground="{DynamicResource Ink}" TextElement.FontFamily="Segoe UI" TextElement.FontSize="13">
+                <StackPanel>
+                  <DockPanel Margin="0,0,0,2">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=BrightSlider, StringFormat={}{0:+0;-0;0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
+                    <TextBlock Text="Brightness" Style="{StaticResource Heading}" Margin="0"/>
+                  </DockPanel>
+                  <Slider x:Name="BrightSlider" Minimum="-100" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Adjust_ValueChanged"/>
+                  <DockPanel Margin="0,10,0,2">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=ContrastSlider, StringFormat={}{0:+0;-0;0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
+                    <TextBlock Text="Contrast" Style="{StaticResource Heading}" Margin="0"/>
+                  </DockPanel>
+                  <Slider x:Name="ContrastSlider" Minimum="-100" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Adjust_ValueChanged"/>
+                  <DockPanel Margin="0,10,0,2">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=SatSlider, StringFormat={}{0:+0;-0;0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
+                    <TextBlock Text="Saturation" Style="{StaticResource Heading}" Margin="0"/>
+                  </DockPanel>
+                  <Slider x:Name="SatSlider" Minimum="-100" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Adjust_ValueChanged"/>
+                  <Button Style="{StaticResource Ghost}" Height="30" Margin="0,12,0,0" HorizontalAlignment="Right" Content="Reset" Click="AdjustReset_Click"/>
+                </StackPanel>
+              </Border>
+            </Popup>
+
+            <StackPanel x:Name="DropHint" VerticalAlignment="Center" HorizontalAlignment="Center">
+              <Border Width="72" Height="72" CornerRadius="36" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+                <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" FontSize="26" Foreground="{DynamicResource Muted}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <TextBlock Text="Drop a photo here" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,18,0,6"/>
+              <TextBlock Text="or paste one with Ctrl+V. Gallery images work too: right-click › Edit this image." Foreground="{DynamicResource Muted}" HorizontalAlignment="Center"/>
+              <Button Style="{StaticResource Primary}" Height="40" Padding="18,0" Margin="0,20,0,0" HorizontalAlignment="Center" Click="ChoosePhoto_Click">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE8E5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  <TextBlock Text="Choose a photo…" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- results strip: the same images as the gallery, newest first -->
+        <DockPanel Grid.Row="2" Margin="28,16,32,14">
+          <TextBlock DockPanel.Dock="Top" Text="Results" Style="{StaticResource Heading}" Margin="0,0,0,2"/>
+          <ScrollViewer x:Name="StripScroll" Height="160" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                        PreviewMouseWheel="Strip_PreviewMouseWheel" Margin="-6,0">
+            <ItemsControl x:Name="Strip" ItemTemplate="{StaticResource CardTemplate}">
+              <ItemsControl.Resources>
+                <sys:Double x:Key="Card">136</sys:Double>
+              </ItemsControl.Resources>
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Grid>
+    </Grid>
+
+    <!-- full-window image viewer -->
+    <Grid x:Name="ViewerPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#F2090A0C" Focusable="True">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition/>
+        <ColumnDefinition Width="360"/>
+      </Grid.ColumnDefinitions>
+      <Border Background="Transparent" MouseLeftButtonUp="Backdrop_Click"/>
+      <Image x:Name="ViewerImage" Margin="84,36" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+      <MediaElement x:Name="ViewerVideo" Margin="84,36" Stretch="Uniform" LoadedBehavior="Manual" UnloadedBehavior="Close" Visibility="Collapsed"
+                    MediaEnded="ViewerVideo_Ended"/>
+
+      <!-- before/after: the original laid over the result, cut off at the divider -->
+      <Grid x:Name="CompareLayer" Margin="84,36" Visibility="Collapsed" Background="Transparent" Cursor="SizeWE"
+            MouseLeftButtonDown="Compare_MouseDown" MouseMove="Compare_MouseMove" MouseLeftButtonUp="Compare_MouseUp">
+        <Image x:Name="BeforeImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" SizeChanged="BeforeImage_SizeChanged"/>
+        <Canvas IsHitTestVisible="False">
+          <Border x:Name="Divider" Width="2" Background="White">
+            <Border.Effect><DropShadowEffect BlurRadius="8" ShadowDepth="0" Opacity="0.7"/></Border.Effect>
+          </Border>
+          <Border x:Name="Handle" Width="36" Height="36" CornerRadius="18" Background="White">
+            <Border.Effect><DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.5"/></Border.Effect>
+            <TextBlock Text="&#xE8AB;" FontFamily="{StaticResource Icons}" FontSize="14" Foreground="#16171B" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <Border x:Name="BeforeTag" CornerRadius="6" Background="#B3000000" Padding="9,4">
+            <TextBlock Text="Before" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+          </Border>
+          <Border x:Name="AfterTag" CornerRadius="6" Background="#B3000000" Padding="9,4">
+            <TextBlock Text="After" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+          </Border>
+        </Canvas>
+      </Grid>
+      <Button x:Name="CompareBtn" Style="{StaticResource Ghost}" Height="30" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,3,0,0"
+              Visibility="Collapsed" Click="Compare_Click" ToolTip="Compare with the photo before the edit (C)">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE8AB;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+          <TextBlock x:Name="CompareText" Text="Compare with original" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Button>
+      <Button Style="{StaticResource Round}" Content="&#xE76B;" HorizontalAlignment="Left" Margin="20,0,0,0" Click="Prev_Click" ToolTip="Previous (Left arrow)"/>
+      <Button Style="{StaticResource Round}" Content="&#xE76C;" HorizontalAlignment="Right" Margin="0,0,20,0" Click="Next_Click" ToolTip="Next (Right arrow)"/>
+
+      <Border Grid.Column="1" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0">
+        <DockPanel Margin="24,18,24,22">
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,18">
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="CloseViewer_Click" ToolTip="Close (Esc)" AutomationProperties.Name="Close viewer"/>
+            <Button x:Name="DeleteBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE74D;" FontSize="14" Click="DeleteViewed_Click" ToolTip="Move to Recycle Bin (Delete)"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE838;" FontSize="14" Click="ShowInFolder_Click" ToolTip="Show in folder" AutomationProperties.Name="Show in folder"/>
+            <Button x:Name="FavBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE734;" FontSize="15" Click="FavViewed_Click" ToolTip="Favourite (F)"/>
+            <TextBlock x:Name="DetailsTitle" Text="Image details" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          </DockPanel>
+
+          <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+            <Button x:Name="EditThisBtn" Style="{StaticResource Primary}" Height="42" Click="EditThis_Click" AutomationProperties.Name="Edit this image">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE70F;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Text="Edit this image" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+            <UniformGrid Columns="2" Margin="-4,4,-4,0">
+              <Button x:Name="MoreLikeThisBtn" Style="{StaticResource Ghost}" Margin="4" Click="MoreLikeThis_Click" AutomationProperties.Name="More like this" ToolTip="New variations close to this image">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE8B9;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="More like this" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="UpscaleBtn" Style="{StaticResource Ghost}" Margin="4" Click="Upscale_Click" AutomationProperties.Name="Upscale" ToolTip="A sharper, bigger copy (2× or 4×)">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE740;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Upscale" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="CutoutBtn" Style="{StaticResource Ghost}" Margin="4" Click="Cutout_Click" AutomationProperties.Name="Cut out" ToolTip="Keep the subject, make the background transparent">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE8C6;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Cut out" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="ExpandViewedBtn" Style="{StaticResource Ghost}" Margin="4" Click="ExpandViewed_Click" AutomationProperties.Name="Expand" ToolTip="Paint more picture around it (opens the editor)">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE9A6;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Expand" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="UsePromptBtn" Style="{StaticResource Ghost}" Margin="4" Click="UsePrompt_Click" AutomationProperties.Name="Use prompt">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE8D2;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Use prompt" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="MakeVideoBtn" Style="{StaticResource Ghost}" Margin="4" Click="MakeVideoFromViewed_Click" ToolTip="Animate this picture into a short clip"
+                      AutomationProperties.Name="Make a video">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE714;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Make a video" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="DescribeBtn" Style="{StaticResource Ghost}" Margin="4" Click="DescribeViewed_Click" AutomationProperties.Name="Describe" ToolTip="Write a prompt that recreates this picture">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE722;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Describe" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource Ghost}" Margin="4" Click="ReuseSeed_Click" AutomationProperties.Name="Reuse seed">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE72C;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Reuse seed" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource Ghost}" Margin="4" Click="SaveAs_Click" AutomationProperties.Name="Save as">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE74E;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Save as…" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="CopyBtn" Style="{StaticResource Ghost}" Margin="4" Click="Copy_Click" AutomationProperties.Name="Copy">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Copy" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+            </UniformGrid>
+            <TextBlock x:Name="ViewerNote" Style="{StaticResource Note}" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+          </StackPanel>
+
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <TextBlock Text="Prompt" Style="{StaticResource Heading}"/>
+              <TextBox x:Name="VPrompt" Style="{StaticResource ReadOnlyText}"/>
+              <TextBlock Text="Negative prompt" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
+              <TextBox x:Name="VNegative" Style="{StaticResource ReadOnlyText}" Foreground="{DynamicResource Soft}"/>
+              <ItemsControl x:Name="VMeta" Margin="0,22,0,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="0,9">
+                      <DockPanel>
+                        <TextBlock Text="{Binding Key}" Width="92" Foreground="{DynamicResource Muted}"/>
+                        <TextBlock Text="{Binding Value}" TextWrapping="Wrap" TextAlignment="Right"/>
+                      </DockPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+
+    <!-- settings -->
+    <Grid x:Name="SettingsPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
+      <Border Width="580" MaxHeight="780" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
+              CornerRadius="14" MouseLeftButtonUp="OverlayCard_Click">
+        <DockPanel Margin="26,20,26,24">
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="CloseOverlays_Click" ToolTip="Close (Esc)" AutomationProperties.Name="Close settings"/>
+            <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          </DockPanel>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,6,0">
+              <TextBlock Text="Appearance" Style="{StaticResource Heading}" Margin="0,14,0,10" Foreground="{DynamicResource Accent}"/>
+              <DockPanel>
+                <Border DockPanel.Dock="Right" Style="{StaticResource SegmentHost}" Padding="2" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="ThemeDark" Style="{StaticResource Segment}" GroupName="theme" Height="30" Width="70" Content="Dark" Checked="Theme_Checked"/>
+                    <RadioButton x:Name="ThemeLight" Style="{StaticResource Segment}" GroupName="theme" Height="30" Width="70" Content="Light" Checked="Theme_Checked"/>
+                  </StackPanel>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="Theme" FontWeight="SemiBold"/>
+                  <TextBlock x:Name="ThemeNote" Text="Takes effect when Image Forge opens." Style="{StaticResource Note}" Margin="0,2,0,0"/>
+                </StackPanel>
+              </DockPanel>
+              <Button x:Name="RestartAppBtn" Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="Collapsed"
+                      Content="Restart Image Forge now" Click="RestartApp_Click"/>
+
+              <TextBlock Text="ComfyUI" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+              <CheckBox x:Name="KeepComfySwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
+                        Content="Keep ComfyUI running after closing Image Forge" Click="SettingSwitch_Click"/>
+              <TextBlock Text="Opens instantly next time, but keeps using graphics-card memory until you restart Windows or close it from the Task Manager."
+                         Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+              <CheckBox x:Name="InpaintSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,16,0,0"
+                        Content="Use the inpainting model for painted edits and expansions" Click="SettingSwitch_Click"/>
+              <TextBlock x:Name="InpaintNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+              <TextBlock Text="Images folder" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+              <Border Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                <TextBlock x:Name="OutputPathText" TextTrimming="CharacterEllipsis"/>
+              </Border>
+              <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <Button Style="{StaticResource Ghost}" Height="32" Content="Change…" Click="ChangeOutput_Click"/>
+                <Button x:Name="DefaultOutputBtn" Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Use ComfyUI's folder" Click="DefaultOutput_Click"/>
+                <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Open" Click="Folder_Click"/>
+              </StackPanel>
+              <TextBlock Text="New images go to a forge folder inside it. ComfyUI restarts to switch." Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+              <TextBlock Text="Downloads" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+              <TextBlock Text="Civitai API key" FontWeight="SemiBold"/>
+              <DockPanel Margin="0,8,0,0">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="34" Margin="8,0,0,0" Content="Save" Click="SaveKey_Click"/>
+                <TextBox x:Name="CivitaiKeyBox" Style="{StaticResource Input}" Height="34" VerticalContentAlignment="Center"
+                         Tag="Paste your key to save it" AutomationProperties.Name="Civitai API key"/>
+              </DockPanel>
+              <DockPanel Margin="0,6,0,0">
+                <Button x:Name="RemoveKeyBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="28" Margin="8,0,0,0" Content="Remove key" Click="RemoveKey_Click"/>
+                <TextBlock x:Name="CivitaiKeyNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+              </DockPanel>
+
+              <TextBlock Text="Shortcuts" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+              <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource Ghost}" Height="32" Content="Add to Start menu" Click="StartMenu_Click"/>
+                <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Desktop shortcut" Click="DesktopShortcut_Click"/>
+              </StackPanel>
+              <TextBlock x:Name="ShortcutNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+              <TextBlock Text="Prompt history" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Content="Clear history" Click="ClearHistory_Click"/>
+                <TextBlock x:Name="HistoryNote" Style="{StaticResource Note}" VerticalAlignment="Center"/>
+              </DockPanel>
+
+              <TextBlock Text="About" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+              <TextBlock x:Name="AboutText" Style="{StaticResource Note}" TextWrapping="Wrap" LineHeight="19"/>
+              <Button Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Left" Margin="0,10,0,0" Content="Open ComfyUI log" Click="OpenLog_Click"/>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+
+    <!-- models -->
+    <Grid x:Name="ModelsPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
+      <Border Width="760" MaxHeight="820" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
+              CornerRadius="14" MouseLeftButtonUp="OverlayCard_Click">
+        <DockPanel Margin="26,20,26,24">
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="CloseOverlays_Click" ToolTip="Close (Esc)" AutomationProperties.Name="Close models"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Content="Open models folder" Click="OpenModelsFolder_Click"/>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="Models" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock x:Name="ModelsNote" Text="Free models below, or paste any Hugging Face or Civitai link. Every download is checked against its published checksum."
+                         Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+              <TextBlock x:Name="ModelsSummary" Style="{StaticResource Note}" Foreground="{DynamicResource Faint}" Margin="0,2,0,0"/>
+            </StackPanel>
+          </DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="0,14,0,0">
+            <Button x:Name="LinkBtn" DockPanel.Dock="Right" Style="{StaticResource Primary}" Height="36" Padding="18,0" Margin="8,0,0,0" Content="Check link"
+                    Click="CheckLink_Click" AutomationProperties.Name="Check link"/>
+            <TextBox x:Name="LinkBox" Style="{StaticResource Input}" Height="36" VerticalContentAlignment="Center" KeyDown="LinkBox_KeyDown"
+                     Tag="Paste a Hugging Face or Civitai link to a model…" AutomationProperties.Name="Model link"/>
+          </DockPanel>
+          <ScrollViewer x:Name="ModelsScroll" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+            <StackPanel x:Name="ModelsList" Margin="0,0,6,0"/>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>
