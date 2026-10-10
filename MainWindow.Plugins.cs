@@ -193,15 +193,7 @@ public partial class MainWindow
                     state == PluginState.Missing, p, actions));
             }
         }
-        // the user's own packs that ComfyUI couldn't load
-        var others = failed.Where(f => !Recommended.Any(p => Norm(p.Folder) == Norm(f))).ToList();
-        if (others.Count > 0)
-        {
-            PluginsList.Children.Add(new TextBlock { Text = "Other plugins that failed to load", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 6) });
-            foreach (var f in others)
-                PluginsList.Children.Add(PluginRow(f, "Failed to load", "ComfyUI couldn't start this plugin (see the ComfyUI log). Switching it off speeds up start-up.", "", false, null,
-                    [("Switch off", () => DisablePack(Path.Combine(CustomNodesDir, f)))]));
-        }
+        ShowAllPlugins(failed);         // every pack in custom_nodes: switch off / on, uninstall, and the way to more
         PluginsNote.Text = settings.FastStart
             ? "Fast start is on: ComfyUI loads only these plugins, so it starts quicker. Your other plugins still work in ComfyUI's own window."
             : "ComfyUI loads every plugin in its custom_nodes folder.";

@@ -115,6 +115,7 @@ public partial class MainWindow
         try
         {
             var body = await build(job);
+            if (body["prompt"] is JsonObject sent) lastGraph = (JsonObject)sent.DeepClone();
             using var r = await http.PostAsync("/prompt", new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"));
             var j = JsonNode.Parse(await r.Content.ReadAsStringAsync());
             if (!r.IsSuccessStatusCode || j?["error"] != null) throw new Exception(j?["error"]?["message"]?.GetValue<string>() ?? $"HTTP {(int)r.StatusCode}");

@@ -162,6 +162,13 @@
             </StackPanel>
           </Button>
           <TextBlock x:Name="GpuText" Style="{StaticResource Note}" Margin="0,0,16,0"/>
+          <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Expert_Click" AutomationProperties.Name="ComfyUI"
+                  ToolTip="ComfyUI's own node editor, inside Image Forge. The most advanced option.">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE943;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBlock Text="ComfyUI" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
           <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Models_Click" ToolTip="Installed models and more to download" AutomationProperties.Name="Models">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="&#xE8F1;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -1186,6 +1193,27 @@
           </ScrollViewer>
         </DockPanel>
       </Border>
+    </Grid>
+
+    <!-- ComfyUI (Expert): ComfyUI's own editor, full window -->
+    <Grid x:Name="ExpertPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="{DynamicResource Bg}">
+      <DockPanel>
+        <Border DockPanel.Dock="Top" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="20,10">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+              <Button x:Name="LoadLastJobBtn" Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Content="Load the last job" Click="LoadLastJob_Click"
+                      ToolTip="Open Image Forge's last picture job in the editor to change it by hand"/>
+              <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Content="Open in browser" Click="ExpertBrowser_Click"/>
+              <Button Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="ExpertClose_Click" ToolTip="Back to Image Forge" AutomationProperties.Name="Close ComfyUI"/>
+            </StackPanel>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="ComfyUI (Expert)" FontSize="15" FontWeight="SemiBold"/>
+              <TextBlock x:Name="ExpertNote" Style="{StaticResource Note}" TextWrapping="Wrap" Text="Starting ComfyUI's editor…"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Border x:Name="ExpertHost"/>
+      </DockPanel>
     </Grid>
   </Grid>
 </Window>
