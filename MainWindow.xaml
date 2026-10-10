@@ -377,11 +377,12 @@
               <!-- create mode: output size -->
               <StackPanel x:Name="SizeSection">
                 <DockPanel Margin="0,22,0,8">
+                  <Ellipse x:Name="SizeDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
                   <TextBlock x:Name="SizeText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
                   <TextBlock Text="Aspect ratio" Style="{StaticResource Heading}" Margin="0"/>
                 </DockPanel>
                 <Border Style="{StaticResource SegmentHost}">
-                  <!-- SDXL's native resolutions, about one megapixel each -->
+                  <!-- about one megapixel each: the size every installed family was trained around -->
                   <UniformGrid x:Name="SizeGroup" Rows="1">
                     <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="1024x1024" AutomationProperties.Name="Square 1:1" Checked="Size_Checked" ToolTip="Square">
                       <StackPanel Orientation="Horizontal">
@@ -415,6 +416,15 @@
                     </RadioButton>
                   </UniformGrid>
                 </Border>
+                <DockPanel Margin="0,8,0,0">
+                  <CheckBox x:Name="CustomSizeBox" Style="{StaticResource Switch}" Content="Custom size" VerticalAlignment="Center" Checked="CustomSize_Changed" Unchecked="CustomSize_Changed"
+                            ToolTip="Your own width and height, rounded to what the model accepts" AutomationProperties.Name="Custom size"/>
+                  <StackPanel x:Name="CustomSizePanel" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+                    <TextBox x:Name="CustomW" Width="58" Height="26" Padding="4,0" VerticalContentAlignment="Center" LostFocus="CustomSize_Changed" AutomationProperties.Name="Width"/>
+                    <TextBlock Text=" × " VerticalAlignment="Center" Style="{StaticResource Note}"/>
+                    <TextBox x:Name="CustomH" Width="58" Height="26" Padding="4,0" VerticalContentAlignment="Center" LostFocus="CustomSize_Changed" AutomationProperties.Name="Height"/>
+                  </StackPanel>
+                </DockPanel>
               </StackPanel>
 
               <!-- video mode: clip shape and length (Wan 2.1 makes 16 frames a second) -->

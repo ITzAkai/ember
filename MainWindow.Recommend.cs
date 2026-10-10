@@ -13,7 +13,7 @@ using Shape = System.Windows.Shapes.Shape;
 
 namespace ImageForge;
 
-public record Rec(string Label, string Sampler, string Scheduler, int[] Steps, int[] StepsRange, double Cfg, double[] CfgRange,
+public record Rec(double MaxMp, string Label, string Sampler, string Scheduler, int[] Steps, int[] StepsRange, double Cfg, double[] CfgRange,
                   bool Negative, string DefaultNegative, double LoraEach, double LoraTotal, string BadScheduler, string Why);
 
 // a known model: matched by name, overriding its family's values where set
@@ -28,27 +28,27 @@ public partial class MainWindow
 {
     const string RecommendationsJson = """
     {
-      "version": 1,
+      "version": 2,
       "families": {
-        "sdxl": { "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
+        "sdxl": { "maxMp": 1.2, "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.6, "badScheduler": null,
           "why": "SDXL: about 25 steps at CFG 7, as in ComfyUI's template." },
-        "krea2": { "label": "Krea 2 Turbo", "sampler": "euler", "scheduler": "simple", "steps": [6, 8, 10], "stepsRange": [6, 10], "cfg": 1, "cfgRange": [1, 1.5],
+        "krea2": { "maxMp": 4.2, "label": "Krea 2 Turbo", "sampler": "euler", "scheduler": "simple", "steps": [6, 8, 10], "stepsRange": [6, 10], "cfg": 1, "cfgRange": [1, 1.5],
           "negative": false, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Krea 2 Turbo is made for 8 steps at CFG 1. More steps or a higher CFG over-cook it, and CFG above 1 doubles the time." },
-        "qwen_image": { "label": "Qwen-Image 2.1", "sampler": "euler", "scheduler": "simple", "steps": [15, 25, 40], "stepsRange": [12, 50], "cfg": 1, "cfgRange": [1, 2],
+        "qwen_image": { "maxMp": 4.2, "label": "Qwen-Image 2.1", "sampler": "euler", "scheduler": "simple", "steps": [15, 25, 40], "stepsRange": [12, 50], "cfg": 1, "cfgRange": [1, 2],
           "negative": false, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Qwen-Image 2.1: 25 steps at CFG 1; 40 steps adds fine detail. CFG 2 sharpens edges, 5 and up degrades the picture." },
-        "anima": { "label": "Anima", "sampler": "euler", "scheduler": "simple", "steps": [24, 30, 40], "stepsRange": [24, 50], "cfg": 4, "cfgRange": [3.5, 5],
+        "anima": { "maxMp": 1.2, "label": "Anima", "sampler": "euler", "scheduler": "simple", "steps": [24, 30, 40], "stepsRange": [24, 50], "cfg": 4, "cfgRange": [3.5, 5],
           "negative": true, "defaultNegative": "worst quality, low quality, score_1, score_2, score_3, blurry, jpeg artifacts, sepia", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Anima: 30 steps at CFG 4, as in ComfyUI's template; keep about 1 megapixel." },
-        "wan": { "label": "Wan 2.1", "sampler": "uni_pc", "scheduler": "simple", "steps": [20, 30, 50], "stepsRange": [20, 50], "cfg": 6, "cfgRange": [5, 7],
+        "wan": { "maxMp": 0.5, "label": "Wan 2.1", "sampler": "uni_pc", "scheduler": "simple", "steps": [20, 30, 50], "stepsRange": [20, 50], "cfg": 6, "cfgRange": [5, 7],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Wan 2.1: 30 steps at CFG 6 with uni_pc, as in ComfyUI's example." },
-        "wan_i2v": { "label": "Wan 2.1 picture-to-video", "sampler": "uni_pc", "scheduler": "simple", "steps": [15, 20, 40], "stepsRange": [15, 50], "cfg": 6, "cfgRange": [5, 7],
+        "wan_i2v": { "maxMp": 0.5, "label": "Wan 2.1 picture-to-video", "sampler": "uni_pc", "scheduler": "simple", "steps": [15, 20, 40], "stepsRange": [15, 50], "cfg": 6, "cfgRange": [5, 7],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Wan 2.1 Fun InP: 20 steps at CFG 6, as in ComfyUI's template." },
-        "flux": { "label": "FLUX schnell", "sampler": "euler", "scheduler": "simple", "steps": [3, 4, 6], "stepsRange": [1, 8], "cfg": 1, "cfgRange": [1, 1],
+        "flux": { "maxMp": 1.2, "label": "FLUX schnell", "sampler": "euler", "scheduler": "simple", "steps": [3, 4, 6], "stepsRange": [1, 8], "cfg": 1, "cfgRange": [1, 1],
           "negative": false, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null, "why": "FLUX schnell: 4 steps at CFG 1." }
       },
       "models": [
@@ -156,6 +156,13 @@ public partial class MainWindow
                 $"{steps} steps is outside {r.StepsRange[0]}–{r.StepsRange[1]} for {r.Label}: " + (steps > r.StepsRange[1] ? "it may look over-cooked." : "it may look mushy and unfinished."),
                 () => { Pick(QualityGroup, "30", "30"); StepsSlider.Value = StepsFor("30"); }));
 
+        var (w, h) = PictureSize();
+        double mp = w * h / 1e6;
+        if (!VideoOn && r.MaxMp > 0 && mp > r.MaxMp * 1.15)
+            issues.Add(new(SizeDot, mp > r.MaxMp * 1.6 ? 2 : 1,
+                $"{w} × {h} is well above the size {r.Label} was trained at (about {r.MaxMp:0.#} megapixels): duplicated or stretched bodies and extra limbs get likely. " +
+                "Use a preset size and the Hi-res fix instead.", () => CustomSizeBox.IsChecked = false));
+
         double cfg = CfgSlider.Value, lo = r.CfgRange[0], hi = r.CfgRange[1];
         if (cfg < lo - 0.01 || cfg > hi + 0.01)
         {
@@ -207,7 +214,7 @@ public partial class MainWindow
         try
         {
             var issues = CheckSettings();
-            foreach (var dot in new[] { QualityDot, CfgDot, SamplerDot, LoraDot })
+            foreach (var dot in new[] { QualityDot, CfgDot, SamplerDot, LoraDot, SizeDot })
             {
                 var mine = issues.Where(i => i.Dot == dot).ToList();
                 int level = mine.Count == 0 ? 0 : mine.Max(i => i.Level);

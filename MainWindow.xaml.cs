@@ -53,6 +53,9 @@ public class Settings
     public int Count { get; set; } = 2;
     public int Steps { get; set; } = 30;             // the Fast / Balanced / Best preset
     public int StepsValue { get; set; }              // the exact steps (0: the preset's)
+    public bool CustomSize { get; set; }
+    public int CustomWidth { get; set; } = 1024;
+    public int CustomHeight { get; set; } = 1024;
     public double Cfg { get; set; } = 7;
     public string Model { get; set; } = "";
     public string Sampler { get; set; } = "dpmpp_2m";
@@ -336,6 +339,8 @@ public partial class MainWindow : Window
         Pick(CountGroup, settings.Count.ToString(), "2");
         Pick(QualityGroup, settings.Steps.ToString(), "30");
         if (settings.StepsValue > 0) StepsSlider.Value = settings.StepsValue;
+        CustomW.Text = settings.CustomWidth.ToString(); CustomH.Text = settings.CustomHeight.ToString();
+        CustomSizeBox.IsChecked = settings.CustomSize;
         Pick(StyleGroup, settings.Style, "none");
         CfgSlider.Value = settings.Cfg;
         SeedBox.Text = settings.Seed.ToString();
@@ -370,6 +375,9 @@ public partial class MainWindow : Window
         settings.Prompt = PromptBox.Text; settings.Negative = NegativeBox.Text;
         settings.Width = int.Parse(size[0]); settings.Height = int.Parse(size[1]);
         settings.Count = int.Parse(Picked(CountGroup)); settings.Steps = int.Parse(Picked(QualityGroup)); settings.StepsValue = Steps;
+        settings.CustomSize = CustomSizeBox.IsChecked == true;
+        if (int.TryParse(CustomW.Text, out var cw)) settings.CustomWidth = cw;
+        if (int.TryParse(CustomH.Text, out var ch)) settings.CustomHeight = ch;
         settings.Cfg = CfgSlider.Value;
         if (ModelBox.SelectedItem is string model) { if (showingVideoModels) settings.VideoModel = model; else settings.Model = model; }
         settings.VideoSize = Picked(VideoSizeGroup); settings.VideoFrames = int.Parse(Picked(LengthGroup));
@@ -695,7 +703,30 @@ public partial class MainWindow : Window
         Pick(StyleGroup, style.Key, "none");
     }
 
-    void Size_Checked(object sender, RoutedEventArgs e) => SizeText.Text = ((string)((RadioButton)sender).Tag).Replace("x", " × ");
+    void Size_Checked(object sender, RoutedEventArgs e) => ShowSize();
+
+    // the picture's size: an aspect preset, or the custom one rounded to what the model takes (SDXL works in 64s, the others in 32s)
+    (int W, int H) PictureSize()
+    {
+        if (CustomSizeBox?.IsChecked == true && int.TryParse(CustomW.Text, out var w) && int.TryParse(CustomH.Text, out var h))
+        {
+            int step = Sdxl ? 64 : 32;
+            int Snap(int v) => Math.Clamp((int)Math.Round(v / (double)step) * step, 256, 4096);
+            return (Snap(w), Snap(h));
+        }
+        var preset = (Picked(SizeGroup) is { Length: > 0 } tag ? tag : "1024x1024").Split('x');
+        return (int.Parse(preset[0]), int.Parse(preset[1]));
+    }
+
+    void CustomSize_Changed(object sender, RoutedEventArgs e)
+    {
+        CustomSizePanel.Visibility = CustomSizeBox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        if (CustomSizeBox.IsChecked == true) { var (w, h) = PictureSize(); CustomW.Text = w.ToString(); CustomH.Text = h.ToString(); }
+        ShowSize();
+        RefreshGuard();
+    }
+
+    void ShowSize() { if (SizeText == null) return; var (w, h) = PictureSize(); SizeText.Text = $"{w} × {h}"; }
 
     // typing a seed means "use this one"
     void Seed_PreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -1200,8 +1231,8 @@ public partial class MainWindow : Window
         g["9"] = Node("SaveImage", new() { ["filename_prefix"] = image == null ? "forge/img" : "forge/edit", ["images"] = Link(masked ? "15" : "8", 0) });
         if (image == null)
         {
-            var size = Picked(SizeGroup).Split('x');
-            g["5"] = Node(Flux ? "EmptySD3LatentImage" : "EmptyLatentImage", new() { ["width"] = int.Parse(size[0]), ["height"] = int.Parse(size[1]), ["batch_size"] = n });
+            var (width, height) = PictureSize();
+            g["5"] = Node(Flux ? "EmptySD3LatentImage" : "EmptyLatentImage", new() { ["width"] = width, ["height"] = height, ["batch_size"] = n });
             if (refs is { Length: > 0 }) UseReferences(g, refs, clip, vae, rawPrompt);
             return g;
         }
