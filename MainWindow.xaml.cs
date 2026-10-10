@@ -1109,7 +1109,7 @@ public partial class MainWindow : Window
     // create: empty latent -> sampler. edit: photo -> latent (-> noise mask) -> sampler at partial denoise,
     // and with a mask the result is blended back so unpainted pixels stay exactly as they were.
     // plain: no style, no LoRA. count: images to make (0 = the Number of images setting)
-    JsonObject Graph(long seed, string image = null, bool masked = false, double? denoise = null, bool plain = false, int count = 0)
+    JsonObject Graph(long seed, string image = null, bool masked = false, double? denoise = null, bool plain = false, int count = 0, string[] refs = null)
     {
         int n = count > 0 ? count : int.Parse(Picked(CountGroup));
         var g = new JsonObject();
@@ -1156,6 +1156,7 @@ public partial class MainWindow : Window
         {
             var size = Picked(SizeGroup).Split('x');
             g["5"] = Node(Flux ? "EmptySD3LatentImage" : "EmptyLatentImage", new() { ["width"] = int.Parse(size[0]), ["height"] = int.Parse(size[1]), ["batch_size"] = n });
+            if (refs is { Length: > 0 }) UseReferences(g, refs, clip, vae, rawPrompt);
             return g;
         }
         g["10"] = Node("LoadImage", new() { ["image"] = image });                 // output 1 = mask from the PNG's alpha
@@ -1357,7 +1358,7 @@ public partial class MainWindow : Window
     {
         bool edit = EditMode.IsChecked == true, video = VideoMode.IsChecked == true;
         GalleryPanel.Visibility = edit ? Visibility.Collapsed : Visibility.Visible;
-        SizeSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
+        SizeSection.Visibility = ReferenceSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
         VideoSection.Visibility = video ? Visibility.Visible : Visibility.Collapsed;
         StartSection.Visibility = video && PictureVideo ? Visibility.Visible : Visibility.Collapsed;
         CountSection.Visibility = video ? Visibility.Collapsed : Visibility.Visible;
@@ -1918,8 +1919,12 @@ public partial class MainWindow : Window
         "Reply with the prompt only.";
 
     // ponytail: word lists, so they can be fooled by spelling; they only ever block, never write anything
-    static readonly Regex MinorWords = new(@"(?!)", RegexOptions.IgnoreCase);
-    static readonly Regex SexualWords = new(@"(?!)", RegexOptions.IgnoreCase);
+    static readonly Regex MinorWords = new(@"\b(child|children|kids?|minors?|underage|under-age|teens?|teenage|teenagers?|pre-?teens?|tweens?|loli(s|con)?|shota(con)?|" +
+        @"toddlers?|infants?|school ?(girl|boy)s?|little (girl|boy)s?|young (girl|boy)s?|elementary school|middle school|junior high)\b|\b([1-9]|1[0-7]) ?(-| )?(years?[ -]?old|yo|y/o|yrs?)\b",
+        RegexOptions.IgnoreCase);
+    static readonly Regex SexualWords = new(@"\b(sex|sexual|sexy|nude|nudes|nudity|naked|nsfw|porn|porno|erotic|explicit|topless|bottomless|lingerie|breasts?|boobs?|" +
+        @"nipples?|genitals?|penis|cock|dick|vagina|pussy|anus|anal|oral|blowjob|handjob|orgasm|cum|cumshot|fuck\w*|intercourse|cowgirl|doggy ?style|missionary|" +
+        @"aroused|horny|undress\w*|seductive|sensual)\b", RegexOptions.IgnoreCase);
     static bool SexualWithMinor(string text) => MinorWords.IsMatch(text) && SexualWords.IsMatch(text);
     static readonly Regex Declined = new(@"^\W*(sorry|i'?m sorry|i am sorry|i can(no|')t|i'?m unable|i am unable|as an ai)", RegexOptions.IgnoreCase);
     const string MinorNote = "Image Forge won't make sexual content involving anyone under 18.";

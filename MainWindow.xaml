@@ -271,6 +271,20 @@
                 </Button>
               </StackPanel>
 
+              <!-- create mode: a character or a place that new pictures keep exactly as it is -->
+              <StackPanel x:Name="ReferenceSection" AllowDrop="True" DragOver="Reference_DragOver" Drop="Reference_Drop" Background="Transparent">
+                <TextBlock Text="Reference pictures" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <WrapPanel x:Name="ReferenceList" Visibility="Collapsed"/>
+                <Button x:Name="AddReferenceBtn" Style="{StaticResource Ghost}" Height="44" Click="AddReference_Click" AutomationProperties.Name="Add reference picture">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE77B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="Add a character or place…" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"
+                           Text="Drop up to 3 pictures here. New pictures keep the same face or place: just say what happens, e.g. &quot;she is reading in a café&quot;. Uses Qwen-Image 2.1."/>
+              </StackPanel>
+
               <TextBlock Text="Negative prompt" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
               <TextBox x:Name="NegativeBox" Style="{StaticResource Input}" Height="66" AcceptsReturn="True" TextWrapping="Wrap"
                        VerticalScrollBarVisibility="Auto" Tag="What to keep out of the image"/>

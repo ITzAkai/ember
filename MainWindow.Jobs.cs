@@ -54,6 +54,8 @@ public partial class MainWindow
         bool edit = EditMode.IsChecked == true;
         if (edit && photo == null) { Note("Choose a photo to edit first.", true); return; }
         if (edit && CropLayer.Visibility == Visibility.Visible) { Note("Apply or cancel the crop first.", true); return; }
+        // a reference picture may show a real person, so it never goes into a nude or sexual picture
+        if (UsingReferences && SexualWords.IsMatch(PromptBox.Text)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
         long seed = newSeed || RandomSeed.IsChecked == true || !long.TryParse(SeedBox.Text, out var typed) ? Random.Shared.NextInt64(0, 1L << 48) : typed;
         SeedBox.Text = seed.ToString();
         SaveSettings();
@@ -79,7 +81,13 @@ public partial class MainWindow
                 job.Before = EditPng(null);
                 masked = mask != null;
             }
-            var g = Graph(seed, image, masked, denoise, count: count);
+            string[] refs = null;
+            if (expand == null && UsingReferences)
+            {
+                refs = new string[references.Count];
+                for (int i = 0; i < refs.Length; i++) refs[i] = await Upload(references[i].Png, job);
+            }
+            var g = Graph(seed, image, masked, denoise, count: count, refs: refs);
             // expansions always use the inpainting model when installed (far better joins); painted edits if the setting is on
             if (masked && inpaintModel != null && baseCheckpoint != null && (expand != null || settings.InpaintEdits)) UseInpaintModel(g);
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };

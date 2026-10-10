@@ -9,6 +9,7 @@ A Windows app for making pictures and short videos on your own PC with [ComfyUI]
 - **Create** pictures from a prompt, with styles, aspect ratios and up to 4 at once
 - **Edit photo**: remove objects, expand the picture, fix details, cut out the background, upscale
 - **Video**: text-to-video and picture-to-video (Wan 2.1)
+- **Reference pictures**: drop a character or a place, and new pictures keep the same face or place (Qwen-Image 2.1)
 - **Improve prompt** and **Describe image** with a local text model
 - **LoRA add-ons**: several at once, with descriptions and trigger words looked up on Civitai
 - **Models page**: download from the built-in list, or paste a Hugging Face / Civitai link
@@ -68,7 +69,7 @@ Styles: [ta86_inkriot](https://civitai.red/models/2827717) (bold cel shading), [
 
 Artists: [96YOTTEA](https://civitai.red/models/2786359), [Panni Xing](https://civitai.red/models/2835840), [@houseofuday](https://civitai.red/models/2964588), [Eren ARIK](https://civitai.red/models/2980543).
 
-Realism and looks: [Realistic Snapshot](https://civitai.red/models/2268008), [Realism Engine](https://civitai.red/models/2688234), [eWomen](https://civitai.red/models/2988734), [Korean Doll Baddie](https://civitai.red/models/2775965), [Marceline](https://civitai.red/models/2895065).
+Realism and looks: [Realism Engine](https://civitai.red/models/2688234), [eWomen](https://civitai.red/models/2988734), [Korean Doll Baddie](https://civitai.red/models/2775965), [Marceline](https://civitai.red/models/2895065).
 
 Pick a LoRA in Advanced settings and the app shows what it does and its trigger words.
 
