@@ -41,7 +41,7 @@ public partial class MainWindow
         var from = startName;
         var model = (string)ModelBox.SelectedItem;
         var size = Picked(VideoSizeGroup).Split('x');
-        int frames = int.Parse(Picked(LengthGroup)), steps = StepsFor(Picked(QualityGroup));
+        int frames = int.Parse(Picked(LengthGroup)), steps = Steps;
         var rawPrompt = CurrentStyle.Apply(PromptBox.Text.Trim());
         var activeLoras = AllActiveLoras(rawPrompt, out rawPrompt);
         var prompt = rawPrompt;

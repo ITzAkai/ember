@@ -15,6 +15,7 @@ public class ModelProfile
     public string Name { get; set; }                // a tab's name; empty for a model's own profile
     public string Model { get; set; }
     public string Quality { get; set; }
+    public int Steps { get; set; }
     public double Cfg { get; set; }
     public string Sampler { get; set; }
     public string Scheduler { get; set; }
@@ -44,7 +45,7 @@ public partial class MainWindow
     // what's on screen, written into a profile (everything but the model, which may already have changed in the drop-down)
     void Capture(ModelProfile p)
     {
-        p.Quality = Picked(QualityGroup); p.Cfg = CfgSlider.Value;
+        p.Quality = Picked(QualityGroup); p.Steps = Steps; p.Cfg = CfgSlider.Value;
         p.Sampler = SamplerBox.SelectedItem as string ?? p.Sampler; p.Scheduler = SchedulerBox.SelectedItem as string ?? p.Scheduler;
         p.Size = Picked(SizeGroup); p.Count = int.TryParse(Picked(CountGroup), out var n) ? n : 1; p.Strength = StrengthSlider.Value;
         p.Negative = NegativeBox.Text; p.Style = Picked(StyleGroup); p.Loras = CurrentLoras(); p.Saved = true;
@@ -53,6 +54,7 @@ public partial class MainWindow
     void Apply(ModelProfile p)
     {
         Pick(QualityGroup, p.Quality, "30");
+        if (p.Steps > 0) StepsSlider.Value = p.Steps;
         CfgSlider.Value = p.Cfg;
         if (p.Sampler != null && SamplerBox.Items.Contains(p.Sampler)) SamplerBox.SelectedItem = p.Sampler;
         if (p.Scheduler != null && SchedulerBox.Items.Contains(p.Scheduler)) SchedulerBox.SelectedItem = p.Scheduler;

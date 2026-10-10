@@ -265,13 +265,20 @@
               </StackPanel>
 
               <DockPanel Margin="0,0,0,6">
-                <Button x:Name="HistoryBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" Margin="6,0,-6,0"
+                <Button x:Name="HistoryBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" Margin="2,0,-6,0"
                         Content="&#xE81C;" FontSize="14" Click="History_Click" ToolTip="Recent prompts"/>
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" Content="&#xE721;" FontSize="13" Click="FindPrompt_Click"
+                        ToolTip="Find and replace (Ctrl+F)" AutomationProperties.Name="Find in prompt"/>
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="28" Content="A+" FontSize="12" FontFamily="Segoe UI" Click="BiggerText_Click"
+                        ToolTip="Bigger prompt text (Ctrl + mouse wheel, Ctrl + =)" AutomationProperties.Name="Bigger prompt text"/>
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="28" Content="A−" FontSize="11" FontFamily="Segoe UI" Click="SmallerText_Click"
+                        ToolTip="Smaller prompt text (Ctrl + mouse wheel, Ctrl + −)" AutomationProperties.Name="Smaller prompt text"/>
                 <TextBlock DockPanel.Dock="Right" Text="Ctrl + Enter to generate" Style="{StaticResource Note}" Foreground="{DynamicResource Faint}"/>
                 <TextBlock x:Name="PromptHeading" Text="Prompt" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
               </DockPanel>
               <TextBox x:Name="PromptBox" Style="{StaticResource Input}" Height="140" AcceptsReturn="True" TextWrapping="Wrap" AllowDrop="True"
                        PreviewDragOver="Prompt_PreviewDragOver" PreviewDrop="Prompt_PreviewDrop"
+                       PreviewKeyDown="PromptBoxes_PreviewKeyDown" PreviewMouseWheel="PromptBoxes_PreviewMouseWheel"
                        VerticalScrollBarVisibility="Auto" Tag="Describe the image: subject, style, lighting, mood…"/>
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,-8">
                 <Button x:Name="DescribeFileBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,6,0" Click="DescribeFile_Click"
@@ -304,9 +311,42 @@
                            Text="Drop up to 3 pictures here. New pictures keep the same face or place: just say what happens, e.g. &quot;she is reading in a café&quot;. Uses Qwen-Image 2.1."/>
               </StackPanel>
 
-              <TextBlock Text="Negative prompt" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
+              <DockPanel Margin="0,18,0,8">
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="24" Margin="0,0,-6,0" Content="&#xE721;" FontSize="12" Click="FindNegative_Click"
+                        ToolTip="Find and replace (Ctrl+F)" AutomationProperties.Name="Find in negative prompt"/>
+                <TextBlock Text="Negative prompt" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
+              </DockPanel>
               <TextBox x:Name="NegativeBox" Style="{StaticResource Input}" Height="66" AcceptsReturn="True" TextWrapping="Wrap"
+                       PreviewKeyDown="PromptBoxes_PreviewKeyDown" PreviewMouseWheel="PromptBoxes_PreviewMouseWheel"
                        VerticalScrollBarVisibility="Auto" Tag="What to keep out of the image"/>
+              <DockPanel x:Name="NegativeLock" Margin="0,6,0,0" Visibility="Collapsed">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="8,0,0,0" Content="Unlock anyway" Click="UnlockNegative_Click"/>
+                <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"
+                           Text="Negative prompt isn't needed for this model: at CFG 1 it's ignored."/>
+              </DockPanel>
+              <TextBlock x:Name="NegativeWarn" Style="{StaticResource Note}" Foreground="{DynamicResource Accent}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"
+                         Text="Negative prompt has no effect at CFG 1. Raise CFG to use it (slower, and it may over-cook turbo models)."/>
+              <!-- Find / Replace for whichever prompt box it was opened on -->
+              <Popup x:Name="FindPopup" Placement="Top" StaysOpen="True" AllowsTransparency="True" VerticalOffset="-4">
+                <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="8" Padding="8">
+                  <StackPanel>
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="24" Height="24" Content="&#xE711;" FontSize="9" Click="FindClose_Click" ToolTip="Close (Esc)" AutomationProperties.Name="Close find"/>
+                      <CheckBox x:Name="MatchCaseBox" DockPanel.Dock="Right" Content="Aa" Margin="6,0,4,0" VerticalAlignment="Center" Checked="MatchCase_Click" Unchecked="MatchCase_Click" ToolTip="Match case" AutomationProperties.Name="Match case"/>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="24" Height="24" Content="&#xE70D;" FontSize="10" Click="FindNext_Click" ToolTip="Next (Enter, F3)" AutomationProperties.Name="Next match"/>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="24" Height="24" Content="&#xE70E;" FontSize="10" Click="FindPrev_Click" ToolTip="Previous (Shift+Enter, Shift+F3)" AutomationProperties.Name="Previous match"/>
+                      <TextBlock x:Name="FindCount" DockPanel.Dock="Right" Style="{StaticResource Note}" MinWidth="64" TextAlignment="Right" VerticalAlignment="Center" Margin="6,0,4,0"/>
+                      <TextBox x:Name="FindBox" Width="150" Height="26" Padding="4,0" VerticalContentAlignment="Center" TextChanged="FindBox_TextChanged" PreviewKeyDown="FindBox_KeyDown"
+                               AutomationProperties.Name="Find"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,6,0,0">
+                      <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="6,0,0,0" Content="Replace all" Click="ReplaceAll_Click"/>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="6,0,0,0" Content="Replace" Click="Replace_Click"/>
+                      <TextBox x:Name="ReplaceBox" Width="150" Height="26" Padding="4,0" VerticalContentAlignment="Center" HorizontalAlignment="Left" AutomationProperties.Name="Replace with"/>
+                    </DockPanel>
+                  </StackPanel>
+                </Border>
+              </Popup>
 
               <DockPanel Margin="0,22,0,5">
                 <TextBlock x:Name="StyleText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
@@ -500,6 +540,14 @@
                     <TextBlock Text="Prompt guidance (CFG)" Style="{StaticResource Heading}" Margin="0"/>
                   </DockPanel>
                   <Slider x:Name="CfgSlider" Minimum="1" Maximum="15" TickFrequency="0.5" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"/>
+                </StackPanel>
+
+                <StackPanel ToolTip="Exactly how many steps to take. Fast, Balanced and Best set this for the model; you can fine-tune it here.">
+                  <DockPanel Margin="0,18,0,4">
+                    <TextBox x:Name="StepsBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" AutomationProperties.Name="Steps number"/>
+                    <TextBlock Text="Steps" Style="{StaticResource Heading}" Margin="0"/>
+                  </DockPanel>
+                  <Slider x:Name="StepsSlider" Minimum="1" Maximum="100" Value="30" TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" AutomationProperties.Name="Steps"/>
                 </StackPanel>
 
                 <Grid Margin="0,16,0,0">

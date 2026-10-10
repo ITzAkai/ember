@@ -50,7 +50,8 @@ public class Settings
     public int Width { get; set; } = 1024;
     public int Height { get; set; } = 1024;
     public int Count { get; set; } = 2;
-    public int Steps { get; set; } = 30;
+    public int Steps { get; set; } = 30;             // the Fast / Balanced / Best preset
+    public int StepsValue { get; set; }              // the exact steps (0: the preset's)
     public double Cfg { get; set; } = 7;
     public string Model { get; set; } = "";
     public string Sampler { get; set; } = "dpmpp_2m";
@@ -81,6 +82,7 @@ public class Settings
     public string ComfyDir { get; set; } = "";
     public bool FastStart { get; set; } = true;                  // ComfyUI loads only the recommended plugins Image Forge uses
     public bool HidePluginBanner { get; set; }
+    public double PromptTextSize { get; set; } = 14.5;
     public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // before per-model profiles: the starting point for models without one
     public Dictionary<string, ModelProfile> Profiles { get; set; } = new();        // each model's own settings
     public List<ModelProfile> Tabs { get; set; } = new();
@@ -223,6 +225,7 @@ public partial class MainWindow : Window
         shots.CollectionChanged += (_, _) => UpdateCount();
         BuildStyleTiles();
         ApplySettings();
+        ApplyPromptSize();
         ShowTabs();
         AllView.IsChecked = true;
         CreateMode.IsChecked = true;
@@ -231,11 +234,15 @@ public partial class MainWindow : Window
         SetState("Starting", Brush("Accent"));
         RestoreWindow();
         EditorView.SizeChanged += (_, _) => LayoutCrop();
-        CfgSlider.ValueChanged += (_, _) => { ShowBoosters(); RefreshGuard(); };
+        CfgSlider.ValueChanged += (_, _) => { ShowBoosters(); RefreshGuard(); UpdateNegative(); };
         SamplerBox.SelectionChanged += (_, _) => RefreshGuard();
         SchedulerBox.SelectionChanged += (_, _) => RefreshGuard();
         NegativeBox.TextChanged += (_, _) => RefreshGuard();
-        QualityGroup.AddHandler(System.Windows.Controls.Primitives.ToggleButton.CheckedEvent, new RoutedEventHandler((_, _) => RefreshGuard()));
+        QualityGroup.AddHandler(System.Windows.Controls.Primitives.ToggleButton.CheckedEvent, new RoutedEventHandler((_, _) => { StepsSlider.Value = StepsFor(Picked(QualityGroup)); RefreshGuard(); }));
+        StepsSlider.ValueChanged += (_, e) => { StepsBox.Text = ((int)e.NewValue).ToString(); RefreshGuard(); };
+        StepsBox.LostFocus += (_, _) => TypedSteps();
+        StepsBox.KeyDown += (_, e) => { if (e.Key == Key.Enter) TypedSteps(); };
+        StepsBox.Text = Steps.ToString();
         Loaded += async (_, _) =>
         {
             PromptBox.TextChanged += (_, _) => UpdateLoraChip();
@@ -324,6 +331,7 @@ public partial class MainWindow : Window
         Pick(LengthGroup, settings.VideoFrames.ToString(), "49");
         Pick(CountGroup, settings.Count.ToString(), "2");
         Pick(QualityGroup, settings.Steps.ToString(), "30");
+        if (settings.StepsValue > 0) StepsSlider.Value = settings.StepsValue;
         Pick(StyleGroup, settings.Style, "none");
         CfgSlider.Value = settings.Cfg;
         SeedBox.Text = settings.Seed.ToString();
@@ -361,7 +369,7 @@ public partial class MainWindow : Window
         var size = Picked(SizeGroup).Split('x');
         settings.Prompt = PromptBox.Text; settings.Negative = NegativeBox.Text;
         settings.Width = int.Parse(size[0]); settings.Height = int.Parse(size[1]);
-        settings.Count = int.Parse(Picked(CountGroup)); settings.Steps = int.Parse(Picked(QualityGroup));
+        settings.Count = int.Parse(Picked(CountGroup)); settings.Steps = int.Parse(Picked(QualityGroup)); settings.StepsValue = Steps;
         settings.Cfg = CfgSlider.Value;
         if (ModelBox.SelectedItem is string model) { if (showingVideoModels) settings.VideoModel = model; else settings.Model = model; }
         settings.VideoSize = Picked(VideoSizeGroup); settings.VideoFrames = int.Parse(Picked(LengthGroup));
@@ -893,6 +901,13 @@ public partial class MainWindow : Window
         get { var r = ModelRec; return (r.Steps[0], r.Steps[1], r.Steps[2], r.Cfg, r.Sampler, r.Scheduler); }
     }
     int StepsFor(string quality) => quality switch { "20" => Preset.Fast, "30" => Preset.Standard, _ => Preset.Best };
+    int Steps => (int)StepsSlider.Value;
+
+    void TypedSteps()
+    {
+        if (int.TryParse(StepsBox.Text, out var v)) StepsSlider.Value = Math.Clamp(v, 1, 100);
+        StepsBox.Text = Steps.ToString();
+    }
 
     // which family a diffusion model is, told from its tensor names the way ComfyUI does, so renamed and fine-tuned files work too
     // a real checkpoint carries its own text encoder and VAE; a model-only file in checkpoints can't be loaded from there
@@ -1088,6 +1103,7 @@ public partial class MainWindow : Window
     void Model_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         LeavingModel();
+        negativeUnlocked = false;
         foreach (var r in QualityGroup.Children.OfType<RadioButton>())
             ((TextBlock)((StackPanel)r.Content).Children[1]).Text = $"{StepsFor((string)r.Tag)} steps";
         if (LoraSection != null) { LoraSection.IsEnabled = !Flux; FillLoras(); }
@@ -1108,9 +1124,11 @@ public partial class MainWindow : Window
         if (loadingOptions || ModelBox.SelectedItem == null) { profileModel = ModelBox.SelectedItem as string ?? profileModel; return; }   // on startup keep the saved guidance and sampler
         var p = Preset;
         CfgSlider.Value = p.Cfg; SamplerBox.SelectedItem = p.Sampler; SchedulerBox.SelectedItem = p.Scheduler;
+        StepsSlider.Value = StepsFor(Picked(QualityGroup));
         ArrivedAtModel();       // a model's own saved settings win over the recommendation
         ShowBoosters();
         RefreshGuard();
+        UpdateNegative();
     }
 
     static void Fill(ComboBox box, IEnumerable<string> list, string saved, string prefer)
@@ -1173,7 +1191,7 @@ public partial class MainWindow : Window
         g["7"] = Node("CLIPTextEncode", new() { ["text"] = Flux ? "" : string.Join(", ", new[] { NegativeBox.Text.Trim(), CurrentStyle.Negative, Anima ? AnimaNegative : "" }.Where(t => t != "")), ["clip"] = clip.DeepClone() });
         g["3"] = Node("KSampler", new()
         {
-            ["seed"] = seed, ["steps"] = StepsFor(Picked(QualityGroup)), ["cfg"] = CfgSlider.Value,
+            ["seed"] = seed, ["steps"] = Steps, ["cfg"] = CfgSlider.Value,
             ["sampler_name"] = (string)SamplerBox.SelectedItem, ["scheduler"] = (string)SchedulerBox.SelectedItem,
             ["denoise"] = image == null ? 1 : Math.Round(denoise ?? StrengthSlider.Value, 2),
             ["model"] = model, ["positive"] = Link("6", 0), ["negative"] = Link("7", 0), ["latent_image"] = Link(image == null ? "5" : "12", 0)

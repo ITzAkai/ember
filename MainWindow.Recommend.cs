@@ -136,6 +136,7 @@ public partial class MainWindow
     {
         var r = ModelRec;
         Pick(QualityGroup, "30", "30");
+        StepsSlider.Value = StepsFor("30");
         CfgSlider.Value = r.Cfg;
         SamplerBox.SelectedItem = r.Sampler;
         SchedulerBox.SelectedItem = r.Scheduler;
@@ -149,11 +150,11 @@ public partial class MainWindow
         var issues = new List<Issue>();
         if (ModelBox.SelectedItem == null) return issues;
 
-        int steps = StepsFor(Picked(QualityGroup));
+        int steps = Steps;
         if (steps < r.StepsRange[0] || steps > r.StepsRange[1])
             issues.Add(new(QualityDot, steps > r.StepsRange[1] * 1.5 || steps < r.StepsRange[0] * 0.6 ? 2 : 1,
                 $"{steps} steps is outside {r.StepsRange[0]}–{r.StepsRange[1]} for {r.Label}: " + (steps > r.StepsRange[1] ? "it may look over-cooked." : "it may look mushy and unfinished."),
-                () => Pick(QualityGroup, "30", "30")));
+                () => { Pick(QualityGroup, "30", "30"); StepsSlider.Value = StepsFor("30"); }));
 
         double cfg = CfgSlider.Value, lo = r.CfgRange[0], hi = r.CfgRange[1];
         if (cfg < lo - 0.01 || cfg > hi + 0.01)

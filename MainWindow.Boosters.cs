@@ -18,6 +18,9 @@ public class Boosters
     public double RescaleMultiplier { get; set; } = 0.7;
     public bool? Faces { get; set; }
     public double FaceDenoise { get; set; } = 0.4;
+    public bool? HiRes { get; set; }
+    public double HiResScale { get; set; } = 1.5;
+    public double HiResDenoise { get; set; } = 0.3;
     public bool? Finish { get; set; }
     public double Temperature { get; set; }
     public double Hue { get; set; }
@@ -71,6 +74,14 @@ public partial class MainWindow
         return (true, on, b.Rescale == null && VPred ? "On for this v-prediction model: it prevents washed-out or burnt colours." : "Stops burnt or washed-out colours at higher CFG. Too high looks flat.");
     }
 
+    (bool Can, bool On, string Why) HiResState()
+    {
+        if (VideoOn) return (false, false, "Pictures only.");
+        bool on = CurrentBoosters.HiRes ?? false;
+        return (true, on, "Enlarges the picture and redraws fine detail at low strength. About twice as long; on 6 to 8 GB cards large sizes can run out of memory." +
+            (on && CurrentBoosters.HiResDenoise > 0.45 ? " Above 0.45 it starts redrawing bodies and can add limbs." : ""));
+    }
+
     (bool Can, bool On, string Why) FacesState()
     {
         var b = CurrentBoosters;
@@ -104,6 +115,9 @@ public partial class MainWindow
             [("Scale", 0, 10, 0.1, b.PagScale, x => b.PagScale = x)], () => { b.Pag = null; b.PagScale = 3.0; }));
         BoostersPanel.Children.Add(BoosterRow("RescaleCFG: no burnt colours", RescaleState(), v => b.Rescale = v,
             [("Strength", 0, 1, 0.05, b.RescaleMultiplier, x => b.RescaleMultiplier = x)], () => { b.Rescale = null; b.RescaleMultiplier = 0.7; }));
+        BoostersPanel.Children.Add(BoosterRow("Hi-res fix (second pass)", HiResState(), v => b.HiRes = v,
+            [("Enlarge", 1.25, 2, 0.05, b.HiResScale, x => b.HiResScale = x), ("Strength", 0.15, 0.6, 0.05, b.HiResDenoise, x => b.HiResDenoise = x)],
+            () => { b.HiRes = null; b.HiResScale = 1.5; b.HiResDenoise = 0.3; }));
         var faces = FacesState();
         BoostersPanel.Children.Add(BoosterRow("Fix faces", faces, v => b.Faces = v,
             [("Strength", 0.1, 0.8, 0.05, b.FaceDenoise, x => b.FaceDenoise = x)], () => { b.Faces = null; b.FaceDenoise = 0.4; },
@@ -184,6 +198,19 @@ public partial class MainWindow
             k["model"] = Link("rescale", 0);
         }
         if (!newPicture || g["9"]?["inputs"] is not JsonObject save) return;
+        if (HiResState().On && g["8"]?["inputs"]?["vae"] is JsonNode hvae)
+        {
+            g["hires_up"] = Node("ImageScaleBy", new() { ["image"] = save["images"].DeepClone(), ["upscale_method"] = "lanczos", ["scale_by"] = b.HiResScale });
+            g["hires_in"] = Node("VAEEncode", new() { ["pixels"] = Link("hires_up", 0), ["vae"] = hvae.DeepClone() });
+            g["hires"] = Node("KSampler", new()
+            {
+                ["model"] = k["model"].DeepClone(), ["positive"] = k["positive"].DeepClone(), ["negative"] = k["negative"].DeepClone(), ["latent_image"] = Link("hires_in", 0),
+                ["seed"] = k["seed"].DeepClone(), ["steps"] = Math.Max(4, (int)Math.Round(Steps * 0.6)), ["cfg"] = k["cfg"].DeepClone(),
+                ["sampler_name"] = k["sampler_name"].DeepClone(), ["scheduler"] = k["scheduler"].DeepClone(), ["denoise"] = b.HiResDenoise,
+            });
+            g["hires_out"] = Node("VAEDecode", new() { ["samples"] = Link("hires", 0), ["vae"] = hvae.DeepClone() });
+            save["images"] = Link("hires_out", 0);
+        }
         if (FacesState().On && g["6"]?["inputs"]?["clip"] is JsonNode clip && g["8"]?["inputs"]?["vae"] is JsonNode vae)
         {
             g["facefinder"] = Node("UltralyticsDetectorProvider", new() { ["model_name"] = "bbox/face_yolov8m.pt" });
