@@ -122,7 +122,8 @@ public partial class MainWindow
     bool ManagerMissing => ManagerShipped && !PipManager && !LegacyManager;
 
     // fast start loads only the recommended packs that are installed, not every custom node in the folder
-    List<string> WhitelistedPacks() => Recommended.Select(StateOf).Where(s => s.State is PluginState.Installed or PluginState.Older).Select(s => Path.GetFileName(s.Path)).ToList();
+    List<string> WhitelistedPacks() => Recommended.Select(StateOf).Where(s => s.State is PluginState.Installed or PluginState.Older).Select(s => Path.GetFileName(s.Path))
+        .Concat(Directory.Exists(Path.Combine(CustomNodesDir, FinishFolder)) ? [FinishFolder] : []).ToList();
 
     string LaunchFlags()
     {
@@ -171,6 +172,8 @@ public partial class MainWindow
         foreach (var group in Recommended.GroupBy(p => p.Group))
         {
             PluginsList.Children.Add(new TextBlock { Text = group.Key, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 6) });
+            if (group.Key == "Image quality") PluginsList.Children.Add(PluginRow("Image Forge colour finish", nodeNames.Contains("ImageForgeFinish") ? "Built in" : "Built in (loads after a ComfyUI restart)",
+                "Image Forge's own small node for the Colour finish booster: plain torch, no extra packages.", "", false, null));
             if (group.Key == "Image quality" && ManagerShipped) PluginsList.Children.Add(PluginRow(ManagerName,
                 PipManager ? "Installed" : LegacyManager ? "Installed (older add-on version)" : "Not installed",
                 "Install, update and switch off ComfyUI plugins. Started with ComfyUI.", "about 20 MB", ManagerMissing, null));

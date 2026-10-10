@@ -511,6 +511,10 @@
                 </DockPanel>
                 <TextBox x:Name="SeedBox" Style="{StaticResource Input}" Height="36" Padding="10,0" VerticalContentAlignment="Center"
                          PreviewTextInput="Seed_PreviewTextInput" Tag="Seed number"/>
+
+                <TextBlock Text="Quality boosters" Style="{StaticResource Heading}" Margin="0,22,0,0"
+                           ToolTip="Extra steps that sharpen structure, fix faces or finish colours. Each one is only offered for models where it helps."/>
+                <StackPanel x:Name="BoostersPanel"/>
               </StackPanel>
             </StackPanel>
           </ScrollViewer>

@@ -90,6 +90,7 @@ public partial class MainWindow
             var g = Graph(seed, image, masked, denoise, count: count, refs: refs);
             // expansions always use the inpainting model when installed (far better joins); painted edits if the setting is on
             if (masked && inpaintModel != null && baseCheckpoint != null && (expand != null || settings.InpaintEdits)) UseInpaintModel(g);
+            ApplyBoosters(g, newPicture: !edit && expand == null);
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };
         });
     }

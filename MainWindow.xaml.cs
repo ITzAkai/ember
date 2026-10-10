@@ -80,7 +80,8 @@ public class Settings
     public int VideoFrames { get; set; } = 49;
     public string ComfyDir { get; set; } = "";
     public bool FastStart { get; set; } = true;                  // ComfyUI loads only the recommended plugins Image Forge uses
-    public bool HidePluginBanner { get; set; }                   // the ComfyUI portable folder, when the exe doesn't sit in one
+    public bool HidePluginBanner { get; set; }
+    public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // Phase 4 moves these into per-model profiles                   // the ComfyUI portable folder, when the exe doesn't sit in one
 
     static readonly string File = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ImageForge", "settings.json");
     public static string FilePath => File;
@@ -226,6 +227,7 @@ public partial class MainWindow : Window
         SetState("Starting", Brush("Accent"));
         RestoreWindow();
         EditorView.SizeChanged += (_, _) => LayoutCrop();
+        CfgSlider.ValueChanged += (_, _) => ShowBoosters();
         Loaded += async (_, _) =>
         {
             PromptBox.TextChanged += (_, _) => UpdateLoraChip();
@@ -765,6 +767,7 @@ public partial class MainWindow : Window
                 return;
             }
             Note("Starting ComfyUI on your graphics card. This takes about half a minute.");
+            WriteFinishNode();
             // through cmd so ComfyUI writes its own log file: it can then outlive this app ("Keep ComfyUI running")
             var args = "-s ComfyUI\\main.py --windows-standalone-build --listen 127.0.0.1 --port " + Port + " --disable-auto-launch" + LaunchFlags();
             if (!string.IsNullOrWhiteSpace(settings.OutputDir)) args += $" --output-directory \"{settings.OutputDir.TrimEnd('\\')}\"";
@@ -785,6 +788,7 @@ public partial class MainWindow : Window
         await LoadSystem();
         await LoadNodeNames();
         ShowPluginBanner();
+        ShowBoosters();
         if (!listening) { listening = true; _ = Listen(); }
         ready = true;
         GenerateBtn.IsEnabled = ModelBox.Items.Count > 0;
@@ -1095,6 +1099,7 @@ public partial class MainWindow : Window
                 : Flux ? "Good at readable text. Slower; the negative prompt isn't used." : "";
             ModelNote.Visibility = ModelNote.Text == "" ? Visibility.Collapsed : Visibility.Visible;
         }
+        ShowBoosters();
         if (loadingOptions || ModelBox.SelectedItem == null) return;      // on startup keep the saved guidance and sampler
         var p = Preset;
         CfgSlider.Value = p.Cfg; SamplerBox.SelectedItem = p.Sampler; SchedulerBox.SelectedItem = p.Scheduler;
@@ -1385,6 +1390,7 @@ public partial class MainWindow : Window
         EnhanceBtn.ToolTip = edit ? "Looks at your photo and turns a short change into a clear, detailed one"
             : video ? "Turn a short idea into a detailed video prompt, with movement and camera" : "Turn a short idea into a detailed prompt, written by the local Qwen model";
         if (ready && video != showingVideoModels) FillModels();
+        ShowBoosters();
     }
 
     void ChoosePhoto_Click(object sender, RoutedEventArgs e)
