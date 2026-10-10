@@ -2080,10 +2080,11 @@ public partial class MainWindow : Window
         "Reply with the prompt only.";
 
     // ponytail: word lists, so they can be fooled by spelling; they only ever block, never write anything
-    static readonly Regex MinorWords = new(@"(?!)", RegexOptions.IgnoreCase);
-    static readonly Regex SexualWords = new(@"(?!)", RegexOptions.IgnoreCase);
+    // ADD YOUR BLOCKED WORDS below — separate with | inside the parentheses, e.g. \b(word1|word2|word3)\b
+    // Both MinorWords AND SexualWords must match the same prompt for it to be blocked.
+    static readonly Regex MinorWords = new(@"\b(WRITE_AGE_WORDS_HERE)\b", RegexOptions.IgnoreCase);
+    static readonly Regex SexualWords = new(@"\b(WRITE_SEXUAL_WORDS_HERE)\b", RegexOptions.IgnoreCase);
     static bool SexualWithMinor(string text) => MinorWords.IsMatch(text) && SexualWords.IsMatch(text);
-    static readonly Regex Declined = new(@"^\W*(sorry|i'?m sorry|i am sorry|i can(no|')t|i'?m unable|i am unable|as an ai)", RegexOptions.IgnoreCase);
     const string MinorNote = "Image Forge won't make sexual content involving anyone under 18.";
 
     async void Enhance_Click(object sender, RoutedEventArgs e)
@@ -2142,7 +2143,6 @@ public partial class MainWindow : Window
                 var answer = await AskOllama(settings.HelperModel["Ollama: ".Length..], prompt, system);
                 if (answer == "") throw new Exception("the model gave an empty answer");
                 if (SexualWithMinor(answer)) { Note(MinorNote, true); return null; }
-                if (Declined.IsMatch(answer)) { Note("The text model declined this one. Write the details yourself; your prompt is unchanged.", true); return null; }
                 return answer;
             }
             catch (Exception ex) { Note("Ollama couldn't write it (" + ex.Message + "). Is Ollama still running?", true); return null; }
@@ -2193,7 +2193,6 @@ public partial class MainWindow : Window
             }
             if (text == "") throw new Exception("the model gave an empty answer");
             if (SexualWithMinor(text)) { Note(MinorNote, true); return null; }
-            if (Declined.IsMatch(text)) { Note("The text model declined this one. Write the details yourself; your prompt is unchanged.", true); return null; }
             return text;
         }
         catch (Exception ex) { Note("Couldn't write it: " + ex.Message, true); return null; }
