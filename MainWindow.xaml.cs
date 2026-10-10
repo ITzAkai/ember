@@ -227,7 +227,11 @@ public partial class MainWindow : Window
         SetState("Starting", Brush("Accent"));
         RestoreWindow();
         EditorView.SizeChanged += (_, _) => LayoutCrop();
-        CfgSlider.ValueChanged += (_, _) => ShowBoosters();
+        CfgSlider.ValueChanged += (_, _) => { ShowBoosters(); RefreshGuard(); };
+        SamplerBox.SelectionChanged += (_, _) => RefreshGuard();
+        SchedulerBox.SelectionChanged += (_, _) => RefreshGuard();
+        NegativeBox.TextChanged += (_, _) => RefreshGuard();
+        QualityGroup.AddHandler(System.Windows.Controls.Primitives.ToggleButton.CheckedEvent, new RoutedEventHandler((_, _) => RefreshGuard()));
         Loaded += async (_, _) =>
         {
             PromptBox.TextChanged += (_, _) => UpdateLoraChip();
@@ -382,6 +386,7 @@ public partial class MainWindow : Window
     // a picked LoRA changes every image, so it shows next to Generate with a one-click off
     void UpdateLoraChip()
     {
+        Dispatcher.BeginInvoke(new Action(RefreshGuard));
         if (LoraChip == null || PromptBox == null) return;
         List<(string Name, double Strength)> active;
         try { active = AllActiveLoras(PromptBox?.Text, out _); } catch { return; }
@@ -861,9 +866,7 @@ public partial class MainWindow : Window
         if (otherModel) Model_SelectionChanged(null, null);
     }
 
-    // Turbo / Lightning checkpoints are distilled to finish in a handful of steps at low guidance
     bool loadingOptions;
-    bool Turbo => ModelBox.SelectedItem is string m && (m.Contains("turbo", StringComparison.OrdinalIgnoreCase) || m.Contains("lightning", StringComparison.OrdinalIgnoreCase));
     bool Flux => Named("flux");
     bool Named(string part) => ModelBox.SelectedItem is string m && m.Contains(part, StringComparison.OrdinalIgnoreCase);
     // models in separate files (diffusion model + text encoder + VAE): Qwen-Image 2.1, Krea 2 and their fine-tunes
@@ -879,15 +882,10 @@ public partial class MainWindow : Window
     bool Sdxl => Family == null && !Flux;
 
     // steps for Fast / Standard / Best, guidance and sampler, from each model's recommended settings
-    (int Fast, int Standard, int Best, double Cfg, string Sampler, string Scheduler) Preset =>
-        Wan ? (20, 30, 40, 6, "uni_pc", "simple")                         // Wan 2.1 text-to-video, as in ComfyUI's own template
-        : Krea ? (8, 12, 16, 1, "euler", "simple")                        // Krea 2 turbo and its fine-tunes
-        : Anima ? (20, 30, 40, 4, "euler", "simple")                      // Anima, as in ComfyUI's own template
-        : Qwen && Named("noctq") ? (20, 25, 35, 3, "euler", "simple")     // Noct Q Anime: 25 steps at cfg 3, per its author
-        : Qwen ? (20, 30, 40, 1, "euler", "simple")
-        : Flux ? (3, 4, 6, 1, "euler", "simple")                          // FLUX.1 schnell
-        : Turbo ? (6, 8, 10, 2, "dpmpp_2m_sde", "karras")                 // 2m_sde: one model pass per step (dpmpp_sde needs two), same look
-        : (20, 30, 45, 7, "dpmpp_2m", "karras");
+    (int Fast, int Standard, int Best, double Cfg, string Sampler, string Scheduler) Preset
+    {
+        get { var r = ModelRec; return (r.Steps[0], r.Steps[1], r.Steps[2], r.Cfg, r.Sampler, r.Scheduler); }
+    }
     int StepsFor(string quality) => quality switch { "20" => Preset.Fast, "30" => Preset.Standard, _ => Preset.Best };
 
     // which family a diffusion model is, told from its tensor names the way ComfyUI does, so renamed and fine-tuned files work too
@@ -1103,6 +1101,7 @@ public partial class MainWindow : Window
         if (loadingOptions || ModelBox.SelectedItem == null) return;      // on startup keep the saved guidance and sampler
         var p = Preset;
         CfgSlider.Value = p.Cfg; SamplerBox.SelectedItem = p.Sampler; SchedulerBox.SelectedItem = p.Scheduler;
+        RefreshGuard();
     }
 
     static void Fill(ComboBox box, IEnumerable<string> list, string saved, string prefer)

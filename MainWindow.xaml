@@ -440,8 +440,11 @@
                 </Border>
               </StackPanel>
 
-              <TextBlock Text="Quality" Style="{StaticResource Heading}" Margin="0,22,0,8"
-                         ToolTip="How many steps the model takes to draw. More steps add detail but take longer. Each model has its own numbers."/>
+              <DockPanel Margin="0,22,0,8">
+                <Ellipse x:Name="QualityDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
+                <TextBlock Text="Quality" Style="{StaticResource Heading}" Margin="0"
+                           ToolTip="How many steps the model takes to draw. More steps add detail but take longer. Each model has its own numbers."/>
+              </DockPanel>
               <Border Style="{StaticResource SegmentHost}">
                 <UniformGrid x:Name="QualityGroup" Rows="1">
                   <RadioButton Style="{StaticResource Segment}" GroupName="quality" Tag="20" AutomationProperties.Name="Fast" Height="46">
@@ -470,10 +473,19 @@
                 <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,16,0,8"/>
                 <ComboBox x:Name="ModelBox" SelectionChanged="Model_SelectionChanged"/>
                 <TextBlock x:Name="ModelNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+                <DockPanel Margin="0,8,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="6,0,0,0" Content="Check my settings"
+                          Click="CheckSettings_Click" ToolTip="List every setting outside this model's recommended range, with Fix all"/>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Content="Reset to recommended"
+                          Click="ResetRecommended_Click" ToolTip="Steps, CFG, sampler and scheduler back to this model's recommendation"/>
+                  <TextBlock x:Name="GuardSummary" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </DockPanel>
+                <StackPanel x:Name="GuardList" Visibility="Collapsed" Margin="0,8,0,0"/>
 
                 <StackPanel x:Name="LoraSection">
                   <DockPanel Margin="0,18,0,8">
                     <Button DockPanel.Dock="Right" Content="+ Add LoRA" Style="{StaticResource Ghost}" Padding="8,3" FontSize="11" Click="AddLoraRow_Click" ToolTip="Add another LoRA to use multiple LoRAs together" AutomationProperties.Name="Add LoRA"/>
+                    <Ellipse x:Name="LoraDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
                     <TextBlock Text="LoRA add-ons" Style="{StaticResource Heading}" Margin="0" ToolTip="Small trained styles or subjects. Multiple LoRAs are combined together."/>
                   </DockPanel>
                   <StackPanel x:Name="LoraRowsPanel"/>
@@ -481,6 +493,7 @@
 
                 <StackPanel ToolTip="How strictly the picture follows your prompt. Low: freer and more natural. High: follows the words harder, but can look harsh or over-coloured. Picking a model sets a good value; fast models want 1 to 2.">
                   <DockPanel Margin="0,18,0,4">
+                    <Ellipse x:Name="CfgDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
                     <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=CfgSlider, StringFormat={}{0:0.0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
                     <TextBlock Text="Prompt guidance (CFG)" Style="{StaticResource Heading}" Margin="0"/>
                   </DockPanel>
@@ -494,7 +507,10 @@
                     <ColumnDefinition/>
                   </Grid.ColumnDefinitions>
                   <StackPanel ToolTip="The method that turns noise into a picture, step by step. Each model picks a good one; others change the look slightly.">
-                    <TextBlock Text="Sampler" Style="{StaticResource Heading}"/>
+                    <DockPanel>
+                      <Ellipse x:Name="SamplerDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
+                      <TextBlock Text="Sampler" Style="{StaticResource Heading}"/>
+                    </DockPanel>
                     <ComboBox x:Name="SamplerBox"/>
                   </StackPanel>
                   <StackPanel Grid.Column="2" ToolTip="How the steps are spread from rough shapes to fine detail. Leave the model's choice unless you're experimenting.">
