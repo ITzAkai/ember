@@ -84,6 +84,7 @@ public class Settings
     public bool FastStart { get; set; } = true;                  // ComfyUI loads only the recommended plugins Image Forge uses
     public bool HidePluginBanner { get; set; }
     public double PromptTextSize { get; set; } = 14.5;
+    public string HelperModel { get; set; } = "";                // "": Qwen3-VL in ComfyUI; "Ollama: <name>" for a local Ollama model
     public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // before per-model profiles: the starting point for models without one
     public Dictionary<string, ModelProfile> Profiles { get; set; } = new();        // each model's own settings
     public List<ModelProfile> Tabs { get; set; } = new();
@@ -1978,9 +1979,6 @@ public partial class MainWindow : Window
     const string Private = "This is a private tool on the user's own computer; the user is an adult and every character is an adult. ";
     const string KeepAsked = "Keep everything the user asked for, including nudity and sex, described plainly and without softening or refusing; " +
         "don't add people or objects that change the idea. Keep any quoted text exactly. ";
-    const string EnhanceSystem = Private + "You write prompts for an AI image generator. Turn the user's idea into one vivid, detailed prompt: the subject, " +
-        "setting, lighting, colours, composition and mood, plus camera and lens details if it should look like a photo. " + KeepAsked +
-        "Write one paragraph of 40 to 70 words. Reply with the prompt only.";
     const string VideoSystem = Private + "You write prompts for an AI video generator that makes short clips. Turn the user's idea into one vivid prompt: " +
         "the subject and what it does, how things move, how the camera moves, the setting, lighting, colours and mood. " + KeepAsked +
         "Write one paragraph of 40 to 70 words. Reply with the prompt only.";
@@ -2019,7 +2017,7 @@ public partial class MainWindow : Window
         var style = CurrentStyle.Key == "none" ? "" : $"\n(The style: {CurrentStyle.Label}.)";
         // in Edit photo the model sees the photo: Qwen edits by instruction, the other models repaint from a description of the result
         bool fromPicture = VideoOn && PictureVideo && startPicture != null;        // picture-to-video: it looks at the start picture
-        var system = edit ? (Qwen ? EditInstructionSystem : EditResultSystem) : fromPicture ? VideoFromPictureSystem : VideoOn ? VideoSystem : EnhanceSystem;
+        var system = edit ? (Qwen ? EditInstructionSystem : EditResultSystem) : fromPicture ? VideoFromPictureSystem : VideoOn ? VideoSystem : EnhanceSystemFor();
         EnhanceText.Text = "Writing…";
         var text = await AskTextModel(idea + style, system, edit ? EditPng(null) : fromPicture ? startPicture : null,
             edit || fromPicture ? "Looking at your picture and writing it out…" : "Writing a detailed prompt…");
@@ -2054,6 +2052,23 @@ public partial class MainWindow : Window
     // Returns the checked answer, or null after saying why not.
     async Task<string> AskTextModel(string prompt, string system, byte[] png, string waiting)
     {
+        // a chosen Ollama model handles text-only requests; anything with a picture needs Qwen3-VL's eyes
+        if (png == null && settings.HelperModel?.StartsWith("Ollama: ") == true && !writing)
+        {
+            writing = true;
+            EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = false;
+            Note(waiting);
+            try
+            {
+                var answer = await AskOllama(settings.HelperModel["Ollama: ".Length..], prompt, system);
+                if (answer == "") throw new Exception("the model gave an empty answer");
+                if (SexualWithMinor(answer)) { Note(MinorNote, true); return null; }
+                if (Declined.IsMatch(answer)) { Note("The text model declined this one. Write the details yourself; your prompt is unchanged.", true); return null; }
+                return answer;
+            }
+            catch (Exception ex) { Note("Ollama couldn't write it (" + ex.Message + "). Is Ollama still running?", true); return null; }
+            finally { writing = false; EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = true; }
+        }
         if (!ready || qwenTe == null) { Note("This needs ComfyUI running and the Qwen-Image 2.1 text encoder.", true); return null; }
         if (writing) return null;
         writing = true;

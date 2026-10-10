@@ -1122,6 +1122,11 @@
                 <TextBlock x:Name="PluginsNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0"/>
               </DockPanel>
 
+              <TextBlock Text="Prompt helper" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+              <ComboBox x:Name="HelperBox" SelectionChanged="Helper_SelectionChanged" AutomationProperties.Name="Prompt helper model"
+                        ToolTip="Which model writes prompts for Improve prompt"/>
+              <TextBlock x:Name="HelperNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
               <TextBlock Text="Images folder" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
               <Border Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,9">
                 <TextBlock x:Name="OutputPathText" TextTrimming="CharacterEllipsis"/>
