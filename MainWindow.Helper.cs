@@ -18,7 +18,7 @@ public partial class MainWindow
     string EnhanceSystemFor()
     {
         var name = (ModelBox.SelectedItem as string ?? "").ToLowerInvariant();
-        bool ignoresNegative = !NegativeWorks;
+        bool ignoresNegative = CfgSlider.Value <= 1;
         var noNegative = ignoresNegative ? "This model ignores negative prompts, so say what should be there rather than what to avoid. " : "";
         string form;
         if (Sdxl && name.Contains("pony"))

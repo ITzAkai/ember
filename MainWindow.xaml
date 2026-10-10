@@ -331,7 +331,8 @@
                 <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"
                            Text="Negative prompt isn't needed for this model: at CFG 1 it's ignored."/>
               </DockPanel>
-              <TextBlock x:Name="NegativeWarn" Style="{StaticResource Note}" Foreground="{DynamicResource Accent}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+              <TextBlock x:Name="NegativeWarn" Style="{StaticResource Note}" Foreground="{DynamicResource Accent}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"
+                         Text="Negative prompt has no effect at CFG 1. Raise CFG to use it (slower, and it may over-cook turbo models)."/>
               <!-- Find / Replace for whichever prompt box it was opened on -->
               <Popup x:Name="FindPopup" Placement="Top" StaysOpen="True" AllowsTransparency="True" VerticalOffset="-4">
                 <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="8" Padding="8">

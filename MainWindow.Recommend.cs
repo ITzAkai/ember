@@ -204,8 +204,8 @@ public partial class MainWindow
             issues.Add(new(LoraDot, 1, "Two realism LoRAs at full strength stack the same effect: skin goes plastic or over-sharp. About 0.5–0.6 each, or keep one.",
                 () => { foreach (var l in realism) SetLoraStrength(l.Name, 0.55); }));
 
-        if (!NegativeWorks && !string.IsNullOrWhiteSpace(NegativeBox.Text) && EditMode.IsChecked != true)
-            issues.Add(new(null, 1, "The negative prompt is ignored at CFG 1, so it does nothing here" + (NagState().Can ? ": turn on NAG under Quality boosters to use it." : "."), null));
+        if (cfg <= 1 && !string.IsNullOrWhiteSpace(NegativeBox.Text) && EditMode.IsChecked != true)
+            issues.Add(new(null, 1, "The negative prompt is ignored at CFG 1, so it does nothing here.", null));
         return issues;
     }
 

@@ -13,6 +13,10 @@ A Windows app for making pictures and short videos on your own PC with [ComfyUI]
 - **Improve prompt** and **Describe image** with a local text model
 - **LoRA add-ons**: several at once, with descriptions and trigger words looked up on Civitai
 - **Models page**: download from the built-in list, or paste a Hugging Face / Civitai link
+- **Settings per model, and tabs**: each model keeps its own settings; save a setup as a tab, export it and share it
+- **Quality guard**: each model's recommended steps, CFG, sampler, size and LoRA strengths, with a warning and **Fix all** when a setting is off
+- **Quality boosters**: Fix faces, Hi-res fix, refine with a second model, PAG, RescaleCFG and a colour finish, each offered only on models where it helps
+- **Plugins**: optional ComfyUI plugins at pinned, checked versions (Settings > Plugins), and ComfyUI's own editor under **ComfyUI** for experts
 - Gallery with favourites, search, and the settings used for each picture
 
 Supported model families: Krea 2, Qwen-Image 2.1, Anima, SDXL, Wan 2.1.
@@ -62,6 +66,15 @@ The Qwen-Image text encoder (`qwen3vl_8b`) also powers **Improve prompt** and **
 | SDXL inpainting 0.1 + SDXL base 1.0 | Remove object, Expand | 12.0 GB |
 | Real-ESRGAN x4plus | Upscale | 0.1 GB |
 | BiRefNet lite | Remove background | 0.2 GB |
+
+### Plugins (optional, Settings > Plugins)
+
+| Plugin | Adds |
+|---|---|
+| Impact Pack + Subpack | Fix faces |
+| Inpaint Crop & Stitch | Sharper edits of small painted areas |
+| Ultimate SD Upscale | Upscale > 2× with added detail |
+| ComfyUI-GGUF (leejet) | Smaller GGUF Krea 2 files for 6–8 GB graphics cards |
 
 ### LoRA add-ons (Krea 2)
 

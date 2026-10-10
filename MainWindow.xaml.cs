@@ -1190,7 +1190,7 @@ public partial class MainWindow : Window
         {
             ModelNote.Text = Qwen ? "Qwen Research Licence: personal and research use only, not commercial. In Edit photo, describe the change (\"make it sunset\")."
                     + (Named("noctq") ? " Start prompts with \"An anime illustration of…\"." : "")
-                : Krea ? "Krea 2: realistic photos and art; the negative prompt isn't used unless NAG is on. Check the model's licence before commercial use."
+                : Krea ? "Krea 2: realistic photos and art; the negative prompt isn't used. Check the model's licence before commercial use."
                 : Anima ? "Anima: anime and illustration. Tags (1girl, masterpiece) or plain sentences both work; a quality negative prompt is added for you."
                 : PictureVideo ? "Wan 2.1 picture-to-video: the clip starts on your picture. Describe what moves and how the camera moves."
                 : Wan ? "Wan 2.1 video, 16 frames a second. A clip takes a few minutes; describe the movement and the camera."

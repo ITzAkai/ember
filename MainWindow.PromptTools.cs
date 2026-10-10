@@ -184,14 +184,12 @@ public partial class MainWindow
     void UpdateNegative()
     {
         if (NegativeBox == null || ModelBox.SelectedItem == null) return;
-        bool ignored = !NegativeWorks;
+        bool ignored = CfgSlider.Value <= 1;
         bool locked = ignored && !negativeUnlocked;
         NegativeBox.IsReadOnly = locked;
         NegativeBox.Opacity = locked ? 0.55 : 1;
         NegativeLock.Visibility = locked ? Visibility.Visible : Visibility.Collapsed;
         NegativeWarn.Visibility = ignored && negativeUnlocked ? Visibility.Visible : Visibility.Collapsed;
-        NegativeWarn.Text = NagState().Can ? "Negative prompt has no effect at CFG 1. Turn on NAG under Advanced settings > Quality boosters to use it (each step takes about twice as long)."
-            : "Negative prompt has no effect at CFG 1. Raise CFG to use it (slower, and it may over-cook turbo models).";
         if (!ignored && string.IsNullOrWhiteSpace(NegativeBox.Text) && ModelRec is { Negative: true, DefaultNegative: { Length: > 0 } neg })
             NegativeBox.Text = neg;
     }

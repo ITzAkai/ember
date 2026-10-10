@@ -16,8 +16,6 @@ public class Boosters
     public double PagScale { get; set; } = 3.0;
     public bool? Rescale { get; set; }
     public double RescaleMultiplier { get; set; } = 0.7;
-    public bool? Nag { get; set; }
-    public double NagScale { get; set; } = 5;
     public bool? Faces { get; set; }
     public double FaceDenoise { get; set; } = 0.4;
     public bool? HiRes { get; set; }
@@ -82,20 +80,6 @@ public partial class MainWindow
         return (true, on, b.Rescale == null && VPred ? "On for this v-prediction model: it prevents washed-out or burnt colours." : "Stops burnt or washed-out colours at higher CFG. Too high looks flat.");
     }
 
-    // ComfyUI's own NAG patches the attention that Krea 2, FLUX and SDXL-type models run through; Anima and Qwen-Image don't use it
-    (bool Can, bool On, string Why) NagState()
-    {
-        if (VideoOn) return (false, false, "Pictures only.");
-        if (!(Krea || Flux || Sdxl)) return (false, false, $"Off: it doesn't reach {FamilyLabelNow}'s attention, so it would do nothing.");
-        if (CfgSlider.Value > 1) return (false, false, "Off: above CFG 1 the negative prompt already works.");
-        if (!nodeNames.Contains("NAGuidance")) return (false, false, "Needs a newer ComfyUI.");
-        bool on = CurrentBoosters.Nag ?? false;
-        return (true, on, "Makes the negative prompt work at CFG 1 (Normalized Attention Guidance). Each step takes about twice as long.");
-    }
-
-    // whether the negative prompt changes the picture: above CFG 1, or at CFG 1 with NAG
-    bool NegativeWorks => CfgSlider.Value > 1 || NagState().On;
-
     (bool Can, bool On, string Why) HiResState()
     {
         if (VideoOn) return (false, false, "Pictures only.");
@@ -151,8 +135,6 @@ public partial class MainWindow
             [("Scale", 0, 10, 0.1, b.PagScale, x => b.PagScale = x)], () => { b.Pag = null; b.PagScale = 3.0; }));
         BoostersPanel.Children.Add(BoosterRow("RescaleCFG: no burnt colours", RescaleState(), v => b.Rescale = v,
             [("Strength", 0, 1, 0.05, b.RescaleMultiplier, x => b.RescaleMultiplier = x)], () => { b.Rescale = null; b.RescaleMultiplier = 0.7; }));
-        BoostersPanel.Children.Add(BoosterRow("NAG: negative prompt at CFG 1", NagState(), v => b.Nag = v,
-            [("Strength", 1, 10, 0.5, b.NagScale, x => b.NagScale = x)], () => { b.Nag = null; b.NagScale = 5; }));
         var refine = RefineState();
         var refineRow = (StackPanel)BoosterRow("Refine with another model", refine, v => b.Refine = v,
             [("Strength", 0.2, 0.8, 0.05, b.RefineDenoise, x => b.RefineDenoise = x)], () => { b.Refine = null; b.RefineModel = null; b.RefineDenoise = 0.5; });
@@ -229,7 +211,7 @@ public partial class MainWindow
         return panel;
     }
 
-    void BoostersChanged() { settings.Save(); ShowBoosters(); UpdateNegative(); RefreshGuard(); }
+    void BoostersChanged() { settings.Save(); ShowBoosters(); RefreshGuard(); }
 
     // ---------------- into the graph ----------------
     // model boosters wrap the sampler's model; Fix faces and the colour finish sit between decoding and saving (new pictures only)
@@ -246,11 +228,6 @@ public partial class MainWindow
         {
             g["rescale"] = Node("RescaleCFG", new() { ["model"] = k["model"].DeepClone(), ["multiplier"] = b.RescaleMultiplier });
             k["model"] = Link("rescale", 0);
-        }
-        if (NagState().On && !string.IsNullOrWhiteSpace(g["7"]?["inputs"]?["text"]?.ToString()))       // with nothing to steer away from it only costs time
-        {
-            g["nag"] = Node("NAGuidance", new() { ["model"] = k["model"].DeepClone(), ["nag_scale"] = b.NagScale, ["nag_alpha"] = 0.5, ["nag_tau"] = 1.5 });
-            k["model"] = Link("nag", 0);
         }
         if (!newPicture || g["9"]?["inputs"] is not JsonObject save) return;
         // the sampler the later passes copy: this model's, or the refining model's once it has redrawn the picture
