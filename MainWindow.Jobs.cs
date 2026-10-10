@@ -22,6 +22,7 @@ class Job
     public readonly List<string> Uploads = new();   // its files in ComfyUI\input, removed when done
     public DateTime Started = DateTime.Now;
     public bool Running;
+    public long LogStart;                           // where ComfyUI's log stood when it was sent, to read what it said about this job
 }
 
 public partial class MainWindow
@@ -99,6 +100,7 @@ public partial class MainWindow
     async Task Enqueue(int images, Func<Job, Task<JsonObject>> build, string verb = "Painting · step", string label = null)
     {
         var job = new Job { Verb = verb };
+        try { job.LogStart = File.Exists(ServerLog) ? new FileInfo(ServerLog).Length : 0; } catch { }
         for (int i = 0; i < images; i++)
         {
             var slot = new Shot { Pending = true, Progress = busy ? "Queued" : label ?? "Starting" };
@@ -132,6 +134,7 @@ public partial class MainWindow
     void Finish(Job job, string error, bool quiet = false)
     {
         if (!jobs.Remove(job)) return;
+        if (error == null && server != null && loraRows.Any(r => r.Box?.SelectedItem is string s && s != "None")) CheckLoraLog(job.LogStart);
         foreach (var slot in job.Slots) shots.Remove(slot);           // nothing came for these
         foreach (var f in job.Uploads) try { File.Delete(f); } catch { }
         if (!quiet)

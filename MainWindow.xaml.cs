@@ -214,6 +214,7 @@ public partial class MainWindow : Window
         public Button RemoveBtn;
         public TextBlock Info;          // what the picked LoRA does, and its trigger words
         public Button TriggerBtn;
+        public Button FixBtn;           // Convert, for files ComfyUI can't read
     }
     readonly List<LoraRow> loraRows = new();
 
@@ -581,12 +582,21 @@ public partial class MainWindow : Window
         };
         System.Windows.Automation.AutomationProperties.SetName(triggerBtn, "Use trigger words");
         triggerBtn.Click += (_, _) => AddTriggerWords(row);
+        var fixBtn = new Button
+        {
+            Content = "Convert for ComfyUI", Style = TryFindResource("Ghost") as Style, Padding = new Thickness(8, 2, 8, 2), FontSize = 11,
+            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 6), Visibility = Visibility.Collapsed,
+            ToolTip = "Make a copy with layer names ComfyUI can read; the original stays",
+        };
+        System.Windows.Automation.AutomationProperties.SetName(fixBtn, "Convert LoRA for ComfyUI");
+        fixBtn.Click += (_, _) => _ = ConvertLoraRow(row);
         combo.SelectionChanged += (_, _) => ShowLoraInfo(row);
 
         sp.Children.Add(topDock);
         sp.Children.Add(combo);
         sp.Children.Add(info);
         sp.Children.Add(triggerBtn);
+        sp.Children.Add(fixBtn);
         sp.Children.Add(slider);
 
         card.Child = sp;
@@ -599,6 +609,7 @@ public partial class MainWindow : Window
         row.RemoveBtn = removeBtn;
         row.Info = info;
         row.TriggerBtn = triggerBtn;
+        row.FixBtn = fixBtn;
         ShowLoraInfo(row);
 
         loraRows.Add(row);
@@ -776,7 +787,7 @@ public partial class MainWindow : Window
                 SetupPanel.Visibility = Visibility.Visible;
                 return;
             }
-            Note("Starting ComfyUI on your graphics card. This takes about half a minute.");
+            Note("Starting ComfyUI on your graphics card…");
             WriteFinishNode();
             // through cmd so ComfyUI writes its own log file: it can then outlive this app ("Keep ComfyUI running")
             var args = "-s ComfyUI\\main.py --windows-standalone-build --listen 127.0.0.1 --port " + Port + " --disable-auto-launch" + LaunchFlags();
@@ -790,6 +801,8 @@ public partial class MainWindow : Window
             for (int i = 0; i < 240 && !await Alive(); i++)
             {
                 if (server.HasExited) { Offline("ComfyUI stopped while starting."); return; }
+                // how long so far, rather than a guess: with many plugins it can take a minute or two
+                Note($"Starting ComfyUI on your graphics card… {i} s" + (settings.FastStart ? "" : " (loading all your plugins)"));
                 await Task.Delay(1000);
             }
             if (!await Alive()) { Offline("ComfyUI didn't start in time."); return; }
@@ -1268,7 +1281,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return first == Colors.Red && second == Colors.Blue ? 0 : 1;
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4);
         }
         catch { return 2; }
         finally { try { File.Delete(file); } catch { } }

@@ -128,6 +128,10 @@ public partial class MainWindow
         if (r.Info == null) return;
         var info = r.Box?.SelectedItem is string l && l != "None" ? loraInfo.GetValueOrDefault(l) : null;
         var parts = new List<string>();
+        var problem = r.Box?.SelectedItem is string chosen && chosen != "None" ? LoraProblem(chosen) : null;
+        if (problem != null) parts.Add(problem);
+        r.Info.Foreground = Brush(problem != null ? "Danger" : "Muted");
+        if (r.FixBtn != null) r.FixBtn.Visibility = problem != null && r.Box.SelectedItem is string pf && HasPeftKeys(Path.Combine(ModelsDir, "loras", pf)) ? Visibility.Visible : Visibility.Collapsed;
         if (info?.Trigger is { Length: > 0 } t) parts.Add("Trigger words: " + string.Join(", ", t));
         if (info?.Description is string d) parts.Add(d);
         r.Info.Text = string.Join("\n", parts);
