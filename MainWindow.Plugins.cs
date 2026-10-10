@@ -11,7 +11,8 @@ using System.Windows.Controls;
 
 namespace ImageForge;
 
-record PluginModel(string Url, string Folder, string File, string Sha256, long Bytes);
+// a file a plugin needs: a model (Folder under ComfyUI\models), or with InPack a file inside the plugin's own folder
+record PluginModel(string Url, string Folder, string File, string Sha256, long Bytes, bool InPack = false);
 record Plugin(string Folder, string Name, string Group, bool Checked, string Repo, string Commit, string Version, string ZipSha256,
               long Bytes, string Node, string About, PluginModel Model = null);
 
@@ -38,7 +39,10 @@ public partial class MainWindow
             "Keeps two people from merging into one on SDXL and Anima models."),
         new("ComfyUI_UltimateSDUpscale", "Ultimate SD Upscale", "Optional", false, "ssitu/ComfyUI_UltimateSDUpscale", "a5547db9e1", "1.7.2",
             "9a651798034fbd979a06b456a70c5133390b991d500c7d857c16b81ef04bcabe", 459_494, "UltimateSDUpscale",
-            "Tiled detail upscale for big prints. Fetches a helper script the first time ComfyUI starts."),
+            "Upscale > 2× with added detail: enlarges, then redraws fine detail tile by tile.",
+            // its helper script, pinned: without it the plugin fetches the helper's newest version (master.zip) on its first start
+            new("https://raw.githubusercontent.com/Coyote-A/ultimate-upscale-for-automatic1111/2322caa480535b1011a1f9c18126d85ea444f146/scripts/ultimate-upscale.py",
+                @"repositories\ultimate_sd_upscale\scripts", "ultimate-upscale.py", "0abbb3df467ec17d852534de74484dce6710de7a4010ab25f194d2b3a089eb09", 24_644, InPack: true)),
         new("ComfyUI-Anima-NAG", "Anima NAG", "Optional", false, "hybskgks28275/ComfyUI-Anima-NAG", "1590401343", "1.0.1",
             "077ea49dddf009295e2de91ba35dd65fe2392aeb91ea7d6617b50984fb5e8f12", 33_149, "AnimaNormalizedAttentionGuidance",
             "Makes the negative prompt work on Anima Turbo (CFG 1)."),
@@ -304,7 +308,7 @@ public partial class MainWindow
                 if (File.Exists(req)) requirements.AddRange(File.ReadAllLines(req));
                 if (p.Model is { } m)
                 {
-                    var file = Path.Combine(ModelsDir, m.Folder, m.File);
+                    var file = Path.Combine(m.InPack ? dest : ModelsDir, m.Folder, m.File);
                     if (!File.Exists(file) || !Sha256Is(file, m.Sha256))
                     {
                         Directory.CreateDirectory(Path.GetDirectoryName(file));
