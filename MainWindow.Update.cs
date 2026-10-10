@@ -19,6 +19,7 @@ public partial class MainWindow
 
     async Task CheckForUpdate()
     {
+        if (Environment.GetEnvironmentVariable("IMAGEFORGE_SETTINGS") is { Length: > 0 }) return;    // a test copy: leave GitHub's hourly limit to the real app
         await Task.Delay(3000);
         try { File.Delete(OldExe); } catch { }          // the copy the last update replaced (gone by now, or next time)
         // GitHub answers 60 checks an hour per internet address: a refused or failed check is tried again in an hour,
