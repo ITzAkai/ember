@@ -8,7 +8,7 @@
     <RootNamespace>ImageForge</RootNamespace>
     <AssemblyName>Image Forge</AssemblyName>
     <!-- the release tag is v + this; the app updates itself when a higher tag is released -->
-    <Version>1.4.0</Version>
+    <Version>1.5.0</Version>
     <ApplicationIcon>forge.ico</ApplicationIcon>
     <PublishSingleFile>true</PublishSingleFile>
     <!-- one .exe with .NET inside: runs on PCs without .NET installed -->
