@@ -213,7 +213,7 @@ public partial class MainWindow
             using var ws = new ClientWebSocket();
             try
             {
-                await ws.ConnectAsync(new Uri($"ws://127.0.0.1:8188/ws?clientId={clientId}"), CancellationToken.None);
+                await ws.ConnectAsync(new Uri($"ws://127.0.0.1:{Port}/ws?clientId={clientId}"), CancellationToken.None);
                 if (!busy) SetState("Ready", Brush("Ok"));
                 RestartPanel.Visibility = Visibility.Collapsed;
                 var buf = new byte[1 << 16];
@@ -227,7 +227,7 @@ public partial class MainWindow
             }
             catch { }
             if (closing) return;
-            Offline(null);
+            if (!installingPlugins && !startingServer) Offline(null);      // installing and restarting stop ComfyUI on purpose
             foreach (var j in jobs.ToList()) Finish(j, "Lost the connection to ComfyUI.");
             await Task.Delay(2000);
         }

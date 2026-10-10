@@ -78,7 +78,9 @@ public class Settings
     public string VideoModel { get; set; } = "";
     public string VideoSize { get; set; } = "832x480";
     public int VideoFrames { get; set; } = 49;
-    public string ComfyDir { get; set; } = "";                   // the ComfyUI portable folder, when the exe doesn't sit in one
+    public string ComfyDir { get; set; } = "";
+    public bool FastStart { get; set; } = true;                  // ComfyUI loads only the recommended plugins Image Forge uses
+    public bool HidePluginBanner { get; set; }                   // the ComfyUI portable folder, when the exe doesn't sit in one
 
     static readonly string File = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ImageForge", "settings.json");
     public static string FilePath => File;
@@ -175,7 +177,9 @@ public class Shot : INotifyPropertyChanged
 
 public partial class MainWindow : Window
 {
-    const string Api = "http://127.0.0.1:8188";
+    // a second copy (for example a test) can run its own ComfyUI next to the usual one
+    static readonly int Port = int.TryParse(Environment.GetEnvironmentVariable("IMAGEFORGE_PORT"), out var port) ? port : 8188;
+    static readonly string Api = $"http://127.0.0.1:{Port}";
     static string Root = AppContext.BaseDirectory;                          // the ComfyUI portable folder: the exe's own, or the one set up from the app
     string Output => string.IsNullOrWhiteSpace(settings.OutputDir) ? Path.Combine(Root, "ComfyUI", "output") : settings.OutputDir;
     static readonly Dictionary<string, string> Stages = new() { ["4"] = "Loading model", ["11"] = "Reading photo", ["3"] = "Painting", ["8"] = "Decoding", ["15"] = "Blending", ["9"] = "Saving", ["20"] = "Reading image", ["22"] = "Upscaling", ["23"] = "Resizing", ["40"] = "Making the video", ["41"] = "Saving the video" };
@@ -739,7 +743,16 @@ public partial class MainWindow : Window
         if (File.Exists(log)) Process.Start(new ProcessStartInfo(log) { UseShellExecute = true });
     }
 
+    bool startingServer;        // while ComfyUI (re)starts, a quiet websocket isn't "Offline"
+
     async Task StartUp()
+    {
+        startingServer = true;
+        try { await StartComfy(); }
+        finally { startingServer = false; }
+    }
+
+    async Task StartComfy()
     {
         if (!await Alive())
         {
@@ -753,7 +766,7 @@ public partial class MainWindow : Window
             }
             Note("Starting ComfyUI on your graphics card. This takes about half a minute.");
             // through cmd so ComfyUI writes its own log file: it can then outlive this app ("Keep ComfyUI running")
-            var args = "-s ComfyUI\\main.py --windows-standalone-build --listen 127.0.0.1 --port 8188 --disable-auto-launch";
+            var args = "-s ComfyUI\\main.py --windows-standalone-build --listen 127.0.0.1 --port " + Port + " --disable-auto-launch" + LaunchFlags();
             if (!string.IsNullOrWhiteSpace(settings.OutputDir)) args += $" --output-directory \"{settings.OutputDir.TrimEnd('\\')}\"";
             server = new Process
             {
@@ -770,6 +783,8 @@ public partial class MainWindow : Window
         }
         await LoadOptions();
         await LoadSystem();
+        await LoadNodeNames();
+        ShowPluginBanner();
         if (!listening) { listening = true; _ = Listen(); }
         ready = true;
         GenerateBtn.IsEnabled = ModelBox.Items.Count > 0;

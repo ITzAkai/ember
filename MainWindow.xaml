@@ -146,6 +146,7 @@
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="60"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition/>
     </Grid.RowDefinitions>
 
@@ -183,7 +184,23 @@
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="1">
+    <!-- shown while recommended plugins are missing, until dismissed -->
+    <Border x:Name="PluginBanner" Grid.Row="1" Visibility="Collapsed" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="20,10">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Style="{StaticResource Primary}" Height="32" Padding="14,0" Content="Install" Click="InstallPluginsBanner_Click" AutomationProperties.Name="Install recommended plugins"/>
+          <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Choose…" Click="ChoosePlugins_Click"/>
+          <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Not now" Click="HidePluginBanner_Click" AutomationProperties.Name="Hide plugin banner"/>
+        </StackPanel>
+        <TextBlock Text="&#xE74C;" FontFamily="{StaticResource Icons}" FontSize="18" Foreground="{DynamicResource Accent}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Install recommended plugins" FontWeight="SemiBold"/>
+          <TextBlock x:Name="PluginBannerText" Style="{StaticResource Note}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Row="2">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="376"/>
         <ColumnDefinition/>
@@ -819,7 +836,7 @@
     </Grid>
 
     <!-- full-window image viewer -->
-    <Grid x:Name="ViewerPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#F2090A0C" Focusable="True">
+    <Grid x:Name="ViewerPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#F2090A0C" Focusable="True">
       <Grid.ColumnDefinitions>
         <ColumnDefinition/>
         <ColumnDefinition Width="360"/>
@@ -967,7 +984,7 @@
     </Grid>
 
     <!-- settings -->
-    <Grid x:Name="SettingsPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
+    <Grid x:Name="SettingsPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
       <Border Width="580" MaxHeight="780" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
               CornerRadius="14" MouseLeftButtonUp="OverlayCard_Click">
         <DockPanel Margin="26,20,26,24">
@@ -1001,6 +1018,17 @@
               <CheckBox x:Name="InpaintSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,16,0,0"
                         Content="Use the inpainting model for painted edits and expansions" Click="SettingSwitch_Click"/>
               <TextBlock x:Name="InpaintNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+              <TextBlock x:Name="PluginsHeading" Text="Plugins" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+              <CheckBox x:Name="FastStartSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
+                        Content="Fast start: load only the plugins Image Forge uses" Click="FastStart_Click"/>
+              <TextBlock Text="Plugins run their own code inside ComfyUI. Image Forge only installs the versions listed here, checked against their published fingerprints."
+                         Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+              <StackPanel x:Name="PluginsList" Margin="0,4,0,0"/>
+              <DockPanel Margin="0,4,0,0">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Primary}" Height="32" Padding="14,0" Content="Install selected" Click="InstallSelected_Click"/>
+                <TextBlock x:Name="PluginsNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0"/>
+              </DockPanel>
 
               <TextBlock Text="Images folder" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
               <Border Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,9">
@@ -1048,7 +1076,7 @@
     </Grid>
 
     <!-- models -->
-    <Grid x:Name="ModelsPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
+    <Grid x:Name="ModelsPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
       <Border Width="760" MaxHeight="820" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
               CornerRadius="14" MouseLeftButtonUp="OverlayCard_Click">
         <DockPanel Margin="26,20,26,24">

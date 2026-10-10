@@ -25,6 +25,7 @@ public partial class MainWindow
         HistoryNote.Text = settings.History.Count == 1 ? "1 recent prompt saved" : $"{settings.History.Count} recent prompts saved";
         ShortcutNote.Text = "";
         ShowCivitaiKey();
+        ShowPlugins();
         AboutText.Text = $"Image Forge {AppVersion.ToString(2)}, ComfyUI in {Root.TrimEnd('\\')}\nComfyUI {(server != null ? "started by this app" : "already running")} at {Api}\nSettings in {Path.GetDirectoryName(Settings.FilePath)}";
         SettingsPanel.Visibility = Visibility.Visible;
     }
