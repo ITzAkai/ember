@@ -109,6 +109,7 @@ public partial class MainWindow
         if (!nodeNames.Contains("FaceDetailer") || !nodeNames.Contains("UltralyticsDetectorProvider"))
             return (false, false, "Needs the Impact Pack and its face finder (Settings > Plugins).");
         if (Anima) return (false, false, "Off: the face fixer currently crashes on Anima models (Impact Pack issue 1186).");
+        if (Qwen) return (false, false, "Off: the face fixer currently fails on Qwen-Image models (an Impact Pack error).");   // calibration run, 2026-10-10
         bool on = b.Faces ?? false;
         return (true, on, Sdxl ? "Finds each face and redraws it at higher detail." : $"Finds each face and redraws it. Experimental on {FamilyLabelNow}.");
     }

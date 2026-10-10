@@ -17,6 +17,7 @@ Researched 2026-10-10 for ComfyUI 0.39.0, Python 3.13 and torch 2.14 cu130.
 
 **Guidance and image nodes**
 - **NAGuidance:** hooks Flux-code models, Chroma, HunyuanVideo and **Krea 2**. Anima and SDXL have no hook.
+  - **Tested 2026-10-10 on Krea 2 Turbo** (CFG 1, 8 steps, seed 4401, negative "trees, leaves, green foliage" on a park photo). Scale 5 / alpha 0.5, scale 10 / alpha 0.75 and scale 8 / alpha 1.0 only changed noise-level detail; the trees stayed. The patch only acts when the prompt and the negative run in one batch (`cond_or_uncond` holds both), likely not the case when their token lengths differ. So Image Forge doesn't offer it.
 - **Also included:** APG, CFGZeroStar, PerpNeg, TCFG, DifferentialDiffusion, ImageSharpen.
 
 **Control models**
