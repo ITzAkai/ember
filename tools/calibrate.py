@@ -36,6 +36,10 @@ FAMILIES = {
                  base=dict(steps=25, cfg=3.0, sampler="euler", scheduler="simple"), prompts=["dance", "hands", "sofa", "objects"], style="An anime illustration of ",
                  negative="low quality, low resolution, blurry, jpeg artifacts, washed-out colors, sloppy lines, messy line art, extra fingers, missing fingers, badly drawn hands, deformed anatomy, 3d render, photograph, photorealistic",
                  sweep={"18 steps": dict(steps=18), "22 steps": dict(steps=22), "25 steps": {}, "35 steps": dict(steps=35), "CFG 2.5": dict(cfg=2.5), "CFG 4": dict(cfg=4.0)}),
+    # FinePorn v5 (Krea 2 Turbo merge; its page says euler / simple, 12 steps, CFG 1). "fully clothed" keeps the test pictures safe.
+    "fineporn": dict(unet="finepornV5INT8FP8_v5FP8.safetensors", clip="qwen3vl_4b_fp8_scaled.safetensors", type="krea2", vae="qwen_image_vae.safetensors",
+                     base=dict(steps=12, cfg=1.0, sampler="euler", scheduler="simple"), prompts=[p for p, _ in PROMPTS], suffix=", fully clothed",
+                     sweep={"8 steps": dict(steps=8), "10 steps": dict(steps=10), "12 steps": {}, "14 steps": dict(steps=14), "faces 0.3": dict(faces=0.3)}),
     "sdxl": dict(ckpt="sd_xl_base_1.0.safetensors", base=dict(steps=25, cfg=7.0, sampler="dpmpp_2m", scheduler="karras"),
                  prompts=[p for p, _ in PROMPTS], negative="blurry, low quality",
                  sweep={"25 steps": {}, "CFG 5": dict(cfg=5.0), "PAG 2": dict(pag=2.0), "PAG 3": dict(pag=3.0), "PAG 3 + CFG 5": dict(pag=3.0, cfg=5.0)}),
@@ -74,7 +78,7 @@ def graph(fam, text, s, prefix):
         g["pag"] = {"class_type": "PerturbedAttentionGuidance", "inputs": {"model": model, "scale": s["pag"]}}; model = ["pag", 0]
     if s.get("rescale"):
         g["rescale"] = {"class_type": "RescaleCFG", "inputs": {"model": model, "multiplier": s["rescale"]}}; model = ["rescale", 0]
-    g["6"] = {"class_type": "CLIPTextEncode", "inputs": {"clip": clip, "text": fam.get("style", "") + text}}
+    g["6"] = {"class_type": "CLIPTextEncode", "inputs": {"clip": clip, "text": fam.get("style", "") + text + fam.get("suffix", "")}}
     g["7"] = {"class_type": "CLIPTextEncode", "inputs": {"clip": clip, "text": fam.get("negative", "") if s["cfg"] > 1 else ""}}
     g["5"] = {"class_type": "EmptyLatentImage", "inputs": {"width": W, "height": H, "batch_size": 1}}
     g["3"] = {"class_type": "KSampler", "inputs": {"model": model, "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0], "seed": SEED,

@@ -28,7 +28,7 @@ public partial class MainWindow
 {
     const string RecommendationsJson = """
     {
-      "version": 3,
+      "version": 4,
       "families": {
         "sdxl": { "maxMp": 1.2, "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.6, "badScheduler": null,
@@ -76,6 +76,8 @@ public partial class MainWindow
           "cfg": 5, "cfgRange": [4, 7], "why": "RealVisXL: DPM++ SDE Karras with 30 steps or more." },
         { "match": "cyberrealistic", "family": "sdxl", "label": "CyberRealistic", "sampler": "dpmpp_2m_sde", "scheduler": "karras", "steps": [30, 32, 40], "stepsRange": [28, 45],
           "cfg": 4, "cfgRange": [3, 5], "why": "CyberRealistic: DPM++ 2M SDE Karras, 30+ steps, CFG 3 to 5." },
+        { "match": "fineporn", "family": "krea2", "label": "FinePorn", "steps": [8, 10, 12], "stepsRange": [8, 14],
+          "why": "FinePorn v5 is a Krea 2 Turbo merge. Its author recommends euler / simple, 12 steps, CFG 1; 8 to 14 steps all looked good in testing." },
         { "match": "(^|[-_ ])raw([-_ .]|$)", "family": "krea2", "label": "Krea 2 Raw", "steps": [30, 40, 52], "stepsRange": [28, 60], "cfg": 3.5, "cfgRange": [3, 4.5], "negative": true,
           "why": "Krea 2 Raw isn't distilled: it needs a real CFG and many more steps, so it's much slower than Turbo." },
         { "match": "noct", "family": "qwen_image", "label": "Noct Q Anime", "steps": [22, 25, 35], "stepsRange": [20, 40], "cfg": 3, "cfgRange": [2.5, 4], "negative": true,
