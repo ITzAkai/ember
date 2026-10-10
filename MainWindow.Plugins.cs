@@ -134,7 +134,7 @@ public partial class MainWindow
             flags += " --disable-all-custom-nodes" + (keep.Count > 0 ? " --whitelist-custom-nodes " + string.Join(" ", keep.Select(k => k.Contains(' ') ? $"\"{k}\"" : k)) : "");
         }
         if (PipManager && !LegacyManager) flags += " --enable-manager";
-        return flags;
+        return flags + PerformanceFlags();
     }
 
     async Task LoadNodeNames()

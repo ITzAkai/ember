@@ -1149,6 +1149,21 @@
               <CheckBox x:Name="InpaintSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,16,0,0"
                         Content="Use the inpainting model for painted edits and expansions" Click="SettingSwitch_Click"/>
               <TextBlock x:Name="InpaintNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+              <TextBlock Text="Performance" FontWeight="SemiBold" Margin="0,16,0,6"/>
+              <CheckBox x:Name="CkAttentionSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
+                        Content="Faster attention (int8: slightly less exact)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
+              <CheckBox x:Name="Fp16AccSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,8,0,0"
+                        Content="fp16 accumulation (faster on RTX 40; some LoRAs then give black pictures)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
+              <DockPanel Margin="0,8,0,0">
+                <TextBox x:Name="ReserveVramBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" LostFocus="Perf_Changed"
+                         AutomationProperties.Name="Graphics memory to keep free"/>
+                <TextBlock Text="Graphics memory to keep free for other programs (GB)" VerticalAlignment="Center"/>
+              </DockPanel>
+              <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <Button Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Content="Recommended for RTX 40 laptops" Click="PerfPreset_Click"/>
+                <Button Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Margin="8,0,0,0" Content="ComfyUI's defaults" Click="PerfDefault_Click"/>
+              </StackPanel>
+              <TextBlock x:Name="PerfNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
 
               <TextBlock x:Name="PluginsHeading" Text="Plugins" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
               <CheckBox x:Name="FastStartSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"

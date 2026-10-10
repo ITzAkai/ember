@@ -87,7 +87,11 @@ public class Settings
     public bool FastStart { get; set; } = true;                  // ComfyUI loads only the recommended plugins Image Forge uses
     public bool HidePluginBanner { get; set; }
     public double PromptTextSize { get; set; } = 14.5;
-    public string HelperModel { get; set; } = "";                // "": Qwen3-VL in ComfyUI; "Ollama: <name>" for a local Ollama model
+    public string HelperModel { get; set; } = "";
+    public bool CkAttention { get; set; }
+    public bool Fp16Accumulation { get; set; }
+    public double ReserveVram { get; set; }
+    public int CacheRam { get; set; }                // "": Qwen3-VL in ComfyUI; "Ollama: <name>" for a local Ollama model
     public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // before per-model profiles: the starting point for models without one
     public Dictionary<string, ModelProfile> Profiles { get; set; } = new();        // each model's own settings
     public List<ModelProfile> Tabs { get; set; } = new();
