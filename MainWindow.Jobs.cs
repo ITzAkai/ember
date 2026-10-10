@@ -65,7 +65,7 @@ public partial class MainWindow
         await Enqueue(count, async job =>
         {
             string image = null;
-            bool masked = false;
+            bool masked = false, small = false;
             double? denoise = null;
             if (expand is double aspect)
             {
@@ -81,6 +81,7 @@ public partial class MainWindow
                 image = await Upload(EditPng(mask), job);
                 job.Before = EditPng(null);
                 masked = mask != null;
+                small = masked && MaskBoxShare(mask, photo.PixelWidth, photo.PixelHeight) < 0.5;
             }
             string[] refs = null;
             if (expand == null && UsingReferences)
@@ -91,6 +92,7 @@ public partial class MainWindow
             var g = Graph(seed, image, masked, denoise, count: count, refs: refs);
             // expansions always use the inpainting model when installed (far better joins); painted edits if the setting is on
             if (masked && inpaintModel != null && baseCheckpoint != null && (expand != null || settings.InpaintEdits)) UseInpaintModel(g);
+            if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
             ApplyBoosters(g, newPicture: !edit && expand == null);
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };
         });
@@ -179,7 +181,55 @@ public partial class MainWindow
             item.Click += (_, _) => _ = Upscale(s, f);
             menu.Items.Add(item);
         }
+        bool canDetail = nodeNames.Contains("UltimateSDUpscale");
+        var detail = new MenuItem
+        {
+            Header = canDetail ? $"2× with added detail   ({size.Item1 * 2} × {size.Item2 * 2})" : "2× with added detail: needs Ultimate SD Upscale (Settings > Plugins)",
+            Tag = "", IsEnabled = canDetail && !VideoOn && ModelBox.SelectedItem != null,
+            ToolTip = $"Enlarges, then redraws the picture in tiles with {ModelBox.SelectedItem} at low strength: sharper skin, hair and texture. Takes a few minutes.",
+        };
+        detail.Click += (_, _) => _ = DetailUpscale(s);
+        menu.Items.Add(detail);
         menu.IsOpen = true;
+    }
+
+    // Ultimate SD Upscale: Real-ESRGAN to 2×, then the selected model redraws it tile by tile at low strength, with the picture's own prompt
+    async Task DetailUpscale(Shot s)
+    {
+        if (!ready) { ViewerNote.Text = "ComfyUI isn't ready yet."; return; }
+        var prompt = s.Meta?.Prompt ?? PromptBox.Text.Trim();
+        if (SexualWithMinor(prompt)) { ViewerNote.Text = MinorNote; return; }
+        CloseViewer();
+        long seed = Random.Shared.NextInt64(0, 1L << 48);
+        await Enqueue(1, async job =>
+        {
+            var source = await File.ReadAllBytesAsync(s.FilePath);
+            job.Before = source;
+            var image = await Upload(source, job);
+            var g = Graph(seed, count: 1);                  // the model, its LoRAs and the prompt encoders, as for a new picture
+            var k = g["3"]["inputs"].AsObject();
+            if (g["6"]?["inputs"]?["text"] != null) g["6"]["inputs"]["text"] = prompt;
+            var vae = g["8"]["inputs"]["vae"].DeepClone();
+            g["20"] = Node("LoadImage", new() { ["image"] = image });
+            g["21"] = Node("UpscaleModelLoader", new() { ["model_name"] = upscaleModel });
+            g["22"] = Node("UltimateSDUpscale", new()
+            {
+                ["image"] = Link("20", 0), ["model"] = k["model"].DeepClone(), ["positive"] = k["positive"].DeepClone(), ["negative"] = k["negative"].DeepClone(),
+                ["vae"] = vae, ["upscale_by"] = 2.0, ["seed"] = seed, ["steps"] = Math.Max(4, Steps / 2), ["cfg"] = k["cfg"].DeepClone(),
+                ["sampler_name"] = k["sampler_name"].DeepClone(), ["scheduler"] = k["scheduler"].DeepClone(), ["denoise"] = 0.25,
+                ["upscale_model"] = Link("21", 0), ["mode_type"] = "Linear", ["tile_width"] = 1024, ["tile_height"] = 1024, ["mask_blur"] = 8, ["tile_padding"] = 32,
+                ["seam_fix_mode"] = "None", ["seam_fix_denoise"] = 1.0, ["seam_fix_width"] = 64, ["seam_fix_mask_blur"] = 8, ["seam_fix_padding"] = 16,
+                ["force_uniform_tiles"] = true, ["tiled_decode"] = false, ["batch_size"] = 1,
+            });
+            foreach (var id in new[] { "3", "5", "8" }) g.Remove(id);
+            g["9"] = Node("SaveImage", new() { ["filename_prefix"] = "forge/up", ["images"] = Link("22", 0) });
+            var meta = (s.Meta ?? new Meta(null, null, null, null, null, null, null, null)) with { Upscaled = $"2× with added detail from {Path.GetFileName(s.FilePath)}" };
+            return new JsonObject
+            {
+                ["prompt"] = g, ["client_id"] = clientId,
+                ["extra_data"] = new JsonObject { ["extra_pnginfo"] = new JsonObject { ["forge"] = JsonSerializer.SerializeToNode(meta) } },
+            };
+        }, "Adding detail · tile", "Upscaling");
     }
 
     // Real-ESRGAN always makes 4×; for 2× it is scaled back down with Lanczos, which is sharper than upscaling 2× directly

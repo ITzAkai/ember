@@ -84,12 +84,12 @@ public partial class MainWindow
     string AutoVae(string family) => family switch { "qwen_image" => qwenVae, "krea2" or "anima" => kreaVae, _ => wanVae };
 
     // this model's own choice when it's still installed and fits the family, else the automatic one
-    string TeFor(string family) =>
-        ModelBox.SelectedItem is string m && settings.Profiles.GetValueOrDefault(m)?.TextEncoder is string te
+    string TeFor(string family, string model = null) =>
+        (model ?? ModelBox.SelectedItem) is string m && settings.Profiles.GetValueOrDefault(m)?.TextEncoder is string te
         && textEncoders.Contains(te) && PartKind("text_encoders", te) == TeKind(family) ? te : AutoTe(family);
 
-    string VaeFor(string family) =>
-        ModelBox.SelectedItem is string m && settings.Profiles.GetValueOrDefault(m)?.Vae is string vae
+    string VaeFor(string family, string model = null) =>
+        (model ?? ModelBox.SelectedItem) is string m && settings.Profiles.GetValueOrDefault(m)?.Vae is string vae
         && vaeFiles.Contains(vae) && PartKind("vae", vae) == VaeKind(family) ? vae : AutoVae(family);
 
     // what a text encoder or VAE belongs to, for the Models page

@@ -21,28 +21,38 @@ public partial class MainWindow
     {
         await Task.Delay(3000);
         try { File.Delete(OldExe); } catch { }          // the copy the last update replaced (gone by now, or next time)
+        // GitHub answers 60 checks an hour per internet address: a refused or failed check is tried again in an hour,
+        // and an app left open checks again every 6 hours
+        while (!closing && !updateReady)
+            await Task.Delay(await TryUpdate() ? TimeSpan.FromHours(6) : TimeSpan.FromHours(1));
+    }
+
+    // true when GitHub answered (whether or not there was anything new)
+    async Task<bool> TryUpdate()
+    {
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, LatestRelease);
             req.Headers.UserAgent.ParseAdd("ImageForge/" + AppVersion);
             using var res = await web.SendAsync(req);
-            if (!res.IsSuccessStatusCode) return;
+            if (!res.IsSuccessStatusCode) return false;
             var release = JsonNode.Parse(await res.Content.ReadAsStringAsync());
             var tag = release?["tag_name"]?.ToString();
-            if (!Version.TryParse(tag?.TrimStart('v'), out var latest) || latest <= AppVersion) return;
+            if (!Version.TryParse(tag?.TrimStart('v'), out var latest) || latest <= AppVersion) return true;
             var exe = (release["assets"] as JsonArray)?.FirstOrDefault(a => a?["name"]?.ToString().EndsWith(".exe", StringComparison.OrdinalIgnoreCase) == true);
-            if (exe?["browser_download_url"]?.ToString() is not string url || exe["digest"]?.ToString() is not string digest) return;
+            if (exe?["browser_download_url"]?.ToString() is not string url || exe["digest"]?.ToString() is not string digest) return true;
             var sha = digest.Replace("sha256:", "");
             if (!File.Exists(NewExe) || !Sha256Is(NewExe, sha))
             {
                 await DownloadFile(url, NewExe);
-                if (!Sha256Is(NewExe, sha)) { File.Delete(NewExe); return; }
+                if (!Sha256Is(NewExe, sha)) { File.Delete(NewExe); return false; }
             }
             updateReady = true;
             UpdateBtnText.Text = $"Update to {tag}";
             UpdateBtn.Visibility = Visibility.Visible;
+            return true;
         }
-        catch { /* offline, or no rights to this folder: try again next start */ }
+        catch { return false; /* offline, or no rights to this folder */ }
     }
 
     static bool Sha256Is(string file, string sha)

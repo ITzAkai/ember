@@ -274,4 +274,40 @@ public partial class MainWindow
     }
 
     static int Round64(double v) => Math.Max(64, (int)Math.Round(v / 64) * 64);
+
+    // how much of the picture the box around the painted area covers (0 to 1)
+    static double MaskBoxShare(byte[] mask, int w, int h)
+    {
+        int x0 = w, y0 = h, x1 = -1, y1 = -1;
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+                if (mask[y * w + x] > 32) { x0 = Math.Min(x0, x); y0 = Math.Min(y0, y); x1 = Math.Max(x1, x); y1 = Math.Max(y1, y); }
+        return x1 < 0 ? 0 : (x1 - x0 + 1.0) * (y1 - y0 + 1) / ((double)w * h);
+    }
+
+    // Inpaint Crop & Stitch (plugin): a small painted area is cut out with its surroundings, redrawn at the model's own size
+    // instead of a few pixels of the whole picture, and blended back in. Everything that read the photo or its mask reads the crop.
+    void UseCropAndStitch(JsonObject g)
+    {
+        foreach (var (id, node) in g.ToList())
+        {
+            if (id is "14" or "15" || node?["inputs"] is not JsonObject inputs) continue;
+            foreach (var (key, value) in inputs.ToList())
+                if (value is JsonArray { Count: 2 } l && l[0]?.ToString() == "10")
+                    inputs[key] = Link("60", l[1]!.GetValue<int>() == 0 ? 1 : 2);
+        }
+        g["60"] = Node("InpaintCropImproved", new()
+        {
+            ["image"] = Link("10", 0), ["mask"] = Link("10", 1),
+            ["downscale_algorithm"] = "bilinear", ["upscale_algorithm"] = "bicubic", ["preresize"] = false, ["preresize_mode"] = "ensure minimum resolution",
+            ["preresize_min_width"] = 1024, ["preresize_min_height"] = 1024, ["preresize_max_width"] = 8192, ["preresize_max_height"] = 8192,
+            ["mask_fill_holes"] = true, ["mask_expand_pixels"] = 0, ["mask_invert"] = false, ["mask_blend_pixels"] = 32, ["mask_hipass_filter"] = 0.1,
+            ["extend_for_outpainting"] = false, ["extend_up_factor"] = 1.0, ["extend_down_factor"] = 1.0, ["extend_left_factor"] = 1.0, ["extend_right_factor"] = 1.0,
+            ["context_from_mask_extend_factor"] = 1.5, ["output_resize_to_target_size"] = true, ["output_target_width"] = 1024, ["output_target_height"] = 1024,
+            ["output_padding"] = "32", ["device_mode"] = "gpu (much faster)",
+        });
+        g["61"] = Node("InpaintStitchImproved", new() { ["stitcher"] = Link("60", 0), ["inpainted_image"] = Link("8", 0) });
+        g.Remove("14"); g.Remove("15");
+        ((JsonObject)g["9"]["inputs"])["images"] = Link("61", 0);
+    }
 }

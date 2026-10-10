@@ -112,7 +112,7 @@ public partial class MainWindow
         foreach (var tab in settings.Tabs)
         {
             bool active = tab.Name == settings.ActiveTab;
-            var b = new Button { Content = tab.Name, Style = (Style)FindResource("Ghost"), Height = 28, Padding = new Thickness(10, 0, 10, 0), FontSize = 12,
+            var b = new Button { Content = new TextBlock { Text = tab.Name }, Style = (Style)FindResource("Ghost"), Height = 28, Padding = new Thickness(10, 0, 10, 0), FontSize = 12,
                 Margin = new Thickness(0, 0, 6, 6), ToolTip = $"{tab.Model}\nRight-click to rename, duplicate, export or delete" };
             if (active) { b.BorderBrush = Brush("Accent"); b.Foreground = Brush("Accent"); }
             b.Click += (_, _) => OpenTab(tab);

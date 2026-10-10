@@ -331,8 +331,7 @@
                 <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"
                            Text="Negative prompt isn't needed for this model: at CFG 1 it's ignored."/>
               </DockPanel>
-              <TextBlock x:Name="NegativeWarn" Style="{StaticResource Note}" Foreground="{DynamicResource Accent}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"
-                         Text="Negative prompt has no effect at CFG 1. Raise CFG to use it (slower, and it may over-cook turbo models)."/>
+              <TextBlock x:Name="NegativeWarn" Style="{StaticResource Note}" Foreground="{DynamicResource Accent}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
               <!-- Find / Replace for whichever prompt box it was opened on -->
               <Popup x:Name="FindPopup" Placement="Top" StaysOpen="True" AllowsTransparency="True" VerticalOffset="-4">
                 <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="8" Padding="8">
@@ -529,7 +528,7 @@
 
               <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Disclosure}" Margin="0,24,0,0" Content="Advanced settings"/>
               <StackPanel Visibility="{Binding IsChecked, ElementName=AdvancedToggle, Converter={StaticResource BoolVis}}">
-                <TextBox x:Name="AdvancedSearch" Style="{StaticResource Input}" Height="32" Margin="0,14,0,0" Tag="Search settings: CFG, VAE, faces, seed…"
+                <TextBox x:Name="AdvancedSearch" Style="{StaticResource Input}" Margin="0,14,0,0" Tag="Search settings: CFG, VAE, faces, seed…"
                          TextChanged="AdvancedSearch_TextChanged" AutomationProperties.Name="Search settings"/>
                 <DockPanel x:Name="ModelSectionHeader" Margin="0,18,0,0">
                   <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="24" Padding="8,0" FontSize="11" Content="Reset section" Tag="model"
@@ -555,13 +554,13 @@
                     <ComboBox x:Name="VaeBox" SelectionChanged="Parts_SelectionChanged" AutomationProperties.Name="VAE"/>
                   </StackPanel>
                 </Grid>
-                <DockPanel Margin="0,8,0,0">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="6,0,0,0" Content="Check my settings"
-                          Click="CheckSettings_Click" ToolTip="List every setting outside this model's recommended range, with Fix all"/>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Content="Reset to recommended"
+                <TextBlock x:Name="GuardSummary" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                  <Button Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Content="Reset to recommended"
                           Click="ResetRecommended_Click" ToolTip="Steps, CFG, sampler and scheduler back to this model's recommendation"/>
-                  <TextBlock x:Name="GuardSummary" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                </DockPanel>
+                  <Button Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="6,0,0,0" Content="Check my settings"
+                          Click="CheckSettings_Click" ToolTip="List every setting outside this model's recommended range, with Fix all"/>
+                </StackPanel>
                 <StackPanel x:Name="GuardList" Visibility="Collapsed" Margin="0,8,0,0"/>
 
                 </StackPanel>
@@ -599,7 +598,8 @@
 
                 <StackPanel ToolTip="Exactly how many steps to take. Fast, Balanced and Best set this for the model; you can fine-tune it here.">
                   <DockPanel Margin="0,18,0,4">
-                    <TextBox x:Name="StepsBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" AutomationProperties.Name="Steps number"/>
+                    <TextBox x:Name="StepsBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" AutomationProperties.Name="Steps number"
+                             Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" CaretBrush="{DynamicResource Accent}"/>
                     <TextBlock Text="Steps" Style="{StaticResource Heading}" Margin="0"/>
                   </DockPanel>
                   <Slider x:Name="StepsSlider" Minimum="1" Maximum="100" Value="30" TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" AutomationProperties.Name="Steps"/>
@@ -1156,6 +1156,7 @@
                         Content="fp16 accumulation (faster on RTX 40; some LoRAs then give black pictures)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
               <DockPanel Margin="0,8,0,0">
                 <TextBox x:Name="ReserveVramBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" LostFocus="Perf_Changed"
+                         Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" CaretBrush="{DynamicResource Accent}"
                          AutomationProperties.Name="Graphics memory to keep free"/>
                 <TextBlock Text="Graphics memory to keep free for other programs (GB)" VerticalAlignment="Center"/>
               </DockPanel>

@@ -16,11 +16,16 @@ public class Boosters
     public double PagScale { get; set; } = 3.0;
     public bool? Rescale { get; set; }
     public double RescaleMultiplier { get; set; } = 0.7;
+    public bool? Nag { get; set; }
+    public double NagScale { get; set; } = 5;
     public bool? Faces { get; set; }
     public double FaceDenoise { get; set; } = 0.4;
     public bool? HiRes { get; set; }
     public double HiResScale { get; set; } = 1.5;
     public double HiResDenoise { get; set; } = 0.3;
+    public bool? Refine { get; set; }
+    public string RefineModel { get; set; }
+    public double RefineDenoise { get; set; } = 0.5;
     public bool? Finish { get; set; }
     public double Temperature { get; set; }
     public double Hue { get; set; }
@@ -34,8 +39,11 @@ public partial class MainWindow
 {
     // each model's own, starting from its family's older shared values the first time
     Boosters CurrentBoosters => ModelBox.SelectedItem is string m
-        ? ProfileOf(m).Boosters ??= Clone(settings.BoostersByFamily.GetValueOrDefault(ModelFamily)) ?? new Boosters()
+        ? ProfileOf(m).Boosters ??= Clone(settings.BoostersByFamily.GetValueOrDefault(ModelFamily)) ?? new Boosters { FaceDenoise = DefaultFaceDenoise }
         : new Boosters();
+
+    // calibrated (docs/calibration/krea2.jpg): on Krea 2 a stronger face redraw over-ages skin
+    double DefaultFaceDenoise => Krea ? 0.3 : 0.4;
 
     static readonly Dictionary<string, bool> vpredCache = new();
     // NoobAI-style v-prediction checkpoints carry a "v_pred" marker tensor; ComfyUI reads the same key
@@ -74,12 +82,40 @@ public partial class MainWindow
         return (true, on, b.Rescale == null && VPred ? "On for this v-prediction model: it prevents washed-out or burnt colours." : "Stops burnt or washed-out colours at higher CFG. Too high looks flat.");
     }
 
+    // ComfyUI's own NAG patches the attention that Krea 2, FLUX and SDXL-type models run through; Anima and Qwen-Image don't use it
+    (bool Can, bool On, string Why) NagState()
+    {
+        if (VideoOn) return (false, false, "Pictures only.");
+        if (!(Krea || Flux || Sdxl)) return (false, false, $"Off: it doesn't reach {FamilyLabelNow}'s attention, so it would do nothing.");
+        if (CfgSlider.Value > 1) return (false, false, "Off: above CFG 1 the negative prompt already works.");
+        if (!nodeNames.Contains("NAGuidance")) return (false, false, "Needs a newer ComfyUI.");
+        bool on = CurrentBoosters.Nag ?? false;
+        return (true, on, "Makes the negative prompt work at CFG 1 (Normalized Attention Guidance). Each step takes about twice as long.");
+    }
+
+    // whether the negative prompt changes the picture: above CFG 1, or at CFG 1 with NAG
+    bool NegativeWorks => CfgSlider.Value > 1 || NagState().On;
+
     (bool Can, bool On, string Why) HiResState()
     {
         if (VideoOn) return (false, false, "Pictures only.");
         bool on = CurrentBoosters.HiRes ?? false;
         return (true, on, "Enlarges the picture and redraws fine detail at low strength. About twice as long; on 6 to 8 GB cards large sizes can run out of memory." +
             (on && CurrentBoosters.HiResDenoise > 0.45 ? " Above 0.45 it starts redrawing bodies and can add limbs." : ""));
+    }
+
+    // any other picture model can redraw this one's picture: Anima's or Pony's composition with Krea 2's or a realistic SDXL's look
+    List<string> RefineChoices => imageModels.Where(m => m != ModelBox.SelectedItem as string && RecFamilyOf(m) is "sdxl" or "krea2" or "qwen_image" or "anima").ToList();
+    string RefineModel => CurrentBoosters.RefineModel is string m && RefineChoices.Contains(m) ? m : RefineChoices.FirstOrDefault(m => RecFamilyOf(m) == "krea2") ?? RefineChoices.FirstOrDefault();
+
+    (bool Can, bool On, string Why) RefineState()
+    {
+        if (VideoOn) return (false, false, "Pictures only.");
+        if (RefineModel == null) return (false, false, "Needs a second picture model.");
+        bool on = CurrentBoosters.Refine ?? false;
+        return (true, on, "A second model redraws the finished picture at partial strength: this model's composition with the other's look. " +
+            "LoRAs only apply to the first model. On 6 to 8 GB cards both models take turns in memory, so it's slower." +
+            (on && CurrentBoosters.RefineDenoise > 0.6 ? " Above 0.6 the second model starts changing the composition too." : ""));
     }
 
     (bool Can, bool On, string Why) FacesState()
@@ -115,12 +151,25 @@ public partial class MainWindow
             [("Scale", 0, 10, 0.1, b.PagScale, x => b.PagScale = x)], () => { b.Pag = null; b.PagScale = 3.0; }));
         BoostersPanel.Children.Add(BoosterRow("RescaleCFG: no burnt colours", RescaleState(), v => b.Rescale = v,
             [("Strength", 0, 1, 0.05, b.RescaleMultiplier, x => b.RescaleMultiplier = x)], () => { b.Rescale = null; b.RescaleMultiplier = 0.7; }));
+        BoostersPanel.Children.Add(BoosterRow("NAG: negative prompt at CFG 1", NagState(), v => b.Nag = v,
+            [("Strength", 1, 10, 0.5, b.NagScale, x => b.NagScale = x)], () => { b.Nag = null; b.NagScale = 5; }));
+        var refine = RefineState();
+        var refineRow = (StackPanel)BoosterRow("Refine with another model", refine, v => b.Refine = v,
+            [("Strength", 0.2, 0.8, 0.05, b.RefineDenoise, x => b.RefineDenoise = x)], () => { b.Refine = null; b.RefineModel = null; b.RefineDenoise = 0.5; });
+        if (refine.On)
+        {
+            var pick = new ComboBox { ItemsSource = RefineChoices, SelectedItem = RefineModel, Margin = new Thickness(0, 6, 0, 0) };
+            System.Windows.Automation.AutomationProperties.SetName(pick, "Model that refines the picture");
+            pick.SelectionChanged += (_, _) => { if (!fillingBoosters && pick.SelectedItem is string m) { b.RefineModel = m; settings.Save(); } };
+            refineRow.Children.Insert(2, pick);
+        }
+        BoostersPanel.Children.Add(refineRow);
         BoostersPanel.Children.Add(BoosterRow("Hi-res fix (second pass)", HiResState(), v => b.HiRes = v,
             [("Enlarge", 1.25, 2, 0.05, b.HiResScale, x => b.HiResScale = x), ("Strength", 0.15, 0.6, 0.05, b.HiResDenoise, x => b.HiResDenoise = x)],
             () => { b.HiRes = null; b.HiResScale = 1.5; b.HiResDenoise = 0.3; }));
         var faces = FacesState();
         BoostersPanel.Children.Add(BoosterRow("Fix faces", faces, v => b.Faces = v,
-            [("Strength", 0.1, 0.8, 0.05, b.FaceDenoise, x => b.FaceDenoise = x)], () => { b.Faces = null; b.FaceDenoise = 0.4; },
+            [("Strength", 0.1, 0.8, 0.05, b.FaceDenoise, x => b.FaceDenoise = x)], () => { b.Faces = null; b.FaceDenoise = DefaultFaceDenoise; },
             faces.Why.StartsWith("Needs") ? () => ChoosePlugins_Click(null, null) : null));
         BoostersPanel.Children.Add(BoosterRow("Colour finish", FinishState(), v => b.Finish = v,
             [("Contrast", -50, 50, 1, b.Contrast, x => b.Contrast = x), ("Saturation", -50, 50, 1, b.Saturation, x => b.Saturation = x),
@@ -160,7 +209,8 @@ public partial class MainWindow
         foreach (var s in sliders)
         {
             var row = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
-            var box = new TextBox { Width = 48, Height = 24, Padding = new Thickness(4, 0, 4, 0), VerticalContentAlignment = VerticalAlignment.Center, Text = s.Value.ToString("0.##") };
+            var box = new TextBox { Width = 48, Height = 24, Padding = new Thickness(4, 0, 4, 0), VerticalContentAlignment = VerticalAlignment.Center, Text = s.Value.ToString("0.##"),
+                Background = Brush("Field"), Foreground = Brush("Ink"), BorderBrush = Brush("Line"), CaretBrush = Brush("Accent") };
             System.Windows.Automation.AutomationProperties.SetName(box, $"{title} {s.Label}");
             DockPanel.SetDock(box, Dock.Right);
             var label = new TextBlock { Text = s.Label, Width = 74, Style = (Style)FindResource("Note"), VerticalAlignment = VerticalAlignment.Center };
@@ -179,7 +229,7 @@ public partial class MainWindow
         return panel;
     }
 
-    void BoostersChanged() { settings.Save(); ShowBoosters(); }
+    void BoostersChanged() { settings.Save(); ShowBoosters(); UpdateNegative(); RefreshGuard(); }
 
     // ---------------- into the graph ----------------
     // model boosters wrap the sampler's model; Fix faces and the colour finish sit between decoding and saving (new pictures only)
@@ -197,29 +247,66 @@ public partial class MainWindow
             g["rescale"] = Node("RescaleCFG", new() { ["model"] = k["model"].DeepClone(), ["multiplier"] = b.RescaleMultiplier });
             k["model"] = Link("rescale", 0);
         }
+        if (NagState().On && !string.IsNullOrWhiteSpace(g["7"]?["inputs"]?["text"]?.ToString()))       // with nothing to steer away from it only costs time
+        {
+            g["nag"] = Node("NAGuidance", new() { ["model"] = k["model"].DeepClone(), ["nag_scale"] = b.NagScale, ["nag_alpha"] = 0.5, ["nag_tau"] = 1.5 });
+            k["model"] = Link("nag", 0);
+        }
         if (!newPicture || g["9"]?["inputs"] is not JsonObject save) return;
-        if (HiResState().On && g["8"]?["inputs"]?["vae"] is JsonNode hvae)
+        // the sampler the later passes copy: this model's, or the refining model's once it has redrawn the picture
+        JsonObject s = k;
+        JsonNode vae = g["8"]?["inputs"]?["vae"], clip = g["6"]?["inputs"]?["clip"];
+        if (RefineState().On && RefineModel is string other && vae != null)
+        {
+            var family = RecFamilyOf(other);
+            var r = RecFor(other);
+            if (separate.TryGetValue(other, out var parts))
+            {
+                g["refine_model"] = UnetNode(parts.Unet);
+                g["refine_clip"] = Node("CLIPLoader", new() { ["clip_name"] = TeFor(family, other), ["type"] = family == "anima" ? "stable_diffusion" : family });
+                g["refine_vae"] = Node("VAELoader", new() { ["vae_name"] = VaeFor(family, other) });
+                (clip, vae) = (Link("refine_clip", 0), Link("refine_vae", 0));
+            }
+            else
+            {
+                g["refine_model"] = Node("CheckpointLoaderSimple", new() { ["ckpt_name"] = other });
+                (clip, vae) = (Link("refine_model", 1), Link("refine_model", 2));
+            }
+            var prompt = (g["6"]?["inputs"]?["text"] ?? g["6"]?["inputs"]?["prompt"])?.ToString() ?? "";
+            g["refine_pos"] = Node("CLIPTextEncode", new() { ["text"] = prompt, ["clip"] = clip.DeepClone() });
+            g["refine_neg"] = Node("CLIPTextEncode", new() { ["text"] = r.Negative ? g["7"]?["inputs"]?["text"]?.ToString() ?? "" : "", ["clip"] = clip.DeepClone() });
+            g["refine_in"] = Node("VAEEncode", new() { ["pixels"] = save["images"].DeepClone(), ["vae"] = vae.DeepClone() });
+            g["refine"] = Node("KSampler", new()
+            {
+                ["model"] = Link("refine_model", 0), ["positive"] = Link("refine_pos", 0), ["negative"] = Link("refine_neg", 0), ["latent_image"] = Link("refine_in", 0),
+                ["seed"] = k["seed"].DeepClone(), ["steps"] = r.Steps[1], ["cfg"] = r.Cfg, ["sampler_name"] = r.Sampler, ["scheduler"] = r.Scheduler, ["denoise"] = b.RefineDenoise,
+            });
+            s = g["refine"]["inputs"].AsObject();
+            g["refine_out"] = Node("VAEDecode", new() { ["samples"] = Link("refine", 0), ["vae"] = vae.DeepClone() });
+            save["images"] = Link("refine_out", 0);
+        }
+        if (HiResState().On && vae != null)
         {
             g["hires_up"] = Node("ImageScaleBy", new() { ["image"] = save["images"].DeepClone(), ["upscale_method"] = "lanczos", ["scale_by"] = b.HiResScale });
-            g["hires_in"] = Node("VAEEncode", new() { ["pixels"] = Link("hires_up", 0), ["vae"] = hvae.DeepClone() });
+            g["hires_in"] = Node("VAEEncode", new() { ["pixels"] = Link("hires_up", 0), ["vae"] = vae.DeepClone() });
             g["hires"] = Node("KSampler", new()
             {
-                ["model"] = k["model"].DeepClone(), ["positive"] = k["positive"].DeepClone(), ["negative"] = k["negative"].DeepClone(), ["latent_image"] = Link("hires_in", 0),
-                ["seed"] = k["seed"].DeepClone(), ["steps"] = Math.Max(4, (int)Math.Round(Steps * 0.6)), ["cfg"] = k["cfg"].DeepClone(),
-                ["sampler_name"] = k["sampler_name"].DeepClone(), ["scheduler"] = k["scheduler"].DeepClone(), ["denoise"] = b.HiResDenoise,
+                ["model"] = s["model"].DeepClone(), ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["latent_image"] = Link("hires_in", 0),
+                ["seed"] = s["seed"].DeepClone(), ["steps"] = Math.Max(4, (int)Math.Round(s["steps"].GetValue<int>() * 0.6)), ["cfg"] = s["cfg"].DeepClone(),
+                ["sampler_name"] = s["sampler_name"].DeepClone(), ["scheduler"] = s["scheduler"].DeepClone(), ["denoise"] = b.HiResDenoise,
             });
-            g["hires_out"] = Node("VAEDecode", new() { ["samples"] = Link("hires", 0), ["vae"] = hvae.DeepClone() });
+            g["hires_out"] = Node("VAEDecode", new() { ["samples"] = Link("hires", 0), ["vae"] = vae.DeepClone() });
             save["images"] = Link("hires_out", 0);
         }
-        if (FacesState().On && g["6"]?["inputs"]?["clip"] is JsonNode clip && g["8"]?["inputs"]?["vae"] is JsonNode vae)
+        if (FacesState().On && clip != null && vae != null)
         {
             g["facefinder"] = Node("UltralyticsDetectorProvider", new() { ["model_name"] = "bbox/face_yolov8m.pt" });
             g["faces"] = Node("FaceDetailer", new()
             {
-                ["image"] = save["images"].DeepClone(), ["model"] = k["model"].DeepClone(), ["clip"] = clip.DeepClone(), ["vae"] = vae.DeepClone(),
-                ["positive"] = k["positive"].DeepClone(), ["negative"] = k["negative"].DeepClone(), ["bbox_detector"] = Link("facefinder", 0),
-                ["seed"] = k["seed"].DeepClone(), ["steps"] = k["steps"].DeepClone(), ["cfg"] = k["cfg"].DeepClone(),
-                ["sampler_name"] = k["sampler_name"].DeepClone(), ["scheduler"] = k["scheduler"].DeepClone(), ["denoise"] = b.FaceDenoise,
+                ["image"] = save["images"].DeepClone(), ["model"] = s["model"].DeepClone(), ["clip"] = clip.DeepClone(), ["vae"] = vae.DeepClone(),
+                ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["bbox_detector"] = Link("facefinder", 0),
+                ["seed"] = s["seed"].DeepClone(), ["steps"] = s["steps"].DeepClone(), ["cfg"] = s["cfg"].DeepClone(),
+                ["sampler_name"] = s["sampler_name"].DeepClone(), ["scheduler"] = s["scheduler"].DeepClone(), ["denoise"] = b.FaceDenoise,
                 ["guide_size"] = 768, ["guide_size_for"] = true, ["max_size"] = 1024, ["feather"] = 5, ["noise_mask"] = true, ["force_inpaint"] = true,
                 ["bbox_threshold"] = 0.5, ["bbox_dilation"] = 10, ["bbox_crop_factor"] = 3.0, ["sam_detection_hint"] = "center-1", ["sam_dilation"] = 0,
                 ["sam_threshold"] = 0.93, ["sam_bbox_expansion"] = 0, ["sam_mask_hint_threshold"] = 0.7, ["sam_mask_hint_use_negative"] = "False",

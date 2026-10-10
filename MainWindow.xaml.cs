@@ -97,7 +97,9 @@ public class Settings
     public List<ModelProfile> Tabs { get; set; } = new();
     public string ActiveTab { get; set; }                   // the ComfyUI portable folder, when the exe doesn't sit in one
 
-    static readonly string File = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ImageForge", "settings.json");
+    // IMAGEFORGE_SETTINGS: another folder for settings, LoRA info and recommendations (test copies leave the real ones alone)
+    static readonly string File = Path.Combine(Environment.GetEnvironmentVariable("IMAGEFORGE_SETTINGS") is { Length: > 0 } dir ? dir
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ImageForge"), "settings.json");
     public static string FilePath => File;
     public static Settings Load()
     {
@@ -868,6 +870,9 @@ public partial class MainWindow : Window
             var ck = JsonNode.Parse(await http.GetStringAsync("/object_info/CheckpointLoaderSimple"));
             var ks = JsonNode.Parse(await http.GetStringAsync("/object_info/KSampler"));
             var unets = ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/UNETLoader"))?["UNETLoader"]?["input"]?["required"]?["unet_name"]).ToList();
+            // smaller GGUF files, when a GGUF loader plugin is there (an empty answer otherwise)
+            unets.AddRange(ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/UnetLoaderGGUF"))?["UnetLoaderGGUF"]?["input"]?["required"]?["unet_name"])
+                .Where(u => u.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)));
             var tes = ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/CLIPLoader"))?["CLIPLoader"]?["input"]?["required"]?["clip_name"]).ToList();
             var vaes = ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/VAELoader"))?["VAELoader"]?["input"]?["required"]?["vae_name"]).ToList();
             FindParts(tes, vaes);      // by what's inside each file, not its name
@@ -915,7 +920,8 @@ public partial class MainWindow : Window
         }
         catch (Exception e) { Note("Couldn't read ComfyUI's models: " + e.Message, true); }
         loadingOptions = false;
-        if (otherModel) Model_SelectionChanged(null, null);
+        // the settings on screen belong to the saved model, not the one picked instead: don't keep them as its profile
+        if (otherModel) { profileModel = null; Model_SelectionChanged(null, null); }
     }
 
     bool loadingOptions;
@@ -969,26 +975,60 @@ public partial class MainWindow : Window
         foreach (var dir in new[] { "diffusion_models", "unet" })
         {
             var file = Path.Combine(ModelsDir, dir, name);
-            if (!File.Exists(file)) continue;
-            try
+            if (File.Exists(file)) return FamilyOfFile(file);
+        }
+        return null;
+    }
+
+    static string FamilyOfFile(string file)
+    {
+        try
+        {
+            using var f = File.OpenRead(file);
+            string keys;
+            if (file.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase))
             {
-                using var f = File.OpenRead(file);
+                // GGUF keeps the original tensor names (length-prefixed) near the start of the file
+                var start = new byte[Math.Min(f.Length, 8 << 20)]; f.ReadExactly(start);
+                keys = Encoding.Latin1.GetString(start);
+                if (!keys.StartsWith("GGUF")) return null;
+            }
+            else
+            {
                 var len = new byte[8]; f.ReadExactly(len);
                 long n = BinaryPrimitives.ReadInt64LittleEndian(len);
                 if (n <= 0 || n > 100_000_000) return null;
                 var head = new byte[n]; f.ReadExactly(head);
-                var keys = Encoding.UTF8.GetString(head);
-                if (keys.Contains("llm_adapter.")) return "anima";           // Anima (Cosmos-based, a Qwen3 0.6B adapter)
-                if (keys.Contains("txtfusion.projector.weight\"")) return "krea2";
-                if (keys.Contains("txt_in.text_norm.weight\"")) return "qwen_image";
-                // Wan 2.1 text-to-video takes 16 latent channels in; picture-to-video (Fun InP) 36: the start picture's latent and mask too.
-                // Wan 2.2 5B (48, its own VAE) isn't supported.
-                var wan = Regex.Match(keys, @"patch_embedding\.weight""\s*:\s*\{[^}]*""shape""\s*:\s*\[\s*\d+\s*,\s*(\d+)");
-                return !wan.Success ? null : wan.Groups[1].Value switch { "16" => "wan", "36" => "wan_i2v", _ => null };
+                keys = Encoding.UTF8.GetString(head);
             }
-            catch { return null; }
+            if (keys.Contains("llm_adapter.")) return "anima";           // Anima (Cosmos-based, a Qwen3 0.6B adapter)
+            if (Regex.IsMatch(keys, @"txtfusion\.projector\.weight(?![\w.])")) return "krea2";
+            if (Regex.IsMatch(keys, @"txt_in\.text_norm\.weight(?![\w.])")) return "qwen_image";
+            // Wan 2.1 text-to-video takes 16 latent channels in; picture-to-video (Fun InP) 36: the start picture's latent and mask too.
+            // Wan 2.2 5B (48, its own VAE) isn't supported.
+            var wan = Regex.Match(keys, @"patch_embedding\.weight""\s*:\s*\{[^}]*""shape""\s*:\s*\[\s*\d+\s*,\s*(\d+)");
+            return !wan.Success ? null : wan.Groups[1].Value switch { "16" => "wan", "36" => "wan_i2v", _ => null };
         }
-        return null;
+        catch { return null; }
+    }
+
+    // --selftest part: a GGUF file's family comes from the tensor names in its header, like a safetensors file's
+    static bool SelfTestGguf()
+    {
+        var file = Path.Combine(Path.GetTempPath(), "imageforge-selftest.gguf");
+        try
+        {
+            using (var w = new BinaryWriter(File.Create(file)))
+            {
+                w.Write(Encoding.ASCII.GetBytes("GGUF")); w.Write(3u); w.Write(2UL); w.Write(0UL);
+                foreach (var name in new[] { "txtfusion.projector.weight", "blocks.0.attn.qkv.weight" })
+                {
+                    w.Write((ulong)name.Length); w.Write(Encoding.UTF8.GetBytes(name)); w.Write(2u); w.Write(64UL); w.Write(64UL); w.Write(0u); w.Write(0UL);
+                }
+            }
+            return FamilyOfFile(file) == "krea2";
+        }
+        finally { try { File.Delete(file); } catch { } }
     }
 
     List<string> loras = new();
@@ -1150,7 +1190,7 @@ public partial class MainWindow : Window
         {
             ModelNote.Text = Qwen ? "Qwen Research Licence: personal and research use only, not commercial. In Edit photo, describe the change (\"make it sunset\")."
                     + (Named("noctq") ? " Start prompts with \"An anime illustration of…\"." : "")
-                : Krea ? "Krea 2: realistic photos and art in 8–16 steps; the negative prompt isn't used. Check the model's licence before commercial use."
+                : Krea ? "Krea 2: realistic photos and art; the negative prompt isn't used unless NAG is on. Check the model's licence before commercial use."
                 : Anima ? "Anima: anime and illustration. Tags (1girl, masterpiece) or plain sentences both work; a quality negative prompt is added for you."
                 : PictureVideo ? "Wan 2.1 picture-to-video: the clip starts on your picture. Describe what moves and how the camera moves."
                 : Wan ? "Wan 2.1 video, 16 frames a second. A clip takes a few minutes; describe the movement and the camera."
@@ -1205,7 +1245,7 @@ public partial class MainWindow : Window
             {
                 "anima" => (TeFor(family), VaeFor(family), "stable_diffusion"), _ => (TeFor(family), VaeFor(family), family),   // Anima's loader type, per ComfyUI's template
             };
-            g["4"] = Node("UNETLoader", new() { ["unet_name"] = separate[(string)ModelBox.SelectedItem].Unet, ["weight_dtype"] = "default" });
+            g["4"] = UnetNode(separate[(string)ModelBox.SelectedItem].Unet);
             g["44"] = Node("CLIPLoader", new() { ["clip_name"] = te, ["type"] = type });
             g["45"] = Node("VAELoader", new() { ["vae_name"] = vaeFile });
             (model, clip, vae) = (Link("4", 0), Link("44", 0), Link("45", 0));
@@ -1277,6 +1317,10 @@ public partial class MainWindow : Window
         return g;
     }
     static JsonObject Node(string type, JsonObject inputs) => new() { ["class_type"] = type, ["inputs"] = inputs };
+
+    static JsonObject UnetNode(string unet) => unet.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)
+        ? Node("UnetLoaderGGUF", new() { ["unet_name"] = unet })
+        : Node("UNETLoader", new() { ["unet_name"] = unet, ["weight_dtype"] = "default" });
     static JsonArray Link(string node, int slot) => new() { node, slot };
 
     void StopServer()
@@ -1321,7 +1365,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16);
         }
         catch { return 2; }
         finally { try { File.Delete(file); } catch { } }

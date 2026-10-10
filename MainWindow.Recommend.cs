@@ -110,17 +110,19 @@ public partial class MainWindow
         return shipped;
     }
 
-    string RecFamily => Family ?? (Flux ? "flux" : "sdxl");
+    string RecFamilyOf(string model) => model != null && separate.TryGetValue(model, out var s) ? s.Family : model?.Contains("flux", StringComparison.OrdinalIgnoreCase) == true ? "flux" : "sdxl";
+
+    Rec ModelRec => RecFor(ModelBox.SelectedItem as string);
 
     // the family's values, overridden by the first known model whose pattern matches the name
-    Rec ModelRec
+    Rec RecFor(string model)
     {
-        get
         {
             recommendations ??= LoadRecommendations();
-            var fam = recommendations.Families.GetValueOrDefault(RecFamily) ?? recommendations.Families["sdxl"];
-            var name = (ModelBox.SelectedItem as string ?? "") + " " + (ModelBox.SelectedItem is string m && separate.TryGetValue(m, out var s) ? s.Unet : "");
-            var known = recommendations.Models.FirstOrDefault(x => x.Family == (RecFamily == "wan_i2v" ? "wan" : RecFamily) && Regex.IsMatch(name, x.Match, RegexOptions.IgnoreCase));
+            var family = RecFamilyOf(model);
+            var fam = recommendations.Families.GetValueOrDefault(family) ?? recommendations.Families["sdxl"];
+            var name = (model ?? "") + " " + (model != null && separate.TryGetValue(model, out var s) ? s.Unet : "");
+            var known = recommendations.Models.FirstOrDefault(x => x.Family == (family == "wan_i2v" ? "wan" : family) && Regex.IsMatch(name, x.Match, RegexOptions.IgnoreCase));
             if (known == null) return fam;
             return fam with
             {
@@ -202,8 +204,8 @@ public partial class MainWindow
             issues.Add(new(LoraDot, 1, "Two realism LoRAs at full strength stack the same effect: skin goes plastic or over-sharp. About 0.5–0.6 each, or keep one.",
                 () => { foreach (var l in realism) SetLoraStrength(l.Name, 0.55); }));
 
-        if (cfg <= 1 && !string.IsNullOrWhiteSpace(NegativeBox.Text) && EditMode.IsChecked != true)
-            issues.Add(new(null, 1, "The negative prompt is ignored at CFG 1, so it does nothing here.", null));
+        if (!NegativeWorks && !string.IsNullOrWhiteSpace(NegativeBox.Text) && EditMode.IsChecked != true)
+            issues.Add(new(null, 1, "The negative prompt is ignored at CFG 1, so it does nothing here" + (NagState().Can ? ": turn on NAG under Quality boosters to use it." : "."), null));
         return issues;
     }
 
