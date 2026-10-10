@@ -13,7 +13,7 @@ namespace ImageForge;
 public class Boosters
 {
     public bool? Pag { get; set; }                      // null: the recommendation for this model
-    public double PagScale { get; set; } = 3.0;
+    public double PagScale { get; set; } = 2.0;
     public bool? Rescale { get; set; }
     public double RescaleMultiplier { get; set; } = 0.7;
     public bool? Faces { get; set; }
@@ -68,8 +68,8 @@ public partial class MainWindow
     {
         var b = CurrentBoosters;
         if (!Sdxl || VideoOn) return (false, false, $"Off: PAG only changes SDXL-type models. On {FamilyLabelNow} it does nothing but still doubles the time.");
-        bool on = b.Pag ?? false;
-        return (true, on, on ? "Sharper structure and composition. Too high looks harsh; try a slightly lower CFG with it." : "Not on by default until it's been tested on this model.");
+        bool on = b.Pag ?? true;        // calibrated (docs/calibration/sdxl.jpg): cleaner bodies and composition, about 40 % longer
+        return (true, on, on ? "Cleaner bodies and composition. Each picture takes about 40 % longer; too strong looks harsh." : "Off. On SDXL it gives cleaner bodies and composition, for about 40 % more time.");
     }
 
     (bool Can, bool On, string Why) RescaleState()
@@ -133,7 +133,7 @@ public partial class MainWindow
         BoostersPanel.Children.Clear();
         var b = CurrentBoosters;
         BoostersPanel.Children.Add(BoosterRow("PAG: sharper structure", PagState(), v => b.Pag = v,
-            [("Scale", 0, 10, 0.1, b.PagScale, x => b.PagScale = x)], () => { b.Pag = null; b.PagScale = 3.0; }));
+            [("Scale", 0, 10, 0.1, b.PagScale, x => b.PagScale = x)], () => { b.Pag = null; b.PagScale = 2.0; }));
         BoostersPanel.Children.Add(BoosterRow("RescaleCFG: no burnt colours", RescaleState(), v => b.Rescale = v,
             [("Strength", 0, 1, 0.05, b.RescaleMultiplier, x => b.RescaleMultiplier = x)], () => { b.Rescale = null; b.RescaleMultiplier = 0.7; }));
         var refine = RefineState();

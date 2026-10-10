@@ -26,7 +26,7 @@ FAMILIES = {
                          "faces 0.3": dict(faces=0.3), "faces 0.4": dict(faces=0.4), "faces 0.5": dict(faces=0.5), "finish": dict(finish=True)}),
     "qwen": dict(unet="qwen_image_2.1_fp8_scaled.safetensors", clip="qwen3vl_8b_qwen_image_2.1_fp8_scaled.safetensors", type="qwen_image", vae="qwen_image_2.1_vae.safetensors",
                  base=dict(steps=25, cfg=1.0, sampler="euler", scheduler="simple"), prompts=["dance", "hands", "sofa", "objects"],
-                 sweep={"15 steps": dict(steps=15), "25 steps": {}, "40 steps": dict(steps=40), "CFG 2": dict(cfg=2.0)}),   # Fix faces fails on Qwen-Image (Impact Pack)
+                 sweep={"15 steps": dict(steps=15), "20 steps": dict(steps=20), "25 steps": {}, "30 steps": dict(steps=30), "40 steps": dict(steps=40), "CFG 2": dict(cfg=2.0)}),   # Fix faces fails on Qwen-Image (Impact Pack)
     "anima": dict(unet="anima-base-v1.0.safetensors", clip="anima_baseV10_txt.safetensors", type="stable_diffusion", vae="qwen_image_vae.safetensors",
                   base=dict(steps=30, cfg=4.0, sampler="euler", scheduler="simple"), prompts=[p for p, _ in PROMPTS], style="anime illustration, ",
                   negative="worst quality, low quality, score_1, score_2, score_3, blurry, jpeg artifacts, sepia",
@@ -35,7 +35,7 @@ FAMILIES = {
     "noct": dict(unet="NoctQA_V1_int8_convrot.safetensors", clip="qwen3vl_8b_qwen_image_2.1_fp8_scaled.safetensors", type="qwen_image", vae="qwen_image_2.1_vae.safetensors",
                  base=dict(steps=25, cfg=3.0, sampler="euler", scheduler="simple"), prompts=["dance", "hands", "sofa", "objects"], style="An anime illustration of ",
                  negative="low quality, low resolution, blurry, jpeg artifacts, washed-out colors, sloppy lines, messy line art, extra fingers, missing fingers, badly drawn hands, deformed anatomy, 3d render, photograph, photorealistic",
-                 sweep={"18 steps": dict(steps=18), "25 steps": {}, "35 steps": dict(steps=35), "CFG 2.5": dict(cfg=2.5), "CFG 4": dict(cfg=4.0)}),
+                 sweep={"18 steps": dict(steps=18), "22 steps": dict(steps=22), "25 steps": {}, "35 steps": dict(steps=35), "CFG 2.5": dict(cfg=2.5), "CFG 4": dict(cfg=4.0)}),
     "sdxl": dict(ckpt="sd_xl_base_1.0.safetensors", base=dict(steps=25, cfg=7.0, sampler="dpmpp_2m", scheduler="karras"),
                  prompts=[p for p, _ in PROMPTS], negative="blurry, low quality",
                  sweep={"25 steps": {}, "CFG 5": dict(cfg=5.0), "PAG 2": dict(pag=2.0), "PAG 3": dict(pag=3.0), "PAG 3 + CFG 5": dict(pag=3.0, cfg=5.0)}),

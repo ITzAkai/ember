@@ -28,7 +28,7 @@ public partial class MainWindow
 {
     const string RecommendationsJson = """
     {
-      "version": 2,
+      "version": 3,
       "families": {
         "sdxl": { "maxMp": 1.2, "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.6, "badScheduler": null,
@@ -36,10 +36,10 @@ public partial class MainWindow
         "krea2": { "maxMp": 4.2, "label": "Krea 2 Turbo", "sampler": "euler", "scheduler": "simple", "steps": [6, 8, 10], "stepsRange": [6, 10], "cfg": 1, "cfgRange": [1, 1.5],
           "negative": false, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Krea 2 Turbo is made for 8 steps at CFG 1. More steps or a higher CFG over-cook it, and CFG above 1 doubles the time." },
-        "qwen_image": { "maxMp": 4.2, "label": "Qwen-Image 2.1", "sampler": "euler", "scheduler": "simple", "steps": [15, 25, 40], "stepsRange": [12, 50], "cfg": 1, "cfgRange": [1, 2],
+        "qwen_image": { "maxMp": 4.2, "label": "Qwen-Image 2.1", "sampler": "euler", "scheduler": "simple", "steps": [20, 25, 30], "stepsRange": [18, 50], "cfg": 1, "cfgRange": [1, 2],
           "negative": false, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Qwen-Image 2.1: 25 steps at CFG 1; 40 steps adds fine detail. CFG 2 sharpens edges, 5 and up degrades the picture." },
-        "anima": { "maxMp": 1.2, "label": "Anima", "sampler": "euler", "scheduler": "simple", "steps": [24, 30, 40], "stepsRange": [24, 50], "cfg": 4, "cfgRange": [3.5, 5],
+        "anima": { "maxMp": 1.2, "label": "Anima", "sampler": "euler", "scheduler": "simple", "steps": [24, 30, 34], "stepsRange": [24, 50], "cfg": 4, "cfgRange": [3.5, 5],
           "negative": true, "defaultNegative": "worst quality, low quality, score_1, score_2, score_3, blurry, jpeg artifacts, sepia", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Anima: 30 steps at CFG 4, as in ComfyUI's template; keep about 1 megapixel." },
         "wan": { "maxMp": 0.5, "label": "Wan 2.1", "sampler": "uni_pc", "scheduler": "simple", "steps": [20, 30, 50], "stepsRange": [20, 50], "cfg": 6, "cfgRange": [5, 7],
@@ -78,7 +78,7 @@ public partial class MainWindow
           "cfg": 4, "cfgRange": [3, 5], "why": "CyberRealistic: DPM++ 2M SDE Karras, 30+ steps, CFG 3 to 5." },
         { "match": "(^|[-_ ])raw([-_ .]|$)", "family": "krea2", "label": "Krea 2 Raw", "steps": [30, 40, 52], "stepsRange": [28, 60], "cfg": 3.5, "cfgRange": [3, 4.5], "negative": true,
           "why": "Krea 2 Raw isn't distilled: it needs a real CFG and many more steps, so it's much slower than Turbo." },
-        { "match": "noct", "family": "qwen_image", "label": "Noct Q Anime", "steps": [18, 25, 35], "stepsRange": [15, 40], "cfg": 3, "cfgRange": [2.5, 4], "negative": true,
+        { "match": "noct", "family": "qwen_image", "label": "Noct Q Anime", "steps": [22, 25, 35], "stepsRange": [20, 40], "cfg": 3, "cfgRange": [2.5, 4], "negative": true,
           "defaultNegative": "low quality, low resolution, blurry, jpeg artifacts, washed-out colors, sloppy lines, messy line art, extra fingers, missing fingers, badly drawn hands, deformed anatomy, 3d render, photograph, photorealistic",
           "why": "The author's settings: 25 steps at CFG 3 with a negative prompt. Start prompts with \"An anime illustration of…\"." },
         { "match": "turbo", "family": "qwen_image", "label": "Qwen-Image 2.1 Turbo", "steps": [6, 8, 10], "stepsRange": [6, 10], "cfg": 1, "cfgRange": [1, 1], "negative": false,
