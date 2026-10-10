@@ -529,7 +529,15 @@
 
               <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Disclosure}" Margin="0,24,0,0" Content="Advanced settings"/>
               <StackPanel Visibility="{Binding IsChecked, ElementName=AdvancedToggle, Converter={StaticResource BoolVis}}">
-                <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,16,0,8"/>
+                <TextBox x:Name="AdvancedSearch" Style="{StaticResource Input}" Height="32" Margin="0,14,0,0" Tag="Search settings: CFG, VAE, faces, seed…"
+                         TextChanged="AdvancedSearch_TextChanged" AutomationProperties.Name="Search settings"/>
+                <DockPanel x:Name="ModelSectionHeader" Margin="0,18,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="24" Padding="8,0" FontSize="11" Content="Reset section" Tag="model"
+                          Click="ResetSection_Click" AutomationProperties.Name="Reset Model &amp; parts"/>
+                  <ToggleButton x:Name="ModelSectionToggle" Style="{StaticResource Disclosure}" Content="Model &amp; parts" IsChecked="True" Margin="0" ToolTip="The model, the text encoder and VAE it uses, and how its settings compare with the recommendation"/>
+                </DockPanel>
+                <StackPanel x:Name="ModelSectionBody" Visibility="{Binding IsChecked, ElementName=ModelSectionToggle, Converter={StaticResource BoolVis}}">
+                <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,10,0,8"/>
                 <ComboBox x:Name="ModelBox" SelectionChanged="Model_SelectionChanged"/>
                 <TextBlock x:Name="ModelNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
                 <Grid x:Name="PartsSection" Margin="0,10,0,0" Visibility="Collapsed">
@@ -556,6 +564,13 @@
                 </DockPanel>
                 <StackPanel x:Name="GuardList" Visibility="Collapsed" Margin="0,8,0,0"/>
 
+                </StackPanel>
+                <DockPanel x:Name="LoraGroupHeader" Margin="0,18,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="24" Padding="8,0" FontSize="11" Content="Reset section" Tag="loras"
+                          Click="ResetSection_Click" AutomationProperties.Name="Reset LoRAs"/>
+                  <ToggleButton x:Name="LoraGroupToggle" Style="{StaticResource Disclosure}" Content="LoRAs" IsChecked="True" Margin="0" ToolTip="Small add-ons that teach the model a style, look or subject"/>
+                </DockPanel>
+                <StackPanel x:Name="LoraGroupBody" Visibility="{Binding IsChecked, ElementName=LoraGroupToggle, Converter={StaticResource BoolVis}}">
                 <StackPanel x:Name="LoraSection">
                   <DockPanel Margin="0,18,0,8">
                     <Button DockPanel.Dock="Right" Content="+ Add LoRA" Style="{StaticResource Ghost}" Padding="8,3" FontSize="11" Click="AddLoraRow_Click" ToolTip="Add another LoRA to use multiple LoRAs together" AutomationProperties.Name="Add LoRA"/>
@@ -564,6 +579,14 @@
                   </DockPanel>
                   <StackPanel x:Name="LoraRowsPanel"/>
                 </StackPanel>
+                </StackPanel>
+                <DockPanel x:Name="SamplingSectionHeader" Margin="0,18,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="24" Padding="8,0" FontSize="11" Content="Reset section" Tag="sampling"
+                          Click="ResetSection_Click" AutomationProperties.Name="Reset Sampling"/>
+                  <ToggleButton x:Name="SamplingSectionToggle" Style="{StaticResource Disclosure}" Content="Sampling" IsChecked="True" Margin="0" ToolTip="Prompt guidance (CFG), steps, sampler, scheduler and seed"/>
+                </DockPanel>
+                <StackPanel x:Name="SamplingSectionBody" Visibility="{Binding IsChecked, ElementName=SamplingSectionToggle, Converter={StaticResource BoolVis}}">
+
 
                 <StackPanel ToolTip="How strictly the picture follows your prompt. Low: freer and more natural. High: follows the words harder, but can look harsh or over-coloured. Picking a model sets a good value; fast models want 1 to 2.">
                   <DockPanel Margin="0,18,0,4">
@@ -610,9 +633,15 @@
                 <TextBox x:Name="SeedBox" Style="{StaticResource Input}" Height="36" Padding="10,0" VerticalContentAlignment="Center"
                          PreviewTextInput="Seed_PreviewTextInput" Tag="Seed number"/>
 
-                <TextBlock Text="Quality boosters" Style="{StaticResource Heading}" Margin="0,22,0,0"
-                           ToolTip="Extra steps that sharpen structure, fix faces or finish colours. Each one is only offered for models where it helps."/>
+                </StackPanel>
+                <DockPanel x:Name="BoostersSectionHeader" Margin="0,18,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="24" Padding="8,0" FontSize="11" Content="Reset section" Tag="boosters"
+                          Click="ResetSection_Click" AutomationProperties.Name="Reset Quality boosters"/>
+                  <ToggleButton x:Name="BoostersSectionToggle" Style="{StaticResource Disclosure}" Content="Quality boosters" IsChecked="True" Margin="0" ToolTip="Extra steps that sharpen structure, fix faces or finish colours, each only offered for models where it helps"/>
+                </DockPanel>
+                <StackPanel x:Name="BoostersSectionBody" Visibility="{Binding IsChecked, ElementName=BoostersSectionToggle, Converter={StaticResource BoolVis}}">
                 <StackPanel x:Name="BoostersPanel"/>
+                </StackPanel>
               </StackPanel>
             </StackPanel>
           </ScrollViewer>
