@@ -125,8 +125,7 @@ public partial class MainWindow
                 "anima" => ("Picture models", "anima", "Anime and illustration."),
                 _ => ("Other files", null, null),
             },
-            "text_encoders" or "vae" => ("Parts", Has("qwen3vl_8b") || Has("qwen_image_2.1") ? "qwen_image"
-                : Has("qwen3vl_4b") || Has("qwen_image_vae") ? "krea2" : Has("anima") || Has("qwen_3_06b") ? "anima" : Has("umt5") || Has("wan") ? "wan" : null, null),
+            "text_encoders" or "vae" => ("Parts", PartFamily(folder, file), null),
             "loras" => ("LoRA add-ons", LoraFamily(path), null),
             "upscale_models" => ("Tools", null, "Used by Upscale (2× and 4×)."),
             _ => ("Tools", null, "Used by Cut out (removes the background)."),

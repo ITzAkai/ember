@@ -26,6 +26,8 @@ public class ModelProfile
     public string Style { get; set; } = "none";
     public List<LoraItemSetting> Loras { get; set; } = new();
     public Boosters Boosters { get; set; }
+    public string TextEncoder { get; set; }         // null: the automatic choice for the family
+    public string Vae { get; set; }
     public bool Saved { get; set; }                 // false: only its boosters are set so far
 }
 
@@ -67,7 +69,6 @@ public partial class MainWindow
         loraRows.Clear();
         var usable = LorasForModel.ToHashSet();
         foreach (var l in p.Loras.Where(l => usable.Contains(l.Name))) CreateLoraRow(l.Name, l.Strength);
-        if (loraRows.Count == 0) CreateLoraRow("None", 0.8);
         UpdateLoraTitles();
         UpdateLoraChip();
     }

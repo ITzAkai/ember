@@ -29,6 +29,7 @@ public partial class App : Application
     // the light palette swaps the shared brushes' colours before any window uses them (a theme change needs a restart)
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Contains("--selftest")) { Shutdown(ImageForge.MainWindow.SelfTest()); return; }
         if (Settings.Load().Theme == "light")
             foreach (var (key, hex) in new[] {
                 ("Bg", "#F4F5F7"), ("Surface", "#FFFFFF"), ("Raised", "#F0F1F4"), ("Raised2", "#E3E6EB"), ("Field", "#FFFFFF"),
@@ -158,6 +159,7 @@ public class Shot : INotifyPropertyChanged
     public ImageSource Thumb { get; init; }
     public Meta Meta { get; init; }
     public bool Pending { get; init; }
+    public DateTime Made { get; init; } = DateTime.UtcNow;    // when this card was made from its file
     public string Caption => Meta?.Prompt ?? Path.GetFileName(FilePath);
     // from the file name ComfyUI was given: img_ (prompt), edit_ (edits, variations, expansions), up_ (upscales), cut_ (cut-outs), vid_ (a clip's poster)
     public string Kind => Path.GetFileName(FilePath ?? "") switch
@@ -348,10 +350,6 @@ public partial class MainWindow : Window
         else if (!string.IsNullOrEmpty(settings.Lora) && settings.Lora != "None")
         {
             CreateLoraRow(settings.Lora, settings.LoraStrength);
-        }
-        else
-        {
-            CreateLoraRow("None", 0.8);
         }
     }
 
@@ -614,16 +612,9 @@ public partial class MainWindow : Window
     void RemoveLoraRow(LoraRow row)
     {
         LoraRowsPanel.Children.Remove(row.Container);
-        loraRows.Remove(row);
-        if (loraRows.Count == 0)
-        {
-            CreateLoraRow("None", 0.8);
-        }
-        else
-        {
-            UpdateLoraTitles();
-            UpdateLoraChip();
-        }
+        loraRows.Remove(row);       // the last one too: no LoRAs is fine, and + Add LoRA brings a row back
+        UpdateLoraTitles();
+        UpdateLoraChip();
         if (ready) SaveSettings();
     }
 
@@ -826,13 +817,7 @@ public partial class MainWindow : Window
             var unets = ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/UNETLoader"))?["UNETLoader"]?["input"]?["required"]?["unet_name"]).ToList();
             var tes = ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/CLIPLoader"))?["CLIPLoader"]?["input"]?["required"]?["clip_name"]).ToList();
             var vaes = ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/VAELoader"))?["VAELoader"]?["input"]?["required"]?["vae_name"]).ToList();
-            qwenTe = tes.FirstOrDefault(n => n.Contains("qwen3vl_8b", StringComparison.OrdinalIgnoreCase));
-            qwenVae = vaes.FirstOrDefault(n => n.Contains("qwen_image_2.1", StringComparison.OrdinalIgnoreCase));
-            kreaTe = tes.FirstOrDefault(n => n.Contains("qwen3vl_4b", StringComparison.OrdinalIgnoreCase));
-            kreaVae = vaes.FirstOrDefault(n => n.Contains("qwen_image_vae", StringComparison.OrdinalIgnoreCase));      // Krea 2 and Anima share it
-            animaTe = tes.FirstOrDefault(n => n.Contains("anima", StringComparison.OrdinalIgnoreCase) || n.Contains("qwen_3_06b", StringComparison.OrdinalIgnoreCase));
-            wanTe = tes.FirstOrDefault(n => n.Contains("umt5", StringComparison.OrdinalIgnoreCase));
-            wanVae = vaes.FirstOrDefault(n => n.Contains("wan_2.1", StringComparison.OrdinalIgnoreCase) || n.Contains("wan2.1", StringComparison.OrdinalIgnoreCase));
+            FindParts(tes, vaes);      // by what's inside each file, not its name
             var videos = new List<string>();
             var ckpts = ComboOptions(ck["CheckpointLoaderSimple"]["input"]["required"]["ckpt_name"]).ToList();
             // plain SDXL base stays installed for the inpainting model, but every other model makes better pictures
@@ -1051,7 +1036,6 @@ public partial class MainWindow : Window
             LoraRowsPanel.Children.Clear();
             loraRows.Clear();
             foreach (var l in wanted.Where(l => modelLoras.Contains(l.Name))) CreateLoraRow(l.Name, l.Strength);
-            if (loraRows.Count == 0) CreateLoraRow("None", 0.8);
         }
         else
         {
@@ -1121,12 +1105,14 @@ public partial class MainWindow : Window
             ModelNote.Visibility = ModelNote.Text == "" ? Visibility.Collapsed : Visibility.Visible;
         }
         ShowBoosters();
+        ShowParts();
         if (loadingOptions || ModelBox.SelectedItem == null) { profileModel = ModelBox.SelectedItem as string ?? profileModel; return; }   // on startup keep the saved guidance and sampler
         var p = Preset;
         CfgSlider.Value = p.Cfg; SamplerBox.SelectedItem = p.Sampler; SchedulerBox.SelectedItem = p.Scheduler;
         StepsSlider.Value = StepsFor(Picked(QualityGroup));
         ArrivedAtModel();       // a model's own saved settings win over the recommendation
         ShowBoosters();
+        ShowParts();
         RefreshGuard();
         UpdateNegative();
     }
@@ -1164,7 +1150,7 @@ public partial class MainWindow : Window
         {
             var (te, vaeFile, type) = family switch
             {
-                "qwen_image" => (qwenTe, qwenVae, family), "anima" => (animaTe, kreaVae, "stable_diffusion"), _ => (kreaTe, kreaVae, family),   // Anima's loader type, per ComfyUI's template
+                "anima" => (TeFor(family), VaeFor(family), "stable_diffusion"), _ => (TeFor(family), VaeFor(family), family),   // Anima's loader type, per ComfyUI's template
             };
             g["4"] = Node("UNETLoader", new() { ["unet_name"] = separate[(string)ModelBox.SelectedItem].Unet, ["weight_dtype"] = "default" });
             g["44"] = Node("CLIPLoader", new() { ["clip_name"] = te, ["type"] = type });
@@ -1256,12 +1242,45 @@ public partial class MainWindow : Window
         catch { return null; }
     }
 
+    // --selftest: checks that need no ComfyUI; exit code 0 when they pass. A picture saved again under the same name
+    // must load as the new picture (ComfyUI reuses file names after deletes; WPF's image cache used to show the old one).
+    public static int SelfTest()
+    {
+        var file = Path.Combine(Path.GetTempPath(), "imageforge-selftest.png");
+        static void Save(string f, Color c)
+        {
+            var px = new byte[4 * 4 * 4];
+            for (int i = 0; i < px.Length; i += 4) { px[i] = c.B; px[i + 1] = c.G; px[i + 2] = c.R; px[i + 3] = 255; }
+            var enc = new PngBitmapEncoder();
+            enc.Frames.Add(BitmapFrame.Create(BitmapSource.Create(4, 4, 96, 96, PixelFormats.Bgra32, null, px, 16)));
+            using var s = File.Create(f);
+            enc.Save(s);
+        }
+        static Color First(BitmapSource b)
+        {
+            var px = new byte[4];
+            new FormatConvertedBitmap(b, PixelFormats.Bgra32, null, 0).CopyPixels(new Int32Rect(0, 0, 1, 1), px, 4, 0);
+            return Color.FromRgb(px[2], px[1], px[0]);
+        }
+        try
+        {
+            Save(file, Colors.Red);
+            var first = First(LoadImage(file, 0));
+            Save(file, Colors.Blue);
+            var second = First(LoadImage(file, 0));
+            return first == Colors.Red && second == Colors.Blue ? 0 : 1;
+        }
+        catch { return 2; }
+        finally { try { File.Delete(file); } catch { } }
+    }
+
     // decoded into memory (the file isn't locked) and frozen so it can cross threads
     static BitmapSource LoadImage(string path, int width)
     {
         var bi = new BitmapImage();
         bi.BeginInit();
         bi.CacheOption = BitmapCacheOption.OnLoad;
+        bi.CreateOptions = BitmapCreateOptions.IgnoreImageCache;     // ComfyUI reuses file names after deletes: never show a stale picture
         bi.UriSource = new Uri(path);
         if (width > 0) bi.DecodePixelWidth = width;
         bi.EndInit();
@@ -1715,7 +1734,7 @@ public partial class MainWindow : Window
     // phone photos store their rotation in EXIF instead of rotating the pixels
     static BitmapSource Oriented(string path)
     {
-        var frame = BitmapFrame.Create(new Uri(path), BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad);
+        var frame = BitmapFrame.Create(new Uri(path), BitmapCreateOptions.IgnoreColorProfile | BitmapCreateOptions.IgnoreImageCache, BitmapCacheOption.OnLoad);
         ushort o = 1;
         try { if (frame.Metadata is BitmapMetadata md && md.GetQuery("System.Photo.Orientation") is ushort v) o = v; } catch { }
         int angle = o switch { 3 => 180, 6 => 90, 8 => 270, _ => 0 };      // ponytail: mirrored orientations (2,4,5,7) are rare and ignored

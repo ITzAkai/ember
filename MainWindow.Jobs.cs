@@ -283,10 +283,16 @@ public partial class MainWindow
         }
     }
 
+    void ShowNewest() { GalleryScroll.ScrollToTop(); StripScroll.ScrollToLeftEnd(); }
+
     // a finished image takes the place of its job's next placeholder
     void Arrive(string path, Job job)
     {
-        if (shots.Any(s => s.FilePath == path)) return;     // cached result: already shown
+        if (shots.FirstOrDefault(s => s.FilePath == path) is { } same)
+        {
+            if (File.GetLastWriteTimeUtc(path) <= same.Made) return;     // a cached result ComfyUI reports again: already shown
+            shots.Remove(same);                                          // a new picture under a reused name (after deletes)
+        }
         if (job.Before != null)
             try { Directory.CreateDirectory(Path.GetDirectoryName(OriginalOf(path))); File.WriteAllBytes(OriginalOf(path), job.Before); }
             catch { /* before/after is a nicety */ }
@@ -298,8 +304,9 @@ public partial class MainWindow
             var slot = job.Slots[0];
             job.Slots.RemoveAt(0);
             int i = shots.IndexOf(slot);
-            if (i >= 0) { shots[i] = shot; return; }
+            if (i >= 0) { shots[i] = shot; ShowNewest(); return; }
         }
         shots.Insert(0, shot);
+        ShowNewest();
     }
 }

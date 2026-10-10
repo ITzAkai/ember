@@ -54,8 +54,8 @@ public partial class MainWindow
             var g = new JsonObject
             {
                 ["4"] = Node("UNETLoader", new() { ["unet_name"] = separate[model].Unet, ["weight_dtype"] = "default" }),
-                ["44"] = Node("CLIPLoader", new() { ["clip_name"] = wanTe, ["type"] = "wan" }),
-                ["45"] = Node("VAELoader", new() { ["vae_name"] = wanVae }),
+                ["44"] = Node("CLIPLoader", new() { ["clip_name"] = TeFor("wan"), ["type"] = "wan" }),
+                ["45"] = Node("VAELoader", new() { ["vae_name"] = VaeFor("wan") }),
                 ["46"] = Node("ModelSamplingSD3", new() { ["model"] = Link("4", 0), ["shift"] = 8.0 }),
             };
             JsonArray m = Link("46", 0), clip = Link("44", 0);
