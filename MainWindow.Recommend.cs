@@ -180,7 +180,15 @@ public partial class MainWindow
                 () => { SamplerBox.SelectedItem = r.Sampler; SchedulerBox.SelectedItem = r.Scheduler; }));
 
         var active = CurrentLoras();
-        foreach (var l in active.Where(l => l.Strength > r.LoraEach * 1.25))
+        foreach (var l in active)
+        {
+            if (loraInfo.GetValueOrDefault(l.Name)?.Strength is not { Length: > 0 } rec) continue;
+            if (l.Strength <= rec[^1] * 1.2 && l.Strength >= rec[0] * 0.6) continue;
+            issues.Add(new(LoraDot, l.Strength > rec[^1] * 1.8 ? 2 : 1,
+                $"{System.IO.Path.GetFileNameWithoutExtension(l.Name)} is at {l.Strength:0.##}; its page recommends {StrengthText(rec)}.",
+                () => SetLoraStrength(l.Name, RecommendedStrength(l.Name) ?? rec[0])));
+        }
+        foreach (var l in active.Where(l => l.Strength > r.LoraEach * 1.25 && loraInfo.GetValueOrDefault(l.Name)?.Strength is not { Length: > 0 }))
             issues.Add(new(LoraDot, l.Strength > r.LoraEach * 2 ? 2 : 1,
                 $"{System.IO.Path.GetFileNameWithoutExtension(l.Name)} at {l.Strength:0.##} is strong for one LoRA (up to {r.LoraEach:0.#} is usual): faces and hands can warp.",
                 () => SetLoraStrength(l.Name, r.LoraEach * 0.8)));

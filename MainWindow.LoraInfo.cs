@@ -14,7 +14,8 @@ using System.Windows.Controls;
 
 namespace ImageForge;
 
-public record LoraInfo(string Name, string Description, string[] Trigger, string Url, long Size, DateTime Modified);
+// Strength: the strength its page recommends (one value, or low and high), [] when it gives none, null when not looked for yet
+public record LoraInfo(string Name, string Description, string[] Trigger, string Url, long Size, DateTime Modified, double[] Strength = null);
 
 public partial class MainWindow
 {
@@ -37,7 +38,7 @@ public partial class MainWindow
                 var path = Path.Combine(ModelsDir, "loras", lora);
                 if (!File.Exists(path)) continue;
                 var fi = new FileInfo(path);
-                if (loraInfo.TryGetValue(lora, out var known) && known.Size == fi.Length && known.Modified == fi.LastWriteTimeUtc) continue;
+                if (loraInfo.TryGetValue(lora, out var known) && known.Size == fi.Length && known.Modified == fi.LastWriteTimeUtc && known.Strength != null) continue;
                 loraInfo[lora] = await LookUp(path, fi);
                 try { File.WriteAllText(LoraInfoFile, JsonSerializer.Serialize(loraInfo)); } catch { }
                 ShowLoraInfo();
@@ -61,12 +62,13 @@ public partial class MainWindow
                 var ver = JsonNode.Parse(await res.Content.ReadAsStringAsync());
                 var modelId = ver?["modelId"]?.ToString();
                 if (modelId == null) continue;
-                string about = null;
+                string about = null, verAbout = Plain(ver["description"]?.ToString());
                 try { about = Plain(JsonNode.Parse(await web.GetStringAsync($"https://{host}/api/v1/models/{modelId}"))?["description"]?.ToString()); } catch { }
-                about = Short(about ?? Plain(ver["description"]?.ToString()) ?? local.Description);
+                var strength = StrengthIn(verAbout) ?? StrengthIn(about) ?? [];
+                about = Short(about ?? verAbout ?? local.Description);
                 var trigger = (ver["trainedWords"] as JsonArray)?.Select(t => t?.ToString()?.Trim()).Where(t => !string.IsNullOrEmpty(t)).ToArray() ?? [];
                 return new LoraInfo(ver["model"]?["name"]?.ToString() ?? local.Name, about, trigger.Length > 0 ? trigger : local.Trigger,
-                    $"https://{host}/models/{modelId}", fi.Length, fi.LastWriteTimeUtc);
+                    $"https://{host}/models/{modelId}", fi.Length, fi.LastWriteTimeUtc, strength);
             }
         }
         catch { /* offline, or Civitai busy: the file's own notes will do */ }
@@ -98,7 +100,44 @@ public partial class MainWindow
             }
         }
         catch { }
-        return new LoraInfo(name, about, trigger, null, fi.Length, fi.LastWriteTimeUtc);
+        return new LoraInfo(name, about, trigger, null, fi.Length, fi.LastWriteTimeUtc, StrengthIn(about) ?? []);
+    }
+
+    // "weight 0.6-0.8", "strength: 0.7", "recommended scale 0.5 ~ 0.9", "<lora:x:0.75>": the strength an author recommends
+    static readonly Regex StrengthRange = new(@"\b(weight|strength|scale|multiplier)s?\b[^\d<\n]{0,30}?(?<![\w.])(\d(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d(?:\.\d+)?)(?!\w|\.\d)", RegexOptions.IgnoreCase);
+    static readonly Regex StrengthOne = new(@"\b(weight|strength|scale|multiplier)s?\b[^\d<\n]{0,30}?(?<![\w.])(\d(?:\.\d+)?)(?!\w|\.\d)|<lora:[^:>]+:(\d(?:\.\d+)?)>", RegexOptions.IgnoreCase);
+
+    static double[] StrengthIn(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return null;
+        static double N(string s) => double.Parse(s, System.Globalization.CultureInfo.InvariantCulture);
+        static bool Ok(double v) => v >= 0.05 && v <= 2;
+        foreach (Match m in StrengthRange.Matches(text))
+        {
+            double a = N(m.Groups[2].Value), b = N(m.Groups[3].Value);
+            if (Ok(a) && Ok(b) && a != b) return [Math.Min(a, b), Math.Max(a, b)];
+        }
+        foreach (Match m in StrengthOne.Matches(text))
+            if (N(m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value) is var v && Ok(v)) return [v];
+        return null;
+    }
+
+    // the middle of a LoRA's recommended strength, or null when its page gives none
+    double? RecommendedStrength(string lora) =>
+        lora != null && loraInfo.GetValueOrDefault(lora)?.Strength is { Length: > 0 } s ? Math.Round(s.Average(), 2) : null;
+
+    static string StrengthText(double[] s) => s.Length > 1 ? FormattableString.Invariant($"{s[0]:0.##}–{s[1]:0.##}") : FormattableString.Invariant($"{s[0]:0.##}");
+
+    static bool SelfTestStrength()
+    {
+        string Got(string t) => StrengthIn(t) is { } s ? StrengthText(s) : "none";
+        var cases = new (string Text, string Want)[]
+        {
+            ("Recommended weight: 0.6-0.8 for best results", "0.6–0.8"), ("Use strength 0.7. CFG 7", "0.7"), ("scale 0.5 ~ 0.9", "0.5–0.9"),
+            ("try <lora:mystyle:0.75> in the prompt", "0.75"), ("trained with 1girl weight 1girl", "none"), ("weight 10 steps, cfg 7", "none"),
+            ("Strength 1.0 to 1.2", "1–1.2"), ("strength: Krea2 base", "none"), ("Trained on 40 pictures", "none"),
+        };
+        return cases.All(c => Got(c.Text) == c.Want);
     }
 
     static string Plain(string html)
@@ -132,6 +171,7 @@ public partial class MainWindow
         if (problem != null) parts.Add(problem);
         r.Info.Foreground = Brush(problem != null ? "Danger" : "Muted");
         if (r.FixBtn != null) r.FixBtn.Visibility = problem != null && r.Box.SelectedItem is string pf && HasPeftKeys(Path.Combine(ModelsDir, "loras", pf)) ? Visibility.Visible : Visibility.Collapsed;
+        if (info?.Strength is { Length: > 0 } s) parts.Add($"Its page recommends strength {StrengthText(s)}.");
         if (info?.Trigger is { Length: > 0 } t) parts.Add("Trigger words: " + string.Join(", ", t));
         if (info?.Description is string d) parts.Add(d);
         r.Info.Text = string.Join("\n", parts);

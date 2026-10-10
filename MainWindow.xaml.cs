@@ -603,7 +603,11 @@ public partial class MainWindow : Window
         };
         System.Windows.Automation.AutomationProperties.SetName(fixBtn, "Convert LoRA for ComfyUI");
         fixBtn.Click += (_, _) => _ = ConvertLoraRow(row);
-        combo.SelectionChanged += (_, _) => ShowLoraInfo(row);
+        combo.SelectionChanged += (_, _) =>
+        {
+            ShowLoraInfo(row);
+            if (RecommendedStrength(combo.SelectedItem as string) is double rs) slider.Value = rs;   // a fresh pick starts at what its page recommends
+        };
 
         sp.Children.Add(topDock);
         sp.Children.Add(combo);
@@ -1317,7 +1321,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8);
         }
         catch { return 2; }
         finally { try { File.Delete(file); } catch { } }
