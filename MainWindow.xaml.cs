@@ -81,7 +81,10 @@ public class Settings
     public string ComfyDir { get; set; } = "";
     public bool FastStart { get; set; } = true;                  // ComfyUI loads only the recommended plugins Image Forge uses
     public bool HidePluginBanner { get; set; }
-    public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // Phase 4 moves these into per-model profiles                   // the ComfyUI portable folder, when the exe doesn't sit in one
+    public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // before per-model profiles: the starting point for models without one
+    public Dictionary<string, ModelProfile> Profiles { get; set; } = new();        // each model's own settings
+    public List<ModelProfile> Tabs { get; set; } = new();
+    public string ActiveTab { get; set; }                   // the ComfyUI portable folder, when the exe doesn't sit in one
 
     static readonly string File = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ImageForge", "settings.json");
     public static string FilePath => File;
@@ -220,6 +223,7 @@ public partial class MainWindow : Window
         shots.CollectionChanged += (_, _) => UpdateCount();
         BuildStyleTiles();
         ApplySettings();
+        ShowTabs();
         AllView.IsChecked = true;
         CreateMode.IsChecked = true;
         BrushTool.IsChecked = true;
@@ -352,6 +356,8 @@ public partial class MainWindow : Window
 
     void SaveSettings()
     {
+        if (profileModel != null && !loadingOptions && ModelBox.SelectedItem as string == profileModel) Capture(ProfileOf(profileModel));
+        SaveActiveTab();
         var size = Picked(SizeGroup).Split('x');
         settings.Prompt = PromptBox.Text; settings.Negative = NegativeBox.Text;
         settings.Width = int.Parse(size[0]); settings.Height = int.Parse(size[1]);
@@ -1081,6 +1087,7 @@ public partial class MainWindow : Window
 
     void Model_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        LeavingModel();
         foreach (var r in QualityGroup.Children.OfType<RadioButton>())
             ((TextBlock)((StackPanel)r.Content).Children[1]).Text = $"{StepsFor((string)r.Tag)} steps";
         if (LoraSection != null) { LoraSection.IsEnabled = !Flux; FillLoras(); }
@@ -1098,9 +1105,11 @@ public partial class MainWindow : Window
             ModelNote.Visibility = ModelNote.Text == "" ? Visibility.Collapsed : Visibility.Visible;
         }
         ShowBoosters();
-        if (loadingOptions || ModelBox.SelectedItem == null) return;      // on startup keep the saved guidance and sampler
+        if (loadingOptions || ModelBox.SelectedItem == null) { profileModel = ModelBox.SelectedItem as string ?? profileModel; return; }   // on startup keep the saved guidance and sampler
         var p = Preset;
         CfgSlider.Value = p.Cfg; SamplerBox.SelectedItem = p.Sampler; SchedulerBox.SelectedItem = p.Scheduler;
+        ArrivedAtModel();       // a model's own saved settings win over the recommendation
+        ShowBoosters();
         RefreshGuard();
     }
 
@@ -1383,6 +1392,7 @@ public partial class MainWindow : Window
         CountSection.Visibility = video ? Visibility.Collapsed : Visibility.Visible;
         EditorPanel.Visibility = PhotoSection.Visibility = StrengthSection.Visibility = edit ? Visibility.Visible : Visibility.Collapsed;
         PromptHeading.Text = edit ? "Describe the result" : video ? "Describe the video" : "Prompt";
+        TabsBar.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
         PromptBox.Tag = edit ? "e.g. the same scene in winter, snow on the roofs, golden hour"
             : video ? "e.g. a fox running through snowy woods, the camera following it" : "Describe the image: subject, style, lighting, mood…";
         GenerateText.Text = edit ? "Apply edit" : video ? "Make video" : "Generate";

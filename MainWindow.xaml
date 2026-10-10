@@ -215,6 +215,8 @@
           </Grid.RowDefinitions>
           <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="22,20,22,18">
+              <!-- model tabs: a model plus all its settings, one click away -->
+              <WrapPanel x:Name="TabsBar" Margin="0,0,0,10"/>
               <Border Style="{StaticResource SegmentHost}" Margin="0,0,0,22">
                 <UniformGrid Rows="1">
                   <RadioButton x:Name="CreateMode" AutomationProperties.Name="Create" Style="{StaticResource Segment}" GroupName="mode" Checked="Mode_Checked">

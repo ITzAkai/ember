@@ -29,14 +29,10 @@ public class Boosters
 
 public partial class MainWindow
 {
-    Boosters CurrentBoosters
-    {
-        get
-        {
-            if (!settings.BoostersByFamily.TryGetValue(ModelFamily, out var b)) settings.BoostersByFamily[ModelFamily] = b = new Boosters();
-            return b;
-        }
-    }
+    // each model's own, starting from its family's older shared values the first time
+    Boosters CurrentBoosters => ModelBox.SelectedItem is string m
+        ? ProfileOf(m).Boosters ??= Clone(settings.BoostersByFamily.GetValueOrDefault(ModelFamily)) ?? new Boosters()
+        : new Boosters();
 
     static readonly Dictionary<string, bool> vpredCache = new();
     // NoobAI-style v-prediction checkpoints carry a "v_pred" marker tensor; ComfyUI reads the same key
