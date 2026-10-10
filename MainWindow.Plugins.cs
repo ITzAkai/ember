@@ -273,10 +273,15 @@ public partial class MainWindow
     async Task InstallPlugins(List<Plugin> list, bool manager, string replace = null)
     {
         if (installingPlugins || (list.Count == 0 && !manager)) return;
+        // ComfyUI is running but this window didn't start it (kept running from last time, left over after a crash, or opened from
+        // ComfyUI's own .bat): plugins only install while it's stopped, so offer to stop and restart it when it's this install's ComfyUI
         if (server == null && await Alive())
         {
-            PluginProgress("Close the ComfyUI window that's running first: plugins can only be installed while ComfyUI is stopped.");
-            return;
+            var other = await ComfyOnPort();
+            if (other == null) { PluginProgress($"Another program is using ComfyUI's port ({Port}). Close it, then install again."); return; }
+            if (MessageBox.Show(this, "ComfyUI is already running (left running from before, or opened outside Image Forge).\n\nStop it, install the plugins and start it again?",
+                    "Install plugins", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+            server = other;         // from here on it's stopped and restarted like the one this window starts
         }
         installingPlugins = true;
         ShowPluginBanner();
@@ -350,6 +355,19 @@ public partial class MainWindow
             "--disable-pip-version-check", "--no-warn-script-location"]);
         File.WriteAllText(Path.Combine(Root, "plugins_install.log"), r.Output);
         if (r.ExitCode != 0) throw new Exception("pip couldn't install their Python packages; details in plugins_install.log in the ComfyUI folder.");
+    }
+
+    // the process listening on ComfyUI's port, if it runs this install's Python (so it is this install's ComfyUI)
+    async Task<Process> ComfyOnPort()
+    {
+        try
+        {
+            var m = Regex.Match((await Run("netstat", ["-ano", "-p", "TCP"])).Output, $@"(?m)^\s*TCP\s+\S+:{Port}\s+\S+\s+LISTENING\s+(\d+)");
+            if (!m.Success) return null;
+            var p = Process.GetProcessById(int.Parse(m.Groups[1].Value));
+            return string.Equals(Path.GetFullPath(p.MainModule.FileName), Path.GetFullPath(Python), StringComparison.OrdinalIgnoreCase) ? p : null;
+        }
+        catch { return null; }
     }
 
     static async Task<(int ExitCode, string Output)> Run(string exe, string[] args)
