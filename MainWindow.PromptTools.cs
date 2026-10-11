@@ -148,6 +148,12 @@ public partial class MainWindow
         else if (ctrl && (e.Key == Key.OemPlus || e.Key == Key.Add)) { PromptSize(+1); e.Handled = true; }
         else if (ctrl && (e.Key == Key.OemMinus || e.Key == Key.Subtract)) { PromptSize(-1); e.Handled = true; }
         else if (e.Key == Key.Escape && FindPopup.IsOpen) { CloseFind(); e.Handled = true; }
+        // a copied picture (no text alongside it) pasted into the prompt box is described, like one dropped on it
+        else if (ctrl && e.Key == Key.V && box == PromptBox && !Clipboard.ContainsText() && (Clipboard.ContainsImage() || Clipboard.ContainsFileDropList()))
+        {
+            e.Handled = true;
+            _ = DescribeClipboard();
+        }
     }
 
     // ---------------- text size ----------------

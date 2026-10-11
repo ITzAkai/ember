@@ -1851,18 +1851,25 @@ public partial class MainWindow : Window
     // one screen pixel, in photo pixels: keeps outlines and handles the same size at any zoom
     double ScreenPixel() => 1 / Math.Max(0.01, EditorCanvas.TransformToAncestor(this).TransformBounds(new Rect(0, 0, 1, 1)).Width);
 
-    // Ctrl+V: a copied file from Explorer, a browser's PNG, or a plain bitmap (screenshots)
+    // a copied file from Explorer, a browser's PNG, or a plain bitmap (screenshots); null when there's no picture
+    static (BitmapSource Image, string Name)? ClipboardPicture()
+    {
+        if (Clipboard.ContainsFileDropList() && Clipboard.GetFileDropList().Cast<string>().FirstOrDefault(f => File.Exists(f)) is string file)
+            return (Oriented(file), Path.GetFileName(file));
+        if (Clipboard.GetData("PNG") is MemoryStream png)
+            return (BitmapFrame.Create(png, BitmapCreateOptions.None, BitmapCacheOption.OnLoad), "Pasted image");
+        if (Clipboard.ContainsImage())
+            return (new FormatConvertedBitmap(Clipboard.GetImage(), PixelFormats.Bgr32, null, 0), "Pasted image");   // Bgr32: bitmaps often arrive with an empty alpha channel
+        return null;
+    }
+
+    // Ctrl+V outside a text box: the copied picture becomes the photo to edit
     bool PastePhoto()
     {
         try
         {
-            if (Clipboard.ContainsFileDropList() && Clipboard.GetFileDropList().Cast<string>().FirstOrDefault(f => File.Exists(f)) is string file)
-                LoadPhoto(file);
-            else if (Clipboard.GetData("PNG") is MemoryStream png)
-                ShowPhoto(BitmapFrame.Create(png, BitmapCreateOptions.None, BitmapCacheOption.OnLoad), "Pasted image");
-            else if (Clipboard.ContainsImage())
-                ShowPhoto(new FormatConvertedBitmap(Clipboard.GetImage(), PixelFormats.Bgr32, null, 0), "Pasted image");   // Bgr32: bitmaps often arrive with an empty alpha channel
-            else return false;
+            if (ClipboardPicture() is not { } p) return false;
+            ShowPhoto(p.Image, p.Name);
         }
         catch (Exception ex) { Note("Couldn't paste that: " + ex.Message, true); }
         return true;
@@ -2117,10 +2124,6 @@ public partial class MainWindow : Window
     const string EditResultSystem = Private + "An AI image generator will repaint the given photo from a text prompt. Look at the photo and the user's " +
         "requested change, and write the prompt for the picture as it should look afterwards: keep the photo's subject, pose, composition, setting and style, " +
         "and apply the change. " + KeepAsked + "Write one paragraph of 40 to 80 words. Reply with the prompt only.";
-    const string DescribeSystem = Private + "Look at the picture and write a prompt an AI image generator could use to recreate it: the subject, their " +
-        "appearance, clothing, pose and expression, the setting, lighting, colours, composition, and the style or medium (photo, painting, anime…), with " +
-        "camera and lens details if it is a photo. Describe exactly what you see, plainly, including any nudity. Write one paragraph of 50 to 90 words. " +
-        "Reply with the prompt only.";
 
     // ponytail: word lists, so they can be fooled by spelling; they only ever block, never write anything
     static readonly Regex MinorWords = new(@"\b(child|children|kids?|minors?|underage|under-age|teens?|teenage|teenagers?|pre-?teens?|tweens?|loli(s|con)?|shota(con)?|" +
@@ -2135,6 +2138,7 @@ public partial class MainWindow : Window
     static bool SelfTestMinorBlock() =>
         new[] { "nude teen girl", "sexy 16 year old", "naked schoolgirl", "loli lingerie", "explicit photo of a 15yo" }.All(SexualWithMinor)
         && !new[] { "a teen reading a book in a cafe", "nude woman on a beach", "two adults dancing in a park" }.Any(SexualWithMinor);
+
     static readonly Regex Declined = new(@"^\W*(sorry|i'?m sorry|i am sorry|i can(no|')t|i'?m unable|i am unable|as an ai)", RegexOptions.IgnoreCase);
     const string MinorNote = "Image Forge won't make sexual content involving anyone under 18.";
 
@@ -2166,28 +2170,49 @@ public partial class MainWindow : Window
     {
         BitmapSource img;
         try { img = LoadImage(path, 0); } catch { Note("Couldn't open that picture.", true); return; }
+        await Describe(img);
+    }
+
+    // the Paste image button, or Ctrl+V of a picture in the prompt box
+    async Task DescribeClipboard()
+    {
+        BitmapSource img;
+        try { img = ClipboardPicture()?.Image; } catch (Exception ex) { Note("Couldn't paste that: " + ex.Message, true); return; }
+        if (img == null) { Note("Copy a picture first: right-click one in your browser and pick Copy image, or take a screenshot.", true); return; }
+        await Describe(img);
+    }
+
+    async void DescribePaste_Click(object sender, RoutedEventArgs e) => await DescribeClipboard();
+
+    async Task Describe(BitmapSource img)
+    {
+        double aspect = (double)img.PixelWidth / img.PixelHeight;
         double scale = Math.Min(1, 1024.0 / Math.Max(img.PixelWidth, img.PixelHeight));      // plenty for the model, and quicker
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
-        var text = await AskTextModel("Write the prompt for this picture.", DescribeSystem, PngOf(img), "Looking at the picture…");
+        var text = await AskTextModel("Write the prompt for this picture.", DescribeSystemFor(), PngOf(img), "Looking at the picture…", maxTokens: 400);
         if (text == null) return;
         if (PromptBox.Text.Trim() is { Length: > 0 } old) Remember(old);
         PromptBox.Text = text;
         Pick(StyleGroup, "none", "none");           // the description already says photo, painting or anime
+        // the preset closest in shape to the picture, so the recreation is framed the same way (a custom size is left alone)
+        if (CustomSizeBox.IsChecked != true)
+            Pick(SizeGroup, SizeGroup.Children.OfType<RadioButton>().Select(r => (string)r.Tag)
+                .MinBy(t => { var p = t.Split('x'); return Math.Abs(Math.Log(double.Parse(p[0]) / double.Parse(p[1]) / aspect)); }), "1024x1024");
         SaveSettings();
-        Note("Prompt written from the picture. Your previous prompt is in Recent prompts (clock button).");
+        Note("Prompt written from the picture, and the size set to match its shape. Your previous prompt is in Recent prompts (clock button).");
     }
 
     bool writing;       // one request to the text model at a time
 
     // ComfyUI's TextGenerate with Qwen3-VL 8B, looking at a picture too when given one.
     // Returns the checked answer, or null after saying why not.
-    async Task<string> AskTextModel(string prompt, string system, byte[] png, string waiting)
+    async Task<string> AskTextModel(string prompt, string system, byte[] png, string waiting, int maxTokens = 200)
     {
         // a chosen Ollama model handles text-only requests; anything with a picture needs Qwen3-VL's eyes
         if (png == null && settings.HelperModel?.StartsWith("Ollama: ") == true && !writing)
         {
             writing = true;
-            EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = false;
+            EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = DescribePasteBtn.IsEnabled = false;
             Note(waiting);
             try
             {
@@ -2198,19 +2223,19 @@ public partial class MainWindow : Window
                 return answer;
             }
             catch (Exception ex) { Note("Ollama couldn't write it (" + ex.Message + "). Is Ollama still running?", true); return null; }
-            finally { writing = false; EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = true; }
+            finally { writing = false; EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = DescribePasteBtn.IsEnabled = true; }
         }
         if (!ready || qwenTe == null) { Note("This needs ComfyUI running and the Qwen-Image 2.1 text encoder.", true); return null; }
         if (writing) return null;
         writing = true;
-        EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = false;
+        EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = DescribePasteBtn.IsEnabled = false;
         Note(waiting + " The first time takes about 30 s.");
         string local = null;
         try
         {
             var gen = new JsonObject
             {
-                ["clip"] = Link("1", 0), ["prompt"] = prompt, ["max_length"] = 200, ["system_prompt"] = system,
+                ["clip"] = Link("1", 0), ["prompt"] = prompt, ["max_length"] = maxTokens, ["system_prompt"] = system,
                 ["sampling_mode"] = "on", ["sampling_mode.temperature"] = 0.7, ["sampling_mode.top_k"] = 64, ["sampling_mode.top_p"] = 0.95,
                 ["sampling_mode.min_p"] = 0.05, ["sampling_mode.repetition_penalty"] = 1.05, ["sampling_mode.seed"] = Random.Shared.NextInt64(1L << 48),
             };
@@ -2253,7 +2278,7 @@ public partial class MainWindow : Window
         {
             if (local != null) try { File.Delete(local); } catch { }
             writing = false;
-            EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = true;
+            EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = DescribePasteBtn.IsEnabled = true;
         }
     }
 

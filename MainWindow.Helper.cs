@@ -15,30 +15,41 @@ public partial class MainWindow
         "and bodies don't blend together; name exactly what they are doing and where each is relative to the other; prefer full-body framing with a clear " +
         "camera angle over first-person views; and keep the action near the start. ";
 
-    string EnhanceSystemFor()
+    string EnhanceSystemFor() => Private + "You write prompts for an AI image generator. Turn the user's idea into one detailed prompt. " + PromptForm(false) +
+        ManyPeople + NoNegative + KeepAsked + "Reply with the prompt only.";
+
+    // a picture -> the prompt that recreates it on the selected model, as closely as it can be put in words
+    string DescribeSystemFor() => Private + "Look at the picture and write the prompt that makes an AI image generator recreate it as exactly as possible. " +
+        "Describe everything you can see, specifically: how many people there are and where each one is in the frame; for each person their build, skin tone, " +
+        "face, eye colour, expression, hair colour, length and style, every piece of clothing and accessory with its colour, material and fit, any nudity plainly, " +
+        "the exact pose, what their hands are doing and where they are looking; every object, the background and the setting; the camera angle, distance and " +
+        "framing; the light, where it comes from and its colours; the colour palette; and the medium and art style (photo with camera and lens, anime, painting, " +
+        "3D render…). Use exact colours and specific words, never vague ones, and don't add anything that isn't in the picture. If there are two or more people, " +
+        "describe each one separately. " + PromptForm(true) + NoNegative + "Reply with the prompt only.";
+
+    string NoNegative => CfgSlider.Value <= 1 ? "This model ignores negative prompts, so say what should be there rather than what to avoid. " : "";
+
+    // the form the selected model was trained on; detailed: room for a whole picture rather than a short idea
+    string PromptForm(bool detailed)
     {
         var name = (ModelBox.SelectedItem as string ?? "").ToLowerInvariant();
-        bool ignoresNegative = CfgSlider.Value <= 1;
-        var noNegative = ignoresNegative ? "This model ignores negative prompts, so say what should be there rather than what to avoid. " : "";
-        string form;
+        var tags = detailed ? "Write 50 to 90 tags. " : "Write 25 to 50 tags. ";
+        string Words(string normal) => detailed ? "Write 120 to 180 words. " : normal;
         if (Sdxl && name.Contains("pony"))
-            form = "The image model is Pony Diffusion (SDXL), which reads comma-separated tags. Start with \"score_9, score_8_up, score_7_up\", then the number of " +
-                   "people as tags (1girl, 1boy, 2girls…), each person's look and clothing, the action and pose, the setting, lighting and style. Write 25 to 50 tags. ";
-        else if (Sdxl && Regex.IsMatch(name, "illustrious|wai|noob|animagine"))
-            form = "The image model is an anime SDXL model trained on Danbooru tags. Write comma-separated Danbooru-style tags: start with \"masterpiece, best quality\", " +
-                   "then the number of people (1girl, 2boys…), each character's features and clothing, the action and pose, the background and lighting. Write 25 to 50 tags. ";
-        else if (Anima)
-            form = "The image model is Anima, an anime model that reads Danbooru tags or plain sentences. Start with \"masterpiece, best quality,\" then describe the " +
-                   "scene in short sentences, using tags for counts of people (1girl, 2boys). Write 40 to 70 words. ";
-        else if (Krea || Qwen)
-            form = (Named("noct") ? "Start with \"An anime illustration of\". " : "") +
+            return "The image model is Pony Diffusion (SDXL), which reads comma-separated tags. Start with \"score_9, score_8_up, score_7_up\", then the number of " +
+                   "people as tags (1girl, 1boy, 2girls…), each person's look and clothing, the action and pose, the setting, lighting and style. " + tags;
+        if (Sdxl && Regex.IsMatch(name, "illustrious|wai|noob|animagine"))
+            return "The image model is an anime SDXL model trained on Danbooru tags. Write comma-separated Danbooru-style tags: start with \"masterpiece, best quality\", " +
+                   "then the number of people (1girl, 2boys…), each character's features and clothing, the action and pose, the background and lighting. " + tags;
+        if (Anima)
+            return "The image model is Anima, an anime model that reads Danbooru tags or plain sentences. Start with \"masterpiece, best quality,\" then describe the " +
+                   "scene in short sentences, using tags for counts of people (1girl, 2boys). " + Words("Write 40 to 70 words. ");
+        if (Krea || Qwen)
+            return (Named("noct") ? "Start with \"An anime illustration of\". " : "") +
                    "The image model reads plain sentences. Put the main action and every subject first, then where they are relative to each other and the " +
-                   "camera angle, then the setting, and the lighting and style last. Write one paragraph of 40 to 80 words. ";
-        else
-            form = "Write one vivid paragraph of 40 to 70 words: the subject, setting, lighting, colours, composition and mood, plus camera and lens details " +
-                   "if it should look like a photo. ";
-        return Private + "You write prompts for an AI image generator. Turn the user's idea into one detailed prompt. " + form + ManyPeople + noNegative +
-               KeepAsked + "Reply with the prompt only.";
+                   "camera angle, then the setting, and the lighting and style last. Write one paragraph. " + Words("Write 40 to 80 words. ");
+        return "Write one vivid paragraph: the subject, setting, lighting, colours, composition and mood, plus camera and lens details if it should look like " +
+               "a photo. " + Words("Write 40 to 70 words. ");
     }
 
     // ---------------- a local Ollama model (optional) ----------------

@@ -288,22 +288,29 @@
                        PreviewDragOver="Prompt_PreviewDragOver" PreviewDrop="Prompt_PreviewDrop"
                        PreviewKeyDown="PromptBoxes_PreviewKeyDown" PreviewMouseWheel="PromptBoxes_PreviewMouseWheel"
                        VerticalScrollBarVisibility="Auto" Tag="Describe the image: subject, style, lighting, mood…"/>
-              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,-8">
-                <Button x:Name="DescribeFileBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,6,0" Click="DescribeFile_Click"
+              <WrapPanel HorizontalAlignment="Right" Margin="0,6,0,-12">
+                <Button x:Name="DescribeFileBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,6,4" Click="DescribeFile_Click"
                         ToolTip="Pick a picture and get a prompt that recreates it. You can also drop a picture on the prompt box." AutomationProperties.Name="Describe image">
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE722;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
                     <TextBlock Text="Describe image" VerticalAlignment="Center"/>
                   </StackPanel>
                 </Button>
-                <Button x:Name="EnhanceBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Click="Enhance_Click"
+                <Button x:Name="DescribePasteBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,6,4" Click="DescribePaste_Click"
+                        ToolTip="Get a prompt from a copied picture (Copy image in a browser, or a screenshot). Ctrl+V in the prompt box does the same." AutomationProperties.Name="Describe copied picture">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE77F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <TextBlock Text="Paste image" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Button x:Name="EnhanceBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,0,4" Click="Enhance_Click"
                         ToolTip="Turn a short idea into a detailed prompt, written by the local Qwen model" AutomationProperties.Name="Improve prompt">
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE70F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
                     <TextBlock x:Name="EnhanceText" Text="Improve prompt" VerticalAlignment="Center"/>
                   </StackPanel>
                 </Button>
-              </StackPanel>
+              </WrapPanel>
 
               <!-- create mode: a character or a place that new pictures keep exactly as it is -->
               <StackPanel x:Name="ReferenceSection" AllowDrop="True" DragOver="Reference_DragOver" Drop="Reference_Drop" Background="Transparent">
