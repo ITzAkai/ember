@@ -29,7 +29,8 @@ public partial class App : Application
     // the light palette swaps the shared brushes' colours before any window uses them (a theme change needs a restart)
     protected override void OnStartup(StartupEventArgs e)
     {
-        if (e.Args.Contains("--selftest")) { Shutdown(ImageForge.MainWindow.SelfTest()); return; }
+        // no window for a self-test: after Shutdown, StartupUri would still open one (loading and saving settings, starting ComfyUI)
+        if (e.Args.Contains("--selftest")) Environment.Exit(ImageForge.MainWindow.SelfTest());
         if (Settings.Load().Theme == "light")
             foreach (var (key, hex) in new[] {
                 ("Bg", "#F4F5F7"), ("Surface", "#FFFFFF"), ("Raised", "#F0F1F4"), ("Raised2", "#E3E6EB"), ("Field", "#FFFFFF"),
@@ -89,6 +90,7 @@ public class Settings
     public bool HidePluginBanner { get; set; }
     public double PromptTextSize { get; set; } = 14.5;
     public string HelperModel { get; set; } = "";
+    public double ReferenceStyle { get; set; } = 0.35;     // how much a non-Qwen model redraws a reference picture
     public bool CkAttention { get; set; }
     public bool Fp16Accumulation { get; set; }
     public double ReserveVram { get; set; }
@@ -1243,6 +1245,7 @@ public partial class MainWindow : Window
         ShowParts();
         RefreshGuard();
         UpdateNegative();
+        ShowRefStyle();
     }
 
     static void Fill(ComboBox box, IEnumerable<string> list, string saved, string prefer)

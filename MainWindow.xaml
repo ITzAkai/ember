@@ -323,7 +323,15 @@
                   </StackPanel>
                 </Button>
                 <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"
-                           Text="Drop up to 3 pictures here. New pictures keep the same face or place: just say what happens, e.g. &quot;she is reading in a café&quot;. Uses Qwen-Image 2.1."/>
+                           Text="Drop up to 3 pictures here. New pictures keep the same face or place: just say what happens, e.g. &quot;she is reading in a café&quot;. Qwen-Image 2.1 keeps them; any other model then redraws the picture in its own style."/>
+                <StackPanel x:Name="RefStylePanel" Visibility="Collapsed" Margin="0,10,0,0">
+                  <DockPanel>
+                    <TextBlock x:Name="RefStyleValue" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
+                    <TextBlock x:Name="RefStyleLabel" Style="{StaticResource Note}" TextWrapping="Wrap"/>
+                  </DockPanel>
+                  <Slider x:Name="RefStyleSlider" Minimum="0.2" Maximum="0.6" TickFrequency="0.05" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"
+                          ValueChanged="RefStyle_Changed" AutomationProperties.Name="Reference style strength"/>
+                </StackPanel>
               </StackPanel>
 
               <DockPanel Margin="0,18,0,8">
