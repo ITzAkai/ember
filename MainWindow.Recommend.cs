@@ -28,7 +28,7 @@ public partial class MainWindow
 {
     const string RecommendationsJson = """
     {
-      "version": 4,
+      "version": 5,
       "families": {
         "sdxl": { "maxMp": 1.2, "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.6, "badScheduler": null,
@@ -88,7 +88,9 @@ public partial class MainWindow
         { "match": "turbo", "family": "anima", "label": "Anima Turbo", "steps": [8, 10, 12], "stepsRange": [8, 12], "cfg": 1, "cfgRange": [1, 1], "negative": false,
           "why": "Anima Turbo: 8 to 12 steps at CFG 1." },
         { "match": "aesthetic", "family": "anima", "label": "Anima Aesthetic", "cfg": 3.5, "cfgRange": [3, 5],
-          "why": "Anima Aesthetic: CFG 3.5; leave score_ tags out of both prompts." }
+          "why": "Anima Aesthetic: CFG 3.5. Quality tags are optional: it was trained only on high-quality pictures." },
+        { "match": "nova ?anime ?am", "family": "anima", "label": "Nova Anime AM", "sampler": "euler_ancestral", "scheduler": "normal", "steps": [20, 28, 30], "stepsRange": [20, 32],
+          "cfg": 5, "cfgRange": [4, 6], "why": "Nova Anime AM (an Anima 2.9B merge): Euler a, 20 to 30 steps, CFG 4 to 6, from its author." }
       ]
     }
     """;

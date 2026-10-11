@@ -68,8 +68,12 @@ public partial class MainWindow
     {
         var b = CurrentBoosters;
         if (!Sdxl || VideoOn) return (false, false, $"Off: PAG only changes SDXL-type models. On {FamilyLabelNow} it does nothing but still doubles the time.");
-        bool on = b.Pag ?? true;        // calibrated (docs/calibration/sdxl.jpg): cleaner bodies and composition, about 40 % longer
-        return (true, on, on ? "Cleaner bodies and composition. Each picture takes about 40 % longer; too strong looks harsh." : "Off. On SDXL it gives cleaner bodies and composition, for about 40 % more time.");
+        // calibrated: on SDXL base it gave cleaner bodies and composition (docs/calibration/sdxl.jpg); on WAI-illustrious it added
+        // mistakes (an extra shield, a floating cup) without a clear gain, so Illustrious-type models start without it
+        bool anime = ModelRec.Label is "Illustrious" or "NoobAI";
+        bool on = b.Pag ?? !anime;
+        return (true, on, on ? "Cleaner bodies and composition. Each picture takes about 40 % longer; too strong looks harsh."
+            : anime ? "Off by default on Illustrious models: in testing it added mistakes without a clear gain." : "Off. On SDXL it gives cleaner bodies and composition, for about 40 % more time.");
     }
 
     (bool Can, bool On, string Why) RescaleState()

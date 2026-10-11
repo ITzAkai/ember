@@ -4,7 +4,7 @@ saved as labelled contact sheets for review. Mirrors Image Forge's own graphs. R
   python_embeded\\python.exe tools\\calibrate.py --api http://127.0.0.1:8190 --comfy "<ComfyUI folder>" --out docs\\calibration [--only krea2,anima]
 
 Pauses while a game (Steam or Unreal) is in the foreground, so it can run in the background."""
-import argparse, ctypes, json, os, time, urllib.request
+import argparse, ctypes, json, os, re, time, urllib.request
 from PIL import Image, ImageDraw
 
 PROMPTS = [
@@ -17,6 +17,16 @@ PROMPTS = [
     ("objects", "a red cup on the left, a blue book on the right, a cat under the table, product photo"),
 ]
 FACES = ["dance", "yoga", "sofa", "sun"]
+# anime prompts for comparing anime models (adult characters; "safe"/"general" and a negative keep the sheets safe for work)
+ANIME_PROMPTS = [
+    ("portrait", "1girl, adult woman, mature female, long silver hair, golden eyes, black coat, city street at night, neon lights, upper body, looking at viewer"),
+    ("action", "1boy, adult man, samurai, katana, dynamic pose, slashing, cherry blossoms, motion blur, full body"),
+    ("cafe", "2people, adult man and adult woman, sitting at a cafe table, laughing, warm light, upper body"),
+    ("teacup", "adult woman, hands holding a teacup, close-up of hands, detailed fingers, soft window light"),
+    ("castle", "scenery, fantasy castle on a cliff, waterfall, sunset clouds, no humans, wide shot"),
+    ("knight", "1girl, adult woman, knight in silver armor, holding a shield, standing, full body, castle courtyard"),
+]
+ANIME = [p for p, _ in ANIME_PROMPTS]
 
 # family: files, loader type, base settings, and the sweep (label -> overrides)
 FAMILIES = {
@@ -40,6 +50,17 @@ FAMILIES = {
     "fineporn": dict(unet="finepornV5INT8FP8_v5FP8.safetensors", clip="qwen3vl_4b_fp8_scaled.safetensors", type="krea2", vae="qwen_image_vae.safetensors",
                      base=dict(steps=12, cfg=1.0, sampler="euler", scheduler="simple"), prompts=[p for p, _ in PROMPTS], suffix=", fully clothed",
                      sweep={"8 steps": dict(steps=8), "10 steps": dict(steps=10), "12 steps": {}, "14 steps": dict(steps=14), "faces 0.3": dict(faces=0.3)}),
+    # model comparisons: one model per column, each at its author's recommended settings
+    "anima_models": dict(unet="anima-base-v1.0.safetensors", clip="anima_baseV10_txt.safetensors", type="stable_diffusion", vae="qwen_image_vae.safetensors",
+                         base=dict(steps=30, cfg=4.0, sampler="euler", scheduler="simple"), prompts=ANIME, style="masterpiece, best quality, score_7, safe, ",
+                         negative="worst quality, low quality, score_1, score_2, score_3, artist name, blurry, jpeg artifacts, nsfw, explicit",
+                         sweep={"Base v1.0 (yours)": {}, "Aesthetic v1.1": dict(unet="anima-aesthetic-v1.1.safetensors", cfg=3.5),
+                                "Nova Anime AM 2.9B": dict(unet="novaAnimeAM_v6029B.safetensors", cfg=5.0, steps=28, sampler="euler_ancestral", scheduler="normal")}),
+    "illustrious_models": dict(ckpt="waiIllustriousSDXL_v170.safetensors", base=dict(steps=28, cfg=5.5, sampler="euler_ancestral", scheduler="normal", pag=2.0),
+                               prompts=ANIME, style="masterpiece, best quality, amazing quality, general, ",
+                               negative="worst quality, low quality, bad anatomy, bad hands, extra fingers, jpeg artifacts, watermark, nsfw, explicit",
+                               sweep={"WAI v17 (PAG 2)": {}, "WAI v17 (no PAG)": dict(pag=0)}),
+    # Unholy Desire v9 needs a logged-in Civitai download: dict(ckpt="unholyDesireMixSinister_v90.safetensors", cfg=2.5, steps=24, sampler="dpmpp_2m", scheduler="karras")
     "sdxl": dict(ckpt="sd_xl_base_1.0.safetensors", base=dict(steps=25, cfg=7.0, sampler="dpmpp_2m", scheduler="karras"),
                  prompts=[p for p, _ in PROMPTS], negative="blurry, low quality",
                  sweep={"25 steps": {}, "CFG 5": dict(cfg=5.0), "PAG 2": dict(pag=2.0), "PAG 3": dict(pag=3.0), "PAG 3 + CFG 5": dict(pag=3.0, cfg=5.0)}),
@@ -66,11 +87,11 @@ def game_in_front():
 
 def graph(fam, text, s, prefix):
     g = {}
-    if "ckpt" in fam:
-        g["4"] = {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": fam["ckpt"]}}
+    if s.get("ckpt") or fam.get("ckpt"):
+        g["4"] = {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": s.get("ckpt") or fam["ckpt"]}}
         model, clip, vae = ["4", 0], ["4", 1], ["4", 2]
     else:
-        g["4"] = {"class_type": "UNETLoader", "inputs": {"unet_name": fam["unet"], "weight_dtype": "default"}}
+        g["4"] = {"class_type": "UNETLoader", "inputs": {"unet_name": s.get("unet") or fam["unet"], "weight_dtype": "default"}}
         g["44"] = {"class_type": "CLIPLoader", "inputs": {"clip_name": fam["clip"], "type": fam["type"]}}
         g["45"] = {"class_type": "VAELoader", "inputs": {"vae_name": fam["vae"]}}
         model, clip, vae = ["4", 0], ["44", 0], ["45", 0]
@@ -101,7 +122,7 @@ def graph(fam, text, s, prefix):
 
 
 def run(base, comfy, out, only):
-    texts = dict(PROMPTS)
+    texts = dict(PROMPTS + ANIME_PROMPTS)
     for name, fam in FAMILIES.items():
         if only and name not in only:
             continue
@@ -110,7 +131,7 @@ def run(base, comfy, out, only):
             for p in fam["prompts"]:
                 if (change.get("faces") or change.get("finish")) and p not in FACES:
                     continue
-                key = f"{name}_{label.replace(' ', '').replace('+', '_').replace('.', '')}_{p}"
+                key = f"{name}_{re.sub(r'[^A-Za-z0-9_]', '', label.replace(' ', '').replace('+', '_').replace('.', ''))}_{p}"   # older labels keep their names
                 done = os.path.join(comfy, "output", "calib", key + "_00001_.png")
                 if not os.path.exists(done):
                     while game_in_front():
