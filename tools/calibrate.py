@@ -59,8 +59,7 @@ FAMILIES = {
     "illustrious_models": dict(ckpt="waiIllustriousSDXL_v170.safetensors", base=dict(steps=28, cfg=5.5, sampler="euler_ancestral", scheduler="normal", pag=2.0),
                                prompts=ANIME, style="masterpiece, best quality, amazing quality, general, ",
                                negative="worst quality, low quality, bad anatomy, bad hands, extra fingers, jpeg artifacts, watermark, nsfw, explicit",
-                               sweep={"WAI v17 (PAG 2)": {}, "WAI v17 (no PAG)": dict(pag=0)}),
-    # Unholy Desire v9 needs a logged-in Civitai download: dict(ckpt="unholyDesireMixSinister_v90.safetensors", cfg=2.5, steps=24, sampler="dpmpp_2m", scheduler="karras")
+                               sweep={"WAI v17 (no PAG)": dict(pag=0), "Unholy Desire v9": dict(ckpt="unholyDesireMixSinister_v90.safetensors", cfg=2.5, steps=24, sampler="dpmpp_2m", scheduler="karras", pag=0)}),
     "sdxl": dict(ckpt="sd_xl_base_1.0.safetensors", base=dict(steps=25, cfg=7.0, sampler="dpmpp_2m", scheduler="karras"),
                  prompts=[p for p, _ in PROMPTS], negative="blurry, low quality",
                  sweep={"25 steps": {}, "CFG 5": dict(cfg=5.0), "PAG 2": dict(pag=2.0), "PAG 3": dict(pag=3.0), "PAG 3 + CFG 5": dict(pag=3.0, cfg=5.0)}),

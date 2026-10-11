@@ -28,7 +28,7 @@ public partial class MainWindow
 {
     const string RecommendationsJson = """
     {
-      "version": 5,
+      "version": 6,
       "families": {
         "sdxl": { "maxMp": 1.2, "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.6, "badScheduler": null,
@@ -66,6 +66,8 @@ public partial class MainWindow
           "cfg": 7, "cfgRange": [5, 8], "why": "Pony: Euler a, 25 steps; start prompts with score_9, score_8_up, score_7_up." },
         { "match": "noob", "family": "sdxl", "label": "NoobAI", "sampler": "euler_ancestral", "scheduler": "normal", "steps": [25, 28, 32], "stepsRange": [22, 35],
           "cfg": 5.5, "cfgRange": [4.5, 6.5], "why": "NoobAI: Euler a, 28 steps, CFG 5 to 6." },
+        { "match": "unholy ?desire", "family": "sdxl", "label": "Unholy Desire Mix (Illustrious)", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [16, 24, 30],
+          "stepsRange": [12, 40], "cfg": 2.5, "cfgRange": [2, 3.5], "why": "Unholy Desire Mix v7+ (Illustrious-based): DPM++ 2M Karras, CFG about 2.5, 16 steps or more, from its author." },
         { "match": "illustrious|wai", "family": "sdxl", "label": "Illustrious", "sampler": "euler_ancestral", "scheduler": "normal", "steps": [20, 28, 35], "stepsRange": [15, 40],
           "cfg": 5.5, "cfgRange": [4, 7.5], "why": "Illustrious: Euler a, 20 to 28 steps, CFG 5 to 7.5; keep quality tags and the negative short." },
         { "match": "animagine", "family": "sdxl", "label": "Animagine", "sampler": "euler_ancestral", "scheduler": "normal", "steps": [25, 28, 30], "stepsRange": [22, 32],

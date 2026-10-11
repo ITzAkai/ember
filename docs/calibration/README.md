@@ -21,3 +21,4 @@ Six anime prompts (adult characters, "safe"/"general" tags), seed 20261010, each
 | Anima Aesthetic v1.1 | Close to Base but cleaner; the best hands of all four | CFG 3.5 |
 | Nova Anime AM 2.9B | Most polished classic anime look; framed the knight's whole face; the most detailed armour; about 75 s a picture | Euler a / normal, 28 steps, CFG 5 |
 | WAI-illustrious v17 | The richest backgrounds and lighting, about 26 s a picture; weaker at following the prompt (the man and woman at a cafe became a girl in a crowd). PAG 2 added an extra shield and a floating cup without a clear gain | Euler a / normal, 28 steps, CFG 5.5; PAG now off by default for Illustrious |
+| Unholy Desire Mix v9 | Layouts close to WAI's with a moodier, muted palette; the cleanest teacup hands of the Illustrious pair, but two shields on the knight and the same cafe mistake as WAI; about 22 s a picture | DPM++ 2M Karras, 24 steps, CFG 2.5, no PAG |
