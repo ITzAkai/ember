@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ImageForge</RootNamespace>
+    <AssemblyName>Image Forge</AssemblyName>
+    <!-- the release tag is v + this; the app updates itself when a higher tag is released -->
+    <Version>1.7.0</Version>
+    <ApplicationIcon>forge.ico</ApplicationIcon>
+    <PublishSingleFile>true</PublishSingleFile>
+    <!-- one .exe with .NET inside: runs on PCs without .NET installed -->
+    <SelfContained>true</SelfContained>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="forge.ico" />
+    <Resource Include="logo.png" />
+    <Resource Include="styles\*.jpg" />
+    <Compile Remove="old-browser-version\**" />
+    <None Remove="old-browser-version\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
+  </ItemGroup>
+</Project>
