@@ -24,6 +24,7 @@ public class Boosters
     public bool? Refine { get; set; }
     public string RefineModel { get; set; }
     public double RefineDenoise { get; set; } = 0.5;
+    public List<LoraItemSetting> RefineLoras { get; set; } = new();     // LoRAs for the refining model, made for its family
     public bool? Finish { get; set; }
     public double Temperature { get; set; }
     public double Hue { get; set; }
@@ -102,7 +103,7 @@ public partial class MainWindow
         if (RefineModel == null) return (false, false, "Needs a second picture model.");
         bool on = CurrentBoosters.Refine ?? false;
         return (true, on, "A second model redraws the finished picture at partial strength: this model's composition with the other's look. " +
-            "LoRAs only apply to the first model. On 6 to 8 GB cards both models take turns in memory, so it's slower." +
+            "Each model uses its own LoRAs: add the second model's below. On 6 to 8 GB cards both models take turns in memory, so it's slower." +
             (on && CurrentBoosters.RefineDenoise > 0.6 ? " Above 0.6 the second model starts changing the composition too." : ""));
     }
 
@@ -147,8 +148,15 @@ public partial class MainWindow
         {
             var pick = new ComboBox { ItemsSource = RefineChoices, SelectedItem = RefineModel, Margin = new Thickness(0, 6, 0, 0) };
             System.Windows.Automation.AutomationProperties.SetName(pick, "Model that refines the picture");
-            pick.SelectionChanged += (_, _) => { if (!fillingBoosters && pick.SelectedItem is string m) { b.RefineModel = m; settings.Save(); } };
+            pick.SelectionChanged += (_, _) =>
+            {
+                if (fillingBoosters || pick.SelectedItem is not string m) return;
+                if (RecFamilyOf(m) != RecFamilyOf(RefineModel)) b.RefineLoras.Clear();      // another family's LoRAs don't fit
+                b.RefineModel = m;
+                Dispatcher.BeginInvoke(new Action(BoostersChanged));
+            };
             refineRow.Children.Insert(2, pick);
+            refineRow.Children.Insert(3, RefineLoraList(b));
         }
         BoostersPanel.Children.Add(refineRow);
         BoostersPanel.Children.Add(BoosterRow("Hi-res fix (second pass)", HiResState(), v => b.HiRes = v,
@@ -218,6 +226,54 @@ public partial class MainWindow
 
     void BoostersChanged() { settings.Save(); ShowBoosters(); RefreshGuard(); }
 
+    // LoRAs for the refining model: only ones made for its family, each with its own strength (negative for sliders)
+    FrameworkElement RefineLoraList(Boosters b)
+    {
+        var family = RecFamilyOf(RefineModel);
+        var label = RecFor(RefineModel).Label;
+        var usable = loras.Where(l => loraFamily.GetValueOrDefault(l) is not string f || f == family).ToList();
+        var panel = new StackPanel { Margin = new Thickness(0, 4, 0, 0) };
+        foreach (var item in b.RefineLoras.ToList())
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 4, 0, 0) };
+            var remove = new Button { Style = (Style)FindResource("IconBtn"), Content = "\uE711", FontSize = 10, Width = 24, Height = 24, ToolTip = "Remove this LoRA" };
+            System.Windows.Automation.AutomationProperties.SetName(remove, "Remove refine LoRA " + item.Name);
+            remove.Click += (_, _) => { b.RefineLoras.Remove(item); BoostersChanged(); };
+            var box = new TextBox { Width = 48, Height = 24, Margin = new Thickness(6, 0, 4, 0), Padding = new Thickness(4, 0, 4, 0), VerticalContentAlignment = VerticalAlignment.Center,
+                Text = item.Strength.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture), Background = Brush("Field"), Foreground = Brush("Ink"), BorderBrush = Brush("Line"), CaretBrush = Brush("Accent") };
+            System.Windows.Automation.AutomationProperties.SetName(box, "Refine LoRA strength");
+            void Typed()
+            {
+                if (double.TryParse(box.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)) { item.Strength = Math.Clamp(Math.Round(v, 2), -4, 4); settings.Save(); }
+                box.Text = item.Strength.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            }
+            box.LostFocus += (_, _) => Typed();
+            box.KeyDown += (_, e) => { if (e.Key == Key.Enter) Typed(); };
+            var combo = new ComboBox { ItemsSource = usable, SelectedItem = usable.Contains(item.Name) ? item.Name : null };
+            System.Windows.Automation.AutomationProperties.SetName(combo, "Refine LoRA");
+            combo.SelectionChanged += (_, _) =>
+            {
+                if (combo.SelectedItem is not string n || n == item.Name) return;
+                item.Name = n;
+                if (RecommendedStrength(n) is double rs) item.Strength = rs;
+                Dispatcher.BeginInvoke(new Action(BoostersChanged));
+            };
+            DockPanel.SetDock(remove, Dock.Right);
+            DockPanel.SetDock(box, Dock.Right);
+            row.Children.Add(remove);
+            row.Children.Add(box);
+            row.Children.Add(combo);
+            panel.Children.Add(row);
+        }
+        var add = new Button { Content = $"+ LoRA for {label}", Style = (Style)FindResource("Ghost"), Height = 26, Padding = new Thickness(8, 0, 8, 0), FontSize = 11,
+            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0), IsEnabled = usable.Count > 0,
+            ToolTip = usable.Count > 0 ? $"A LoRA made for {label}, used in the second pass" : $"No LoRAs for {label} installed" };
+        System.Windows.Automation.AutomationProperties.SetName(add, "Add LoRA for the refining model");
+        add.Click += (_, _) => { b.RefineLoras.Add(new LoraItemSetting { Name = usable[0], Strength = RecommendedStrength(usable[0]) ?? 0.8 }); BoostersChanged(); };
+        panel.Children.Add(add);
+        return panel;
+    }
+
     // ---------------- into the graph ----------------
     // model boosters wrap the sampler's model; Fix faces and the colour finish sit between decoding and saving (new pictures only)
     void ApplyBoosters(JsonObject g, bool newPicture)
@@ -254,13 +310,22 @@ public partial class MainWindow
                 g["refine_model"] = Node("CheckpointLoaderSimple", new() { ["ckpt_name"] = other });
                 (clip, vae) = (Link("refine_model", 1), Link("refine_model", 2));
             }
+            // its own LoRAs, made for its family (others would be skipped by ComfyUI)
+            JsonNode rmodel = Link("refine_model", 0);
+            int n = 1;
+            foreach (var l in b.RefineLoras.Where(l => loras.Contains(l.Name) && (loraFamily.GetValueOrDefault(l.Name) is not string f || f == family)))
+            {
+                var id = $"refine_lora{n++}";
+                g[id] = Node("LoraLoader", new() { ["model"] = rmodel.DeepClone(), ["clip"] = clip.DeepClone(), ["lora_name"] = l.Name, ["strength_model"] = l.Strength, ["strength_clip"] = l.Strength });
+                (rmodel, clip) = (Link(id, 0), Link(id, 1));
+            }
             var prompt = (g["6"]?["inputs"]?["text"] ?? g["6"]?["inputs"]?["prompt"])?.ToString() ?? "";
             g["refine_pos"] = Node("CLIPTextEncode", new() { ["text"] = prompt, ["clip"] = clip.DeepClone() });
             g["refine_neg"] = Node("CLIPTextEncode", new() { ["text"] = r.Negative ? g["7"]?["inputs"]?["text"]?.ToString() ?? "" : "", ["clip"] = clip.DeepClone() });
             g["refine_in"] = Node("VAEEncode", new() { ["pixels"] = save["images"].DeepClone(), ["vae"] = vae.DeepClone() });
             g["refine"] = Node("KSampler", new()
             {
-                ["model"] = Link("refine_model", 0), ["positive"] = Link("refine_pos", 0), ["negative"] = Link("refine_neg", 0), ["latent_image"] = Link("refine_in", 0),
+                ["model"] = rmodel.DeepClone(), ["positive"] = Link("refine_pos", 0), ["negative"] = Link("refine_neg", 0), ["latent_image"] = Link("refine_in", 0),
                 ["seed"] = k["seed"].DeepClone(), ["steps"] = r.Steps[1], ["cfg"] = r.Cfg, ["sampler_name"] = r.Sampler, ["scheduler"] = r.Scheduler, ["denoise"] = b.RefineDenoise,
             });
             s = g["refine"]["inputs"].AsObject();
