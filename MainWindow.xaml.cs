@@ -1182,12 +1182,34 @@ public partial class MainWindow : Window
             if (keys.Contains(".attn.wk.") || keys.Contains(".attn.gate.") || keys.Contains("txtfusion") || keys.Contains("text_fusion")) return "krea2";
             if (keys.Contains("img_mlp") || keys.Contains("txt_mlp") || keys.Contains("img_mod")) return "qwen_image";
             if (keys.Contains("llm_adapter") || keys.Contains("adaln_modulation")) return "anima";
-            if (keys.Contains("self_attn") && keys.Contains("cross_attn"))           // ".self_attn." or kohya's "_self_attn_"
-                return keys.Contains("q_proj") || keys.Contains("mlp.layer") || keys.Contains("mlp_layer") ? "anima" : "wan";   // Anima: q_proj, mlp.layer1; Wan: .q, ffn
+            // Anima's blocks: attention with q_proj .. output_proj and mlp.layer1/2 (any one is enough: slider LoRAs often train only
+            // cross- or only self-attention); Wan's attention has .q / .k / .v / .o and an ffn
+            if (Regex.IsMatch(keys, @"(self_attn|cross_attn)[._](q|k|v|output)_proj|mlp[._]layer[12]")) return "anima";
+            if (keys.Contains("self_attn") && keys.Contains("cross_attn")) return "wan";
             if (keys.Contains("input_blocks") || keys.Contains("output_blocks") || keys.Contains("down_blocks") || keys.Contains("up_blocks")) return "sdxl";
             return null;
         }
         catch { return null; }
+    }
+
+    // --selftest part: slider LoRAs that train only cross- or only self-attention are still Anima's; Wan's and SDXL's stay theirs
+    static bool SelfTestLoraFamily()
+    {
+        var file = Path.Combine(Path.GetTempPath(), "imageforge-selftest-family.safetensors");
+        string Family(params string[] keys)
+        {
+            var head = Encoding.UTF8.GetBytes("{" + string.Join(",", keys.Select((k, i) => $"\"{k}\":{{\"dtype\":\"F32\",\"shape\":[1],\"data_offsets\":[{i * 4},{i * 4 + 4}]}}")) + "}");
+            using (var w = new BinaryWriter(File.Create(file))) { w.Write((long)head.Length); w.Write(head); w.Write(new byte[keys.Length * 4]); }
+            return LoraFamily(file);
+        }
+        try
+        {
+            return Family("lora_unet_blocks_0_cross_attn_k_proj.lora_down.weight") == "anima"
+                && Family("lora_unet_blocks_0_self_attn_q_proj.lora_down.weight", "lora_unet_blocks_0_mlp_layer1.lora_up.weight") == "anima"
+                && Family("diffusion_model.blocks.0.self_attn.q.lora_A.weight", "diffusion_model.blocks.0.cross_attn.k.lora_A.weight", "diffusion_model.blocks.0.ffn.0.lora_A.weight") == "wan"
+                && Family("lora_unet_input_blocks_4_1_transformer_blocks_0_attn1_to_q.lora_down.weight") == "sdxl";
+        }
+        finally { try { File.Delete(file); } catch { } }
     }
 
     void Model_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1378,7 +1400,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128);
         }
         catch { return 2; }
         finally { try { File.Delete(file); } catch { } }

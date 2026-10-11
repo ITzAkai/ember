@@ -95,14 +95,15 @@ public partial class MainWindow
             if (s.Length <= from) return;
             s.Seek(from, SeekOrigin.Begin);
             var skipped = Regex.Matches(new StreamReader(s).ReadToEnd(), @"lora key not loaded:\s*(\S+)").Select(m => m.Groups[1].Value).ToHashSet();
-            if (skipped.Count == 0) return;
-            foreach (var l in CurrentLoras().Select(l => l.Name))
+            var used = CurrentLoras().Select(l => l.Name).ToList();
+            foreach (var l in used)
             {
                 var keys = SafetensorsHeader(Path.Combine(ModelsDir, "loras", l), out _).Select(kv => kv.Key);
                 if (keys.Any(skipped.Contains)) loraNotApplied.Add(l);
+                else loraNotApplied.Remove(l);          // applied this time: a warning from another model or picture no longer holds
             }
             foreach (var r in loraRows) ShowLoraInfo(r);
-            if (loraNotApplied.Count > 0) Note("A LoRA wasn't applied: ComfyUI couldn't read its layers. See the LoRA under Advanced.", true);
+            if (used.Any(loraNotApplied.Contains)) Note("A LoRA wasn't applied: ComfyUI couldn't read its layers. See the LoRA under Advanced.", true);
         }
         catch { }
     }
