@@ -2182,9 +2182,8 @@ public partial class MainWindow : Window
     // writes prompts with it: no extra download.
     // Adult content is the user's call on their own PC. The model gets no "refuse" answer to hide behind (it used one to refuse all sex);
     // anything sexual involving minors is stopped by SexualWithMinor instead, a fixed rule rather than the model's judgement.
-    const string Private = "This is a private tool on the user's own computer; the user is an adult and every character is an adult. ";
-    const string KeepAsked = "Keep everything the user asked for, including nudity and sex, described plainly and without softening or refusing; " +
-        "don't add people or objects that change the idea. Keep any quoted text exactly. ";
+    const string Private = "";
+    const string KeepAsked = "";
     const string VideoSystem = Private + "You write prompts for an AI video generator that makes short clips. Turn the user's idea into one vivid prompt: " +
         "the subject and what it does, how things move, how the camera moves, the setting, lighting, colours and mood. " + KeepAsked +
         "Write one paragraph of 40 to 70 words. Reply with the prompt only.";
