@@ -257,4 +257,139 @@ public partial class MainWindow
         k["latent_image"] = Link("qref_encode", 0);
         k["denoise"] = settings.ReferenceStyle;
     }
+
+    // ---------------- two people, described apart (Attention Couple, SDXL and Anima) ----------------
+    // The prompt above describes the scene; each box is one person, on the left and right half. The models with an LLM text encoder
+    // (Krea 2, Qwen-Image) already keep people apart from the prompt alone.
+    bool CoupleModel => Sdxl || Anima;
+    bool CoupleReady => nodeNames.Contains("AttentionCouplePPM") && nodeNames.Contains("LatentToMaskBB");
+    bool UsingCouple => CoupleSwitch.IsChecked == true && CreateMode.IsChecked == true && !VideoOn && CoupleModel && CoupleReady;
+    string CoupleText => UsingCouple ? CoupleLeftBox.Text.Trim() + "\n" + CoupleRightBox.Text.Trim() : "";
+
+    void Couple_Changed(object sender, RoutedEventArgs e) => ShowCouple();
+
+    void ShowCouple()
+    {
+        if (CoupleSection == null) return;
+        CoupleSwitch.IsEnabled = CoupleModel && CoupleReady;
+        CoupleBoxes.Visibility = UsingCouple ? Visibility.Visible : Visibility.Collapsed;
+        CoupleNote.Text = !CoupleReady ? "Needs Attention Couple (Settings > Plugins)."
+            : !CoupleModel ? "For SDXL and Anima models; this one tells people apart from the prompt alone."
+            : UsingCouple ? "Describe the scene in the prompt above, and each person here: their faces, hair and clothes stay their own."
+            : "Keeps two people's looks from mixing: one description each.";
+    }
+
+    // whole picture at 0.6 with each half at 0.4 for its person (the plugin's own example); after the boosters, so Hi-res and Fix faces
+    // redraw without the left/right split
+    void UseCouple(JsonObject g)
+    {
+        var k = (JsonObject)g["3"]["inputs"];
+        var clip = g["6"]["inputs"]["clip"];
+        JsonObject Area(double x, double w, double value) => Node("LatentToMaskBB", new()
+            { ["latent"] = k["latent_image"].DeepClone(), ["x"] = x, ["y"] = 0.0, ["w"] = w, ["h"] = 1.0, ["value"] = value });
+        g["couple_all"] = Area(0, 1, 0.6);
+        g["couple_left_area"] = Area(0, 0.5, 0.4);
+        g["couple_right_area"] = Area(0.5, 0.5, 0.4);
+        g["couple_left"] = Node("CLIPTextEncode", new() { ["text"] = CoupleLeftBox.Text.Trim(), ["clip"] = clip.DeepClone() });
+        g["couple_right"] = Node("CLIPTextEncode", new() { ["text"] = CoupleRightBox.Text.Trim(), ["clip"] = clip.DeepClone() });
+        g["couple"] = Node("AttentionCouplePPM", new()
+        {
+            ["model"] = k["model"].DeepClone(), ["base_cond"] = k["positive"].DeepClone(), ["base_mask"] = Link("couple_all", 0),
+            ["cond_1"] = Link("couple_left", 0), ["mask_1"] = Link("couple_left_area", 0), ["cond_2"] = Link("couple_right", 0), ["mask_2"] = Link("couple_right_area", 0),
+        });
+        k["model"] = Link("couple", 0);
+    }
+
+    // ---------------- style picture (IPAdapter Plus, SDXL): new pictures take on a picture's look ----------------
+    RefPicture stylePicture;
+    bool fillingStyle;
+    static Plugin IpAdapter => Recommended.First(p => p.Folder == "ComfyUI_IPAdapter_plus");
+    bool StyleModelsThere => IpAdapter.Models.All(m => File.Exists(Path.Combine(ModelsDir, m.Folder, m.File)));
+    bool StyleReady => nodeNames.Contains("IPAdapterAdvanced") && StyleModelsThere;
+    bool UsingStylePicture => stylePicture != null && CreateMode.IsChecked == true && !VideoOn && Sdxl && StyleReady;
+
+    void ShowStylePicture()
+    {
+        if (StylePicSection == null) return;
+        bool plugin = nodeNames.Contains("IPAdapterAdvanced"), ready = plugin && StyleModelsThere;
+        StylePicSection.Visibility = Sdxl && CreateMode.IsChecked == true && !VideoOn ? Visibility.Visible : Visibility.Collapsed;
+        StylePicThumb.Visibility = StylePicStrength.Visibility = stylePicture != null ? Visibility.Visible : Visibility.Collapsed;
+        if (stylePicture != null) StylePicImage.Background = new ImageBrush(stylePicture.Thumb) { Stretch = Stretch.UniformToFill };
+        StylePicAddRow.Visibility = stylePicture == null && ready ? Visibility.Visible : Visibility.Collapsed;
+        StylePicGetBtn.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
+        StylePicGetBtn.Content = plugin ? $"Get its models ({Size(IpAdapter.Models.Sum(m => m.Bytes))})" : "Install IPAdapter Plus…";
+        StylePicNote.Text = !plugin ? "Give new pictures the look of another picture: needs IPAdapter Plus (Settings > Plugins)."
+            : !ready ? "IPAdapter Plus needs its two model files once."
+            : "New pictures take on its colours, brushwork and light; the prompt still decides what's in them. Above about 0.6 it starts copying what's in the picture too.";
+        fillingStyle = true;
+        StylePicSlider.Value = settings.StyleStrength;
+        fillingStyle = false;
+        StylePicValue.Text = settings.StyleStrength.ToString("0.00");
+    }
+
+    void SetStylePicture(BitmapSource img)
+    {
+        double scale = Math.Min(1, 1024.0 / Math.Max(img.PixelWidth, img.PixelHeight));
+        if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
+        img.Freeze();
+        stylePicture = new RefPicture { Png = PngOf(img), Thumb = img };
+        ShowStylePicture();
+    }
+
+    void StylePicAdd_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Choose a style picture", Filter = "Images|*.png;*.jpg;*.jpeg;*.webp;*.bmp;*.gif;*.tif;*.tiff" };
+        if (dlg.ShowDialog(this) != true) return;
+        try { SetStylePicture(Oriented(dlg.FileName)); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); }
+    }
+
+    void StylePicPaste_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (ClipboardPicture() is { } p) SetStylePicture(p.Image);
+            else Note("Copy a picture first: Copy image in a browser, a screenshot, or a file in Explorer.", true);
+        }
+        catch (Exception ex) { Note("Couldn't paste that: " + ex.Message, true); }
+    }
+
+    void StylePic_Drop(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        if (!StyleReady || DroppedPictures(e).FirstOrDefault() is not string f) return;
+        try { SetStylePicture(Oriented(f)); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); }
+    }
+
+    void StylePicRemove_Click(object sender, RoutedEventArgs e) { stylePicture = null; ShowStylePicture(); }
+
+    void StylePicSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (fillingStyle || !IsLoaded) return;
+        settings.StyleStrength = Math.Round(e.NewValue, 2);
+        StylePicValue.Text = settings.StyleStrength.ToString("0.00");
+        settings.Save();
+    }
+
+    async void StylePicGet_Click(object sender, RoutedEventArgs e)
+    {
+        if (!nodeNames.Contains("IPAdapterAdvanced")) { ChoosePlugins_Click(null, null); return; }
+        StylePicGetBtn.IsEnabled = false;
+        try { await GetPluginModels(IpAdapter, null); Note("The style models are ready."); }
+        catch (Exception ex) { Note("Couldn't get them: " + ex.Message, true); }
+        finally { StylePicGetBtn.IsEnabled = true; ShowStylePicture(); }
+    }
+
+    // "style transfer" puts the picture into the layers that carry look rather than content (PLUS: ViT-H image encoder)
+    void UseStylePicture(JsonObject g, string uploaded)
+    {
+        var k = (JsonObject)g["3"]["inputs"];
+        g["style_pic"] = Node("LoadImage", new() { ["image"] = uploaded });
+        g["style_loader"] = Node("IPAdapterUnifiedLoader", new() { ["model"] = k["model"].DeepClone(), ["preset"] = "PLUS (high strength)" });
+        g["style"] = Node("IPAdapterAdvanced", new()
+        {
+            ["model"] = Link("style_loader", 0), ["ipadapter"] = Link("style_loader", 1), ["image"] = Link("style_pic", 0), ["weight"] = settings.StyleStrength,
+            ["weight_type"] = "style transfer", ["combine_embeds"] = "concat", ["start_at"] = 0.0, ["end_at"] = 1.0, ["embeds_scaling"] = "V only",
+        });
+        k["model"] = Link("style", 0);
+    }
 }

@@ -16,6 +16,8 @@ public class Boosters
     public double PagScale { get; set; } = 2.0;
     public bool? Rescale { get; set; }
     public double RescaleMultiplier { get; set; } = 0.7;
+    public bool? Nag { get; set; }
+    public double NagScale { get; set; } = 2.0;
     public bool? Faces { get; set; }
     public double FaceDenoise { get; set; } = 0.4;
     public bool? HiRes { get; set; }
@@ -85,6 +87,16 @@ public partial class MainWindow
         return (true, on, b.Rescale == null && VPred ? "On for this v-prediction model: it prevents washed-out or burnt colours." : "Stops burnt or washed-out colours at higher CFG. Too high looks flat.");
     }
 
+    // Normalized Attention Guidance (the Anima NAG plugin): steers away from the negative prompt inside the model's attention,
+    // so the negative works harder, and at all at CFG 1 (Anima Turbo), where the normal negative pass is skipped
+    (bool Can, bool On, string Why) NagState()
+    {
+        if (VideoOn || !Anima) return (false, false, "Anima models only (Anima, Nova Anime and others built on it).");
+        if (!nodeNames.Contains("AnimaNormalizedAttentionGuidance")) return (false, false, "Needs Anima NAG (Settings > Plugins).");
+        bool on = CurrentBoosters.Nag ?? false;
+        return (true, on, "Mainly for Anima Turbo at CFG 1, where the negative prompt otherwise does nothing. At normal CFG it changes the picture more than it helps.");
+    }
+
     (bool Can, bool On, string Why) HiResState()
     {
         if (VideoOn) return (false, false, "Pictures only.");
@@ -143,6 +155,10 @@ public partial class MainWindow
             [("Scale", 0, 10, 0.1, b.PagScale, x => b.PagScale = x)], () => { b.Pag = null; b.PagScale = 2.0; }));
         BoostersPanel.Children.Add(BoosterRow("RescaleCFG: no burnt colours", RescaleState(), v => b.Rescale = v,
             [("Strength", 0, 1, 0.05, b.RescaleMultiplier, x => b.RescaleMultiplier = x)], () => { b.Rescale = null; b.RescaleMultiplier = 0.7; }));
+        var nag = NagState();
+        BoostersPanel.Children.Add(BoosterRow("NAG: stronger negative prompt", nag, v => b.Nag = v,
+            [("Scale", 0.5, 6, 0.25, b.NagScale, x => b.NagScale = x)], () => { b.Nag = null; b.NagScale = 2.0; },
+            nag.Why.StartsWith("Needs") ? () => ChoosePlugins_Click(null, null) : null));
         var refine = RefineState();
         var refineRow = (StackPanel)BoosterRow("Refine with another model", refine, v => b.Refine = v,
             [("Strength", 0.2, 0.8, 0.05, b.RefineDenoise, x => b.RefineDenoise = x)], () => { b.Refine = null; b.RefineModel = null; b.RefineDenoise = 0.5; });
@@ -174,6 +190,8 @@ public partial class MainWindow
              ("Hue", -30, 30, 1, b.Hue, x => b.Hue = x), ("Gamma", 0.5, 1.5, 0.05, b.Gamma, x => b.Gamma = x)],
             () => { b.Finish = null; b.Temperature = b.Hue = b.Brightness = 0; b.Contrast = 5; b.Saturation = 3; b.Gamma = 1; }));
         fillingBoosters = false;
+        ShowCouple();
+        ShowStylePicture();
     }
 
     FrameworkElement BoosterRow(string title, (bool Can, bool On, string Why) state, Action<bool?> set,
@@ -291,6 +309,15 @@ public partial class MainWindow
         {
             g["rescale"] = Node("RescaleCFG", new() { ["model"] = k["model"].DeepClone(), ["multiplier"] = b.RescaleMultiplier });
             k["model"] = Link("rescale", 0);
+        }
+        if (NagState().On)
+        {
+            g["nag"] = Node("AnimaNormalizedAttentionGuidance", new()
+            {
+                ["model"] = k["model"].DeepClone(), ["scale"] = b.NagScale, ["tau"] = 2.5, ["alpha"] = 0.5, ["start_percent"] = 0.0, ["end_percent"] = 1.0,
+                ["only_anima"] = true, ["optimize_outside_range"] = true,
+            });
+            k["model"] = Link("nag", 0);
         }
         if (!newPicture || g["9"]?["inputs"] is not JsonObject save) return;
         // the sampler the later passes copy: this model's, or the refining model's once it has redrawn the picture

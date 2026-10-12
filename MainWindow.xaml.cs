@@ -79,6 +79,7 @@ public class Settings
     public Dictionary<string, List<LoraItemSetting>> LorasByFamily { get; set; } = new();   // "krea2", "qwen_image", "wan", "sdxl" -> its rows
     public bool InpaintEdits { get; set; } = true;               // painted edits and expansions use the inpainting model, if installed
     public bool SharpPreviewAll { get; set; }                    // sharp live preview on every model (Qwen and Krea 2 always get it)
+    public double StyleStrength { get; set; } = 0.4;             // how strongly a style picture's look carries over (IPAdapter weight)
     public string Theme { get; set; } = "dark";
     public bool KeepComfyRunning { get; set; }
     public string OutputDir { get; set; } = "";                  // empty: ComfyUI's own output folder
@@ -1628,7 +1629,7 @@ public partial class MainWindow : Window
     {
         bool edit = EditMode.IsChecked == true, video = VideoMode.IsChecked == true;
         GalleryPanel.Visibility = edit ? Visibility.Collapsed : Visibility.Visible;
-        SizeSection.Visibility = ReferenceSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
+        SizeSection.Visibility = ReferenceSection.Visibility = CoupleSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
         VideoSection.Visibility = video ? Visibility.Visible : Visibility.Collapsed;
         StartSection.Visibility = video && PictureVideo ? Visibility.Visible : Visibility.Collapsed;
         CountSection.Visibility = video ? Visibility.Collapsed : Visibility.Visible;

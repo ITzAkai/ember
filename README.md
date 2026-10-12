@@ -15,10 +15,12 @@ Type an idea, pick a style, and Ember does the rest: it runs [ComfyUI](https://g
 - **Improve prompt**: turns a short idea into a rich, detailed prompt
 - **Describe image**: drop or paste any picture and get the prompt that recreates it
 - **Short videos**: from a prompt, or bring one of your pictures to life
+- **Two people, described apart**: give each person their own description, and their looks never mix
 
-### Keep a character
+### Characters and style
 - **Reference pictures**: drop or paste a character or a place, and new pictures keep the same face, hair and clothes, in any model's style
 - **Saved characters**: keep them under a name and bring them back in one click
+- **Style picture**: new pictures take on the colours, brushwork and light of a picture you love
 
 ### Edit
 - **Paint to change**: brush over part of a picture and describe what goes there, or remove things
@@ -63,6 +65,9 @@ Needs Windows 10/11 x64 and an NVIDIA GPU. If Windows can't unpack ComfyUI by it
 | Impact Pack + Subpack | Fix faces |
 | Inpaint Crop & Stitch | Sharper edits of small painted areas, and Fix faces on more models |
 | Ultimate SD Upscale | Upscale > 2× with added detail |
+| Attention Couple | Two people, described apart |
+| IPAdapter Plus | Style picture (brings its own models, 3.4 GB) |
+| Anima NAG | A working negative prompt at CFG 1 (the NAG booster) |
 | ComfyUI-GGUF | Smaller GGUF model files for 6–8 GB graphics cards |
 
 ## Build from source

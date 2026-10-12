@@ -357,6 +357,45 @@
                 </StackPanel>
               </StackPanel>
 
+              <!-- create mode: two people, each described in their own box, so their looks don't mix (Attention Couple plugin) -->
+              <StackPanel x:Name="CoupleSection">
+                <CheckBox x:Name="CoupleSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,18,0,0"
+                          Content="Two people, described apart" Checked="Couple_Changed" Unchecked="Couple_Changed"/>
+                <TextBlock x:Name="CoupleNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <StackPanel x:Name="CoupleBoxes" Visibility="Collapsed" Margin="0,8,0,0">
+                  <TextBox x:Name="CoupleLeftBox" Style="{StaticResource Input}" Height="54" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                           Tag="The person on the left: looks, hair, clothes" AutomationProperties.Name="Person on the left"/>
+                  <TextBox x:Name="CoupleRightBox" Style="{StaticResource Input}" Height="54" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0"
+                           Tag="The person on the right: looks, hair, clothes" AutomationProperties.Name="Person on the right"/>
+                </StackPanel>
+              </StackPanel>
+
+              <!-- create mode, SDXL models: a picture whose look (colours, brushwork, light) new pictures take on (IPAdapter Plus) -->
+              <StackPanel x:Name="StylePicSection" Visibility="Collapsed" AllowDrop="True" DragOver="Reference_DragOver" Drop="StylePic_Drop" Background="Transparent">
+                <TextBlock Text="Style picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <Grid x:Name="StylePicThumb" Width="72" Height="72" HorizontalAlignment="Left" Margin="0,0,0,8" Visibility="Collapsed">
+                  <Border x:Name="StylePicImage" CornerRadius="8"/>
+                  <Button Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="9" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top"
+                          Margin="0,3,3,0" Background="{DynamicResource Surface}" Click="StylePicRemove_Click" ToolTip="Remove the style picture" AutomationProperties.Name="Remove style picture"/>
+                </Grid>
+                <DockPanel x:Name="StylePicAddRow">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Paste" Click="StylePicPaste_Click"
+                          ToolTip="Use a copied picture" AutomationProperties.Name="Paste style picture"/>
+                  <Button Style="{StaticResource Ghost}" Height="36" Content="Add a style picture…" Click="StylePicAdd_Click" AutomationProperties.Name="Add style picture"/>
+                </DockPanel>
+                <StackPanel x:Name="StylePicStrength" Visibility="Collapsed">
+                  <DockPanel>
+                    <TextBlock x:Name="StylePicValue" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
+                    <TextBlock Style="{StaticResource Note}" Text="How strongly new pictures take on its look"/>
+                  </DockPanel>
+                  <Slider x:Name="StylePicSlider" Minimum="0.2" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"
+                          ValueChanged="StylePicSlider_Changed" AutomationProperties.Name="Style picture strength"/>
+                </StackPanel>
+                <TextBlock x:Name="StylePicNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <Button x:Name="StylePicGetBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" HorizontalAlignment="Left" Margin="0,6,0,0"
+                        Visibility="Collapsed" Click="StylePicGet_Click"/>
+              </StackPanel>
+
               <DockPanel Margin="0,18,0,8">
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="24" Margin="0,0,-6,0" Content="&#xE721;" FontSize="12" Click="FindNegative_Click"
                         ToolTip="Find and replace (Ctrl+F)" AutomationProperties.Name="Find in negative prompt"/>

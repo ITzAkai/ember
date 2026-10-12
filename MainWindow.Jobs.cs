@@ -130,14 +130,18 @@ public partial class MainWindow
     {
         if (!ready) return;
         if (string.IsNullOrWhiteSpace(PromptBox.Text)) { Note("Write a prompt first.", true); PromptBox.Focus(); return; }
-        if (SexualWithMinor(PromptBox.Text)) { Note(MinorNote, true); return; }       // the uncensored models won't stop it, so the app does
+        var words = PromptBox.Text + "\n" + CoupleText;           // everything typed that goes into the picture, the two-people boxes too
+        if (SexualWithMinor(words)) { Note(MinorNote, true); return; }       // the uncensored models won't stop it, so the app does
         Remember(PromptBox.Text.Trim());
         if (ModelBox.SelectedItem == null) { Note(VideoOn ? "No video model yet: get Wan 2.1 on the Models page." : "No model selected.", true); return; }
         bool edit = EditMode.IsChecked == true;
         if (edit && photo == null) { Note("Choose a photo to edit first.", true); return; }
         if (edit && CropLayer.Visibility == Visibility.Visible) { Note("Apply or cancel the crop first.", true); return; }
-        // a reference picture may show a real person, so it never goes into a nude or sexual picture
-        if (UsingReferences && SexualWords.IsMatch(PromptBox.Text)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
+        // a reference or style picture may show a real person, so it never goes into a nude or sexual picture
+        if (UsingReferences && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
+        if (!edit && UsingStylePicture && SexualWords.IsMatch(words)) { Note("Style pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
+        if (!edit && UsingCouple && (CoupleLeftBox.Text.Trim() == "" || CoupleRightBox.Text.Trim() == ""))
+        { Note("Describe both people, or turn off Two people.", true); return; }
         long seed = newSeed || RandomSeed.IsChecked == true || !long.TryParse(SeedBox.Text, out var typed) ? Random.Shared.NextInt64(0, 1L << 48) : typed;
         SeedBox.Text = seed.ToString();
         SaveSettings();
@@ -171,11 +175,16 @@ public partial class MainWindow
                 for (int i = 0; i < refs.Length; i++) refs[i] = await Upload(references[i].Png, job);
                 if (!Qwen) looks = await Task.WhenAll(references.Select(LooksOf));         // usually written already, when it was added
             }
+            bool newPicture = !edit && expand == null;
+            var style = newPicture && UsingStylePicture ? await Upload(stylePicture.Png, job) : null;
+            bool couple = newPicture && UsingCouple;
             var g = Graph(seed, image, masked, denoise, count: count, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))));
             // expansions always use the inpainting model when installed (far better joins); painted edits if the setting is on
             if (masked && inpaintModel != null && baseCheckpoint != null && (expand != null || settings.InpaintEdits)) UseInpaintModel(g);
             if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
-            ApplyBoosters(g, newPicture: !edit && expand == null);
+            ApplyBoosters(g, newPicture);
+            if (style != null) UseStylePicture(g, style);
+            if (couple) UseCouple(g);
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };
         });
     }

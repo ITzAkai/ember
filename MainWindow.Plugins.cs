@@ -14,7 +14,7 @@ namespace ImageForge;
 // a file a plugin needs: a model (Folder under ComfyUI\models), or with InPack a file inside the plugin's own folder
 record PluginModel(string Url, string Folder, string File, string Sha256, long Bytes, bool InPack = false);
 record Plugin(string Folder, string Name, string Group, bool Checked, string Repo, string Commit, string Version, string ZipSha256,
-              long Bytes, string Node, string About, PluginModel Model = null);
+              long Bytes, string Node, string About, params PluginModel[] Models);
 
 enum PluginState { Missing, Installed, Older, Other, Disabled, Failed }
 
@@ -32,23 +32,27 @@ public partial class MainWindow
         new("ComfyUI-Impact-Subpack", "Impact Subpack + face finder", "Image quality", true, "ltdrdata/ComfyUI-Impact-Subpack", "50c7b71a6a", "1.3.5",
             "8dcaf54b147ab2c558259aeb17779de3a9a5b29c5e8181ae35730f9a8909f694", 40_000_000, "UltralyticsDetectorProvider",
             "The face detector that Fix faces uses.",
-            new("https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt", @"ultralytics\bbox", "face_yolov8m.pt",
+            new PluginModel("https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt", @"ultralytics\bbox", "face_yolov8m.pt",
                 "717923c19b3f4bbf5250b728f1fa6b2cb72a33aed1d236ea9caf0e21ad943e5f", 52_026_019)),
         new("ComfyUI-ppm", "Attention Couple (ppm)", "Image quality", true, "pamparamm/ComfyUI-ppm", "6c6c360155", "1.1.10",
             "5c0387bb3051af48856ca20cc4dd7b7096fcc9d493577dfa177ec70fc4cea27f", 743_693, "AttentionCouplePPM",
-            "Keeps two people from merging into one on SDXL and Anima models."),
+            "Two people, described apart: keeps two people's looks from mixing on SDXL and Anima models."),
         new("ComfyUI_UltimateSDUpscale", "Ultimate SD Upscale", "Optional", false, "ssitu/ComfyUI_UltimateSDUpscale", "a5547db9e1", "1.7.2",
             "9a651798034fbd979a06b456a70c5133390b991d500c7d857c16b81ef04bcabe", 459_494, "UltimateSDUpscale",
             "Upscale > 2× with added detail: enlarges, then redraws fine detail tile by tile.",
             // its helper script, pinned: without it the plugin fetches the helper's newest version (master.zip) on its first start
-            new("https://raw.githubusercontent.com/Coyote-A/ultimate-upscale-for-automatic1111/2322caa480535b1011a1f9c18126d85ea444f146/scripts/ultimate-upscale.py",
+            new PluginModel("https://raw.githubusercontent.com/Coyote-A/ultimate-upscale-for-automatic1111/2322caa480535b1011a1f9c18126d85ea444f146/scripts/ultimate-upscale.py",
                 @"repositories\ultimate_sd_upscale\scripts", "ultimate-upscale.py", "0abbb3df467ec17d852534de74484dce6710de7a4010ab25f194d2b3a089eb09", 24_644, InPack: true)),
         new("ComfyUI-Anima-NAG", "Anima NAG", "Optional", false, "hybskgks28275/ComfyUI-Anima-NAG", "1590401343", "1.0.1",
             "077ea49dddf009295e2de91ba35dd65fe2392aeb91ea7d6617b50984fb5e8f12", 33_149, "AnimaNormalizedAttentionGuidance",
-            "Makes the negative prompt work on Anima Turbo (CFG 1)."),
+            "The NAG booster for Anima models: gives Anima Turbo (CFG 1) a working negative prompt."),
         new("ComfyUI_IPAdapter_plus", "IPAdapter Plus", "Optional", false, "cubiq/ComfyUI_IPAdapter_plus", "a0f451a511", "2.0.0",
             "743dd77ce80d1d27103fb6a15b431bdf1100fa110f83140398d4306ed4874a0e", 734_885, "IPAdapterAdvanced",
-            "Style reference for SDXL models. Its own models (about 3.4 GB) are downloaded separately. No longer developed."),
+            "Style picture for SDXL models: new pictures take on a picture's colours, brushwork and light. Brings its two models (3.4 GB). No longer developed by its maker.",
+            new("https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors", "ipadapter", "ip-adapter-plus_sdxl_vit-h.safetensors",
+                "3f5062b8400c94b7159665b21ba5c62acdcd7682262743d7f2aefedef00e6581", 847_517_512),
+            new("https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors", "clip_vision", "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
+                "6ca9667da1ca9e0b0f75e46bb030f7e011f44f86cbfb8d5a36590fcd7507b030", 2_528_373_448)),
         new("ComfyUI-GGUF", "GGUF loader (Krea 2)", "Optional", false, "leejet/ComfyUI-GGUF", "373048b840", "2.0.0",
             "51e9582593aea82fe3c847a51ebb87ceca2e32584b5f2b4ad843b056c83646b0", 122_247, "UnetLoaderGGUF",
             "Loads smaller GGUF Krea 2 files for 6–8 GB graphics cards. Experimental; Qwen-Image GGUF files don't work yet."),
@@ -157,7 +161,7 @@ public partial class MainWindow
         PluginBanner.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         if (!show) return;
         var names = missing.Select(p => p.Name).Concat(ManagerMissing ? [ManagerName] : []).ToList();
-        PluginBannerText.Text = $"{string.Join(", ", names)} · about {Size(missing.Sum(p => p.Bytes + (p.Model?.Bytes ?? 0)) + (ManagerMissing ? 20_000_000 : 0))} to download";
+        PluginBannerText.Text = $"{string.Join(", ", names)} · about {Size(missing.Sum(p => p.Bytes + p.Models.Sum(m => m.Bytes)) + (ManagerMissing ? 20_000_000 : 0))} to download";
     }
 
     async void InstallPluginsBanner_Click(object sender, RoutedEventArgs e) => await InstallPlugins(MissingDefaults(), ManagerMissing);
@@ -193,7 +197,7 @@ public partial class MainWindow
                 if (state == PluginState.Disabled) actions.Add(("Enable", () => EnablePack(dir)));
                 if (state == PluginState.Older) actions.Add(("Update", () => _ = InstallPlugins([p], false, replace: dir)));
                 if (state == PluginState.Failed) { actions.Add(("Repair", () => _ = InstallPlugins([p], false, replace: dir))); actions.Add(("Switch off", () => DisablePack(dir))); }
-                PluginsList.Children.Add(PluginRow(p.Name, status, p.About, $"{Size(p.Bytes + (p.Model?.Bytes ?? 0))} · {p.Repo} @ {p.Commit[..7]}",
+                PluginsList.Children.Add(PluginRow(p.Name, status, p.About, $"{Size(p.Bytes + p.Models.Sum(m => m.Bytes))} · {p.Repo} @ {p.Commit[..7]}",
                     state == PluginState.Missing, p, actions));
             }
         }
@@ -311,16 +315,7 @@ public partial class MainWindow
                 Directory.Move(top, dest);
                 var req = Path.Combine(dest, "requirements.txt");
                 if (File.Exists(req)) requirements.AddRange(File.ReadAllLines(req));
-                if (p.Model is { } m)
-                {
-                    var file = Path.Combine(m.InPack ? dest : ModelsDir, m.Folder, m.File);
-                    if (!File.Exists(file) || !Sha256Is(file, m.Sha256))
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(file));
-                        await DownloadFile(m.Url, file, (done, size) => PluginProgress($"Downloading {m.File}: {Size(done)} of {Size(size)}…"));
-                        if (!Sha256Is(file, m.Sha256)) { File.Delete(file); throw new Exception($"{m.File} didn't match its checksum."); }
-                    }
-                }
+                await GetPluginModels(p, dest);
             }
             if (manager) requirements.AddRange(File.ReadAllLines(Path.Combine(Root, "ComfyUI", "manager_requirements.txt")));
             if (requirements.Count > 0) await PipInstall(requirements, work);
@@ -355,6 +350,19 @@ public partial class MainWindow
             "--disable-pip-version-check", "--no-warn-script-location"]);
         File.WriteAllText(Path.Combine(Root, "plugins_install.log"), r.Output);
         if (r.ExitCode != 0) throw new Exception("pip couldn't install their Python packages; details in plugins_install.log in the ComfyUI folder.");
+    }
+
+    // a plugin's own files, each checked against its published SHA-256 (dest: the plugin's folder, for files kept inside it)
+    async Task GetPluginModels(Plugin p, string dest)
+    {
+        foreach (var m in p.Models)
+        {
+            var file = Path.Combine(m.InPack ? dest : ModelsDir, m.Folder, m.File);
+            if (File.Exists(file) && Sha256Is(file, m.Sha256)) continue;
+            Directory.CreateDirectory(Path.GetDirectoryName(file));
+            await DownloadFile(m.Url, file, (done, size) => PluginProgress($"Downloading {m.File}: {Size(done)} of {Size(size)}…"));
+            if (!Sha256Is(file, m.Sha256)) { File.Delete(file); throw new Exception($"{m.File} didn't match its checksum."); }
+        }
     }
 
     // the process listening on ComfyUI's port, if it runs this install's Python (so it is this install's ComfyUI)
