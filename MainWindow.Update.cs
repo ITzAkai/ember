@@ -72,7 +72,12 @@ public partial class MainWindow
 
     void Update_Click(object sender, RoutedEventArgs e)
     {
+        if (busy) { Note("A picture is being made: update once it's finished.", true); return; }
         ApplyUpdate();
-        RestartApp_Click(sender, e);        // starts the exe at this path (now the new one) and closes this copy
+        // the new version starts its own ComfyUI (no taking over this one), so launch settings it adds, like live previews, apply at once
+        StopServer();
+        restarting = true;
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath) { WorkingDirectory = Root, UseShellExecute = false });
+        Close();
     }
 }
