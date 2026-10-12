@@ -316,14 +316,23 @@
               <StackPanel x:Name="ReferenceSection" AllowDrop="True" DragOver="Reference_DragOver" Drop="Reference_Drop" Background="Transparent">
                 <TextBlock Text="Reference pictures" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
                 <WrapPanel x:Name="ReferenceList" Visibility="Collapsed"/>
-                <Button x:Name="AddReferenceBtn" Style="{StaticResource Ghost}" Height="44" Click="AddReference_Click" AutomationProperties.Name="Add reference picture">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE77B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock Text="Add a character or place…" VerticalAlignment="Center"/>
-                  </StackPanel>
-                </Button>
+                <DockPanel x:Name="AddReferenceRow">
+                  <Button x:Name="PasteReferenceBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="44" Padding="14,0" Margin="6,0,0,0" Click="PasteReference_Click"
+                          ToolTip="Use a copied picture: Copy image in a browser, a screenshot, or a file copied in Explorer. Ctrl+V here does the same." AutomationProperties.Name="Paste reference picture">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="&#xE77F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                      <TextBlock Text="Paste" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button x:Name="AddReferenceBtn" Style="{StaticResource Ghost}" Height="44" Click="AddReference_Click" AutomationProperties.Name="Add reference picture">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="&#xE77B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                      <TextBlock Text="Add a character or place…" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                </DockPanel>
                 <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"
-                           Text="Drop up to 3 pictures here. New pictures keep the same face or place: just say what happens, e.g. &quot;she is reading in a café&quot;. Qwen-Image 2.1 keeps them; any other model then redraws the picture in its own style."/>
+                           Text="Drop, paste or add up to 3 pictures. New pictures keep the same face or place: just say what happens, e.g. &quot;she is reading in a café&quot;. Qwen-Image 2.1 keeps them; any other model then redraws the picture in its own style."/>
                 <StackPanel x:Name="RefStylePanel" Visibility="Collapsed" Margin="0,10,0,0">
                   <DockPanel>
                     <TextBlock x:Name="RefStyleValue" DockPanel.Dock="Right" Style="{StaticResource Note}"/>

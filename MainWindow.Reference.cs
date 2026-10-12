@@ -38,6 +38,25 @@ public partial class MainWindow
         if (references.Count >= MaxReferences) { Note($"Up to {MaxReferences} reference pictures.", true); return; }
         BitmapSource img;
         try { img = Oriented(path); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); return; }
+        AddReference(img);
+    }
+
+    // the Paste button, or Ctrl+V while the reference area has focus: a copied file, a browser's picture or a screenshot
+    void PasteReference_Click(object sender, RoutedEventArgs e) => PasteReference();
+
+    void PasteReference()
+    {
+        try
+        {
+            if (ClipboardPicture() is { } p) AddReference(p.Image);
+            else Note("Copy a picture first: Copy image in a browser, a screenshot, or a file in Explorer.", true);
+        }
+        catch (Exception ex) { Note("Couldn't paste that: " + ex.Message, true); }
+    }
+
+    void AddReference(BitmapSource img)
+    {
+        if (references.Count >= MaxReferences) { Note($"Up to {MaxReferences} reference pictures.", true); return; }
         double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         img.Freeze();
@@ -89,7 +108,7 @@ public partial class MainWindow
             });
         }
         ReferenceList.Visibility = references.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        AddReferenceBtn.Visibility = references.Count < MaxReferences ? Visibility.Visible : Visibility.Collapsed;
+        AddReferenceRow.Visibility = references.Count < MaxReferences ? Visibility.Visible : Visibility.Collapsed;
         ShowRefStyle();
     }
 

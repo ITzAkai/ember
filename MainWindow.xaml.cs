@@ -783,7 +783,8 @@ public partial class MainWindow : Window
         }
         else if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control && Keyboard.FocusedElement is not TextBox)
         {
-            if (PastePhoto()) { EditMode.IsChecked = true; e.Handled = true; }
+            if (ReferenceSection.IsKeyboardFocusWithin && ClipboardPicture() != null) { PasteReference(); e.Handled = true; }      // after clicking Add or Paste there
+            else if (PastePhoto()) { EditMode.IsChecked = true; e.Handled = true; }
         }
         else if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control && EditorPanel.IsVisible && Keyboard.FocusedElement is not TextBox)
         {
