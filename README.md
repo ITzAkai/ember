@@ -12,21 +12,39 @@ Ember was called Image Forge until version 1.8.8; your settings, gallery and mod
 
 ## What it does
 
-- **Create** pictures from a prompt, with styles, aspect ratios and up to 4 at once
-- **Edit photo**: remove objects, expand the picture, fix details, cut out the background, upscale
-- **Video**: text-to-video and picture-to-video
-- **Reference pictures**: drop or paste a character or a place, and new pictures keep the same face or place. Save it as a named character to use again
-- **Compare models**: the same prompt and seed on several models, one picture each
-- **Queue and live view**: click a picture being made to watch it form; right-click a waiting one to cancel it or make it next
-- **Improve prompt** and **Describe image** with a local text model
-- **LoRA add-ons**: several at once, with descriptions and trigger words looked up automatically
-- **Models page**: download models, or paste a Hugging Face / Civitai link, and each file goes in the right folder
-- **Settings per model, and tabs**: each model keeps its own settings; save a setup as a tab, export it and share it
-- **Quality guard**: warns when a setting is off for the model, with **Fix all** to put it right
-- **Quality boosters**: Fix faces, Hi-res fix, refine with a second model, PAG, RescaleCFG and a colour finish
-- **Plugins**: optional ComfyUI plugins at pinned, checked versions (Settings > Plugins), and ComfyUI's own editor under **ComfyUI** for experts
-- Gallery with favourites, search, and the settings used for each picture, grouped by day (Ctrl+scroll for bigger or smaller pictures)
-- **Secret gallery** (the lock tab): right-click a picture > **Move to secret gallery**. It is encrypted with your password and only shows after you type it; it locks again when you leave the tab. There is no password reset: forget it and those pictures can't be opened.
+### Create
+- **Pictures from a few words**: type an idea, pick a style and a shape, and get up to 4 pictures at once
+- **Improve prompt**: turns a short idea into a rich, detailed prompt
+- **Describe image**: drop or paste any picture and get the prompt that recreates it
+- **Short videos**: from a prompt, or bring one of your pictures to life
+
+### Keep a character
+- **Reference pictures**: drop or paste a character or a place, and new pictures keep the same face, hair and clothes, in any model's style
+- **Saved characters**: keep them under a name and bring them back in one click
+
+### Edit
+- **Paint to change**: brush over part of a picture and describe what goes there, or remove things
+- **Expand** a picture past its edges, **cut out the background**, and **upscale** 2× or 4×
+- **More like this**: fresh variations close to a picture you love
+
+### Watch and steer
+- **Live view**: click a picture while it's being made and watch it take shape
+- **Queue**: line up as many as you like; right-click one to cancel it or make it next
+- **Compare models**: the same prompt and seed on several models, side by side
+
+### Better pictures, without the guesswork
+- **Settings that fit each model**: Ember knows good steps, sampler and size for each model, warns when something is off, and fixes it in one click
+- **Quality boosters**: fix faces, hi-res fix, refine with a second model, sharper structure and a colour finish, one switch each
+- **LoRA add-ons**: mix several at once; Ember looks up what each one does and its trigger words
+- **Your setups, saved**: every model remembers its own settings; save favourite setups as tabs and share them
+
+### Your gallery, your PC
+- **Gallery** grouped by day, with favourites, search, and the exact settings behind every picture
+- **Secret gallery**: encrypted with your password and hidden until you unlock it (there's no password reset, so don't forget it)
+- **Private by design**: every model runs on your PC, your prompts and pictures never leave it, and Ember keeps itself up to date
+
+### For experts
+- ComfyUI's own node editor is built in, and optional plugins install at pinned, checked versions
 
 ## Install
 
