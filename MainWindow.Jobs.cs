@@ -131,7 +131,6 @@ public partial class MainWindow
         if (!ready) return;
         if (string.IsNullOrWhiteSpace(PromptBox.Text)) { Note("Write a prompt first.", true); PromptBox.Focus(); return; }
         var words = PromptBox.Text + "\n" + CoupleText;           // everything typed that goes into the picture, the two-people boxes too
-        if (SexualWithMinor(words)) { Note(MinorNote, true); return; }       // the uncensored models won't stop it, so the app does
         Remember(PromptBox.Text.Trim());
         if (ModelBox.SelectedItem == null) { Note(VideoOn ? "No video model yet: get Wan 2.1 on the Models page." : "No model selected.", true); return; }
         bool edit = EditMode.IsChecked == true;
@@ -295,7 +294,6 @@ public partial class MainWindow
     {
         if (!ready) { ViewerNote.Text = "ComfyUI isn't ready yet."; return; }
         var prompt = s.Meta?.Prompt ?? PromptBox.Text.Trim();
-        if (SexualWithMinor(prompt)) { ViewerNote.Text = MinorNote; return; }
         CloseViewer();
         long seed = Random.Shared.NextInt64(0, 1L << 48);
         await Enqueue(1, async job =>

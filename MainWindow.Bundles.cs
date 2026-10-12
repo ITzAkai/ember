@@ -316,7 +316,6 @@ public partial class MainWindow
         var prompts = pictures.Select(p => { try { return ReadMeta(p)?.Prompt; } catch { return null; } })
             .Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct().Take(4).ToList();
         var everything = string.Join("\n", new[] { name, about, tab.Negative }.Concat(prompts));
-        if (SexualWithMinor(everything)) { BundlesNote.Text = MinorNote; return; }
         adult |= SexualWords.IsMatch(everything);       // sexual prompts or text always get the 18+ gate
 
         // the files it needs: the model, its LoRAs, and for model-only files the text encoder and VAE it runs with
@@ -502,7 +501,6 @@ public partial class MainWindow
                 f.Sha256 = f.Sha256.ToLowerInvariant();
             }
             var text = string.Join("\n", new[] { b.Name, b.Description, b.Tab.Negative }.Concat(b.Prompts ?? new()));
-            if (SexualWithMinor(text)) throw new Exception(MinorNote);
             b.Adult |= SexualWords.IsMatch(text);
             b.Showcase = (b.Showcase ?? new()).Where(s => s == Path.GetFileName(s) && ShowcaseTypes.Contains(Path.GetExtension(s).ToLowerInvariant()) && File.Exists(Path.Combine(temp, s))).ToList();
             b.Prompts ??= new();
