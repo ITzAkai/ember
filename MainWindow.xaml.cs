@@ -200,6 +200,8 @@ public class Shot : INotifyPropertyChanged
     public bool Selecting { get => selecting; set { selecting = value; Changed(nameof(Selecting)); } }
     string progress = "";
     public string Progress { get => progress; set { progress = value; Changed(nameof(Progress)); } }
+    ImageSource preview;
+    public ImageSource Preview { get => preview; set { preview = value; Changed(nameof(Preview)); } }     // ComfyUI's live preview while it's being made
     bool favorite;
     public bool Favorite { get => favorite; set { favorite = value; Changed(nameof(Favorite)); Changed(nameof(FavoriteLabel)); } }
     public string FavoriteLabel => favorite ? "Remove from favourites" : "Add to favourites";
@@ -848,7 +850,7 @@ public partial class MainWindow : Window
             Note("Starting ComfyUI on your graphics card…");
             WriteFinishNode();
             // through cmd so ComfyUI writes its own log file: it can then outlive this app ("Keep ComfyUI running")
-            var args = "-s ComfyUI\\main.py --windows-standalone-build --listen 127.0.0.1 --port " + Port + " --disable-auto-launch" + LaunchFlags();
+            var args = "-s ComfyUI\\main.py --windows-standalone-build --listen 127.0.0.1 --port " + Port + " --disable-auto-launch --preview-method auto" + LaunchFlags();
             if (!string.IsNullOrWhiteSpace(settings.OutputDir)) args += $" --output-directory \"{settings.OutputDir.TrimEnd('\\')}\"";
             server = new Process
             {

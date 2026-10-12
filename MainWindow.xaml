@@ -53,6 +53,12 @@
                      LineHeight="17" LineStackingStrategy="BlockLineHeight" MaxHeight="34" VerticalAlignment="Bottom" Margin="12,0,12,11"/>
         </Border>
         <Grid x:Name="PendingFace" Visibility="Collapsed">
+          <!-- the picture as it forms, while ComfyUI makes it -->
+          <Border CornerRadius="10">
+            <Border.Background>
+              <ImageBrush ImageSource="{Binding Preview}" Stretch="UniformToFill"/>
+            </Border.Background>
+          </Border>
           <Border CornerRadius="10" Opacity="0.3">
             <Border.Background>
               <RadialGradientBrush>
@@ -70,10 +76,12 @@
               </EventTrigger>
             </Border.Triggers>
           </Border>
-          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-            <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" FontSize="22" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"/>
-            <TextBlock Text="{Binding Progress}" FontSize="12.5" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0"/>
-          </StackPanel>
+          <Border Background="#99000000" CornerRadius="10" Padding="14,10" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <StackPanel>
+              <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" FontSize="22" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"/>
+              <TextBlock Text="{Binding Progress}" FontSize="12.5" FontWeight="SemiBold" Foreground="White" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+            </StackPanel>
+          </Border>
         </Grid>
         <Border Width="46" Height="46" CornerRadius="23" Background="#99000000" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
                 Visibility="{Binding IsVideo, Converter={StaticResource BoolVis}}">

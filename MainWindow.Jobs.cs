@@ -278,6 +278,7 @@ public partial class MainWindow
                     WebSocketReceiveResult res;
                     do { res = await ws.ReceiveAsync(buf, CancellationToken.None); ms.Write(buf, 0, res.Count); } while (!res.EndOfMessage);
                     if (res.MessageType == WebSocketMessageType.Text) OnMessage(Encoding.UTF8.GetString(ms.ToArray()));
+                    else if (res.MessageType == WebSocketMessageType.Binary) OnPreview(ms.ToArray());
                 }
             }
             catch { }
@@ -286,6 +287,24 @@ public partial class MainWindow
             foreach (var j in jobs.ToList()) Finish(j, "Lost the connection to ComfyUI.");
             await Task.Delay(2000);
         }
+    }
+
+    // ComfyUI's live preview of the picture being made (event 1: a 4-byte image type, then a JPEG or PNG), shown on the job's card
+    void OnPreview(byte[] data)
+    {
+        if (data.Length < 9 || System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(data) != 1) return;
+        if (jobs.FirstOrDefault(j => j.Running)?.Slots.FirstOrDefault() is not { } slot) return;
+        try
+        {
+            var img = new BitmapImage();
+            img.BeginInit();
+            img.CacheOption = BitmapCacheOption.OnLoad;
+            img.StreamSource = new MemoryStream(data, 8, data.Length - 8);
+            img.EndInit();
+            img.Freeze();
+            slot.Preview = img;
+        }
+        catch { /* a frame that doesn't decode: the next one will */ }
     }
 
     void OnMessage(string text)
