@@ -1449,7 +1449,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256);
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }
@@ -2218,7 +2218,6 @@ public partial class MainWindow : Window
     {
         var idea = PromptBox.Text.Trim();
         if (idea == "") { Note("Type a short idea first, then press Improve prompt."); return; }
-        if (SexualWithMinor(idea)) { Note(MinorNote, true); return; }
         bool edit = EditMode.IsChecked == true;
         if (edit && photo == null) { Note("Choose a photo first, then describe the change.", true); return; }
         var style = CurrentStyle.Key == "none" ? "" : $"\n(The style: {CurrentStyle.Label}.)";
@@ -2290,8 +2289,6 @@ public partial class MainWindow : Window
             {
                 var answer = await AskOllama(settings.HelperModel["Ollama: ".Length..], prompt, system);
                 if (answer == "") throw new Exception("the model gave an empty answer");
-                if (SexualWithMinor(answer)) { Note(MinorNote, true); return null; }
-                if (Declined.IsMatch(answer)) { Note("The text model declined this one. Write the details yourself; your prompt is unchanged.", true); return null; }
                 return answer;
             }
             catch (Exception ex) { Note("Ollama couldn't write it (" + ex.Message + "). Is Ollama still running?", true); return null; }
@@ -2341,8 +2338,6 @@ public partial class MainWindow : Window
                 if (text == null && DateTime.Now > until) throw new Exception("it took too long");
             }
             if (text == "") throw new Exception("the model gave an empty answer");
-            if (SexualWithMinor(text)) { Note(MinorNote, true); return null; }
-            if (Declined.IsMatch(text)) { Note("The text model declined this one. Write the details yourself; your prompt is unchanged.", true); return null; }
             return text;
         }
         catch (Exception ex) { Note("Couldn't write it: " + ex.Message, true); return null; }

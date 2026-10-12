@@ -510,7 +510,8 @@ public partial class MainWindow
     {
         bool Starts(params string[] prefixes) => keys.Any(k => prefixes.Any(k.StartsWith));
         if (keys.Any(k => k.Contains("lora", StringComparison.OrdinalIgnoreCase))) return "loras";
-        if (Starts("first_stage_model.") && Starts("model.diffusion_model.")) return "checkpoints";       // model, text encoder and VAE in one
+        // model, text encoder and VAE in one: SD and SDXL call the VAE first_stage_model., newer ComfyUI saves (FLUX, SD3) vae. and text_encoders.
+        if (Starts("model.diffusion_model.") && Starts("first_stage_model.", "vae.", "conditioner.", "cond_stage_model.", "text_encoders.")) return "checkpoints";
         if (Starts("model.diffusion_model.", "diffusion_model.", "transformer_blocks.", "double_blocks.", "single_blocks.", "joint_blocks.",
                    "input_blocks.", "down_blocks.", "txtfusion.", "img_in.")) return "diffusion_models";
         if (Starts("model.layers.", "model.language_model.", "language_model.", "text_model.", "encoder.block.", "model.embed_tokens")) return "text_encoders";

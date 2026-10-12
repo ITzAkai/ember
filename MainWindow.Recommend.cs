@@ -28,7 +28,7 @@ public partial class MainWindow
 {
     const string RecommendationsJson = """
     {
-      "version": 6,
+      "version": 7,
       "families": {
         "sdxl": { "maxMp": 1.2, "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.6, "badScheduler": null,
@@ -92,7 +92,9 @@ public partial class MainWindow
         { "match": "aesthetic", "family": "anima", "label": "Anima Aesthetic", "cfg": 3.5, "cfgRange": [3, 5],
           "why": "Anima Aesthetic: CFG 3.5. Quality tags are optional: it was trained only on high-quality pictures." },
         { "match": "nova ?anime ?am", "family": "anima", "label": "Nova Anime AM", "sampler": "euler_ancestral", "scheduler": "normal", "steps": [20, 28, 30], "stepsRange": [20, 32],
-          "cfg": 5, "cfgRange": [4, 6], "why": "Nova Anime AM (an Anima 2.9B merge): Euler a, 20 to 30 steps, CFG 4 to 6, from its author." }
+          "cfg": 5, "cfgRange": [4, 6], "why": "Nova Anime AM (an Anima 2.9B merge): Euler a, 20 to 30 steps, CFG 4 to 6, from its author." },
+        { "match": "dev", "family": "flux", "label": "FLUX dev", "steps": [15, 20, 30], "stepsRange": [12, 50],
+          "why": "FLUX dev: 20 steps at CFG 1, as in ComfyUI's example; it isn't a few-step model like schnell." }
       ]
     }
     """;
