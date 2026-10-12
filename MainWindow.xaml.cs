@@ -100,7 +100,9 @@ public class Settings
     public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // before per-model profiles: the starting point for models without one
     public Dictionary<string, ModelProfile> Profiles { get; set; } = new();        // each model's own settings
     public List<ModelProfile> Tabs { get; set; } = new();
-    public string ActiveTab { get; set; }                   // the ComfyUI portable folder, when the exe doesn't sit in one
+    public string ActiveTab { get; set; }
+    public bool AdultAgreed { get; set; }                   // confirmed 18+ once, so adult bundles show their pictures
+    public string BundleAuthor { get; set; }                // the name "Make a bundle" fills in
 
     // IMAGEFORGE_SETTINGS: another folder for settings, LoRA info and recommendations (test copies leave the real ones alone)
     static readonly string File = Path.Combine(Environment.GetEnvironmentVariable("IMAGEFORGE_SETTINGS") is { Length: > 0 } dir ? dir
@@ -792,7 +794,7 @@ public partial class MainWindow : Window
 
     void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if ((SettingsPanel.IsVisible || ModelsPanel.IsVisible) && e.Key == Key.Escape) { CloseOverlays_Click(null, null); e.Handled = true; return; }
+        if ((SettingsPanel.IsVisible || ModelsPanel.IsVisible || BundlesPanel.IsVisible) && e.Key == Key.Escape) { CloseOverlays_Click(null, null); e.Handled = true; return; }
         if (LivePanel.IsVisible && e.Key == Key.Escape) { CloseLive(); e.Handled = true; return; }
         if (ViewerPanel.IsVisible)
         {

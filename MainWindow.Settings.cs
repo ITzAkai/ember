@@ -157,7 +157,7 @@ public partial class MainWindow
     }
 
     // ---------------- shared by the Settings and Models pages ----------------
-    void CloseOverlays_Click(object sender, RoutedEventArgs e) => SettingsPanel.Visibility = ModelsPanel.Visibility = ExpertPanel.Visibility = Visibility.Collapsed;
+    void CloseOverlays_Click(object sender, RoutedEventArgs e) => SettingsPanel.Visibility = ModelsPanel.Visibility = BundlesPanel.Visibility = ExpertPanel.Visibility = Visibility.Collapsed;
     void OverlayBackdrop_Click(object sender, MouseButtonEventArgs e) => CloseOverlays_Click(null, null);
     void OverlayCard_Click(object sender, MouseButtonEventArgs e) => e.Handled = true;      // clicks inside the card don't close it
 }

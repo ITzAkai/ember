@@ -37,6 +37,7 @@ Type an idea, pick a style, and Ember does the rest: it runs [ComfyUI](https://g
 - **Quality boosters**: fix faces, hi-res fix, refine with a second model, sharper structure and a colour finish, one switch each
 - **LoRA add-ons**: mix several at once; Ember looks up what each one does and its trigger words
 - **Your setups, saved**: every model remembers its own settings; save favourite setups as tabs and share them
+- **Bundles**: a whole setup in one click (the model, its LoRAs and parts, and its settings, with showcase pictures). Get & set up downloads what's missing, checks every file against its published checksum and opens it as a tab. Make your own from the setup on screen and share it as an `.emberbundle` file; adult bundles stay blurred until the viewer confirms they're 18 or older
 
 ### Your gallery, your PC
 - **Gallery** grouped by day, with favourites, search, and the exact settings behind every picture

@@ -1,0 +1,116 @@
+{
+  "Format": 1,
+  "Id": "noct-realism-nsfw",
+  "Name": "Noct Realism NSFW · Krea 2",
+  "Author": "Novulon",
+  "Description": "Krea Noct Uncensored Realism v6 with the uncensored Heretic text encoder, the wistfall style, Krea2 realism and Midjourney Artful NSFW LoRAs. er_sde / simple, 16 steps, CFG 3, 832×1248 portrait. Add 'ArtfulNSFW' to a prompt for the Midjourney look.",
+  "Adult": true,
+  "Recommended": true,
+  "Tab": {
+    "Name": "Noct Realism NSFW",
+    "Model": "Noct_Uncensored_Realism_v6_INT8.safetensors",
+    "Quality": "30",
+    "Steps": 16,
+    "Cfg": 3.0,
+    "Sampler": "er_sde",
+    "Scheduler": "simple",
+    "Size": "832x1248",
+    "Count": 1,
+    "Strength": 0.6,
+    "Negative": "child, loli, young, teen, underage, deformed, bad anatomy, extra limbs, extra fingers, blurry, watermark, text",
+    "Style": "none",
+    "Loras": [
+      {
+        "Name": "KREA2_ta86_wistfall.safetensors",
+        "Strength": 1.0
+      },
+      {
+        "Name": "Krea2-realism-V2.safetensors",
+        "Strength": 0.4
+      },
+      {
+        "Name": "MidJounreyNSFWKrea2Raw.safetensors",
+        "Strength": 0.4
+      }
+    ],
+    "Boosters": {
+      "Pag": true,
+      "PagScale": 3.0,
+      "Rescale": true,
+      "RescaleMultiplier": 1.0,
+      "Nag": true,
+      "NagScale": 1.5
+    },
+    "TextEncoder": "qwen3-vl-4b-heretic_fp8_e4m3fn.safetensors",
+    "Vae": "qwen_image_vae.safetensors",
+    "Saved": true
+  },
+  "Files": [
+    {
+      "Name": "Krea Noct · Uncensored Realism v6 (INT8)",
+      "Folder": "diffusion_models",
+      "File": "Noct_Uncensored_Realism_v6_INT8.safetensors",
+      "Url": "https://civitai.com/api/download/models/3372438?fileId=3260553",
+      "Size": 13491924376,
+      "Sha256": "0815f1ab1075982678f21d58aa36e34e96d5ae6603d4d6f4542e300bcbe3a36e",
+      "License": "Krea 2 · Civitai"
+    },
+    {
+      "Name": "Qwen3-VL 4B Heretic text encoder (fp8)",
+      "Folder": "text_encoders",
+      "File": "qwen3-vl-4b-heretic_fp8_e4m3fn.safetensors",
+      "Url": "https://huggingface.co/DreamFast/Qwen3-VL-4b-Heretic-ComfyUI/resolve/main/qwen3-vl-4b-heretic_fp8_e4m3fn.safetensors",
+      "Size": 4831492476,
+      "Sha256": "7443c2b8df026a3271b3095d5d1dc07800dc5cf460b6e3586692253c7a7bc17c",
+      "License": "Hugging Face · DreamFast"
+    },
+    {
+      "Name": "Krea 2 VAE",
+      "Folder": "vae",
+      "File": "qwen_image_vae.safetensors",
+      "Url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/vae/qwen_image_vae.safetensors",
+      "Size": 253806246,
+      "Sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f",
+      "License": "Apache 2.0"
+    },
+    {
+      "Name": "ta86_wistfall · Krea 2",
+      "Folder": "loras",
+      "File": "KREA2_ta86_wistfall.safetensors",
+      "Url": "https://civitai.com/api/download/models/3369950?fileId=3258083",
+      "Size": 228588984,
+      "Sha256": "a1155c98c353c32b6fa0506bda26bb5277e434d79d8498f5440b160af8e0fe8c",
+      "License": "Krea 2 · Civitai"
+    },
+    {
+      "Name": "Krea2-realism-V2",
+      "Folder": "loras",
+      "File": "Krea2-realism-V2.safetensors",
+      "Url": "https://civitai.com/api/download/models/3090634?fileId=2970148",
+      "Size": 1562410344,
+      "Sha256": "fb0048ce3340adc2842ccfcc1a9a61a9773b6628b01ae5a2e139ca9c679e715d",
+      "License": "Krea 2 · Civitai"
+    },
+    {
+      "Name": "Midjourney Artful NSFW · Krea 2",
+      "Folder": "loras",
+      "File": "MidJounreyNSFWKrea2Raw.safetensors",
+      "Url": "https://civitai.com/api/download/models/3110319?fileId=2990358",
+      "Size": 228587744,
+      "Sha256": "98eef9ed9520ee33f9438378a1d1d262395031dc619e2904eb5d9f4120db993a",
+      "License": "Krea 2 · Civitai"
+    }
+  ],
+  "Prompts": [
+    "ArtfulNSFW. A photograph of a nude woman in her early thirties with long dark wavy hair, standing by a tall window in soft morning light, looking back over her shoulder, natural skin texture, film grain, quiet bedroom with linen curtains.",
+    "A painterly ink portrait of a nude adult woman in her thirties reclining on a deep red velvet chaise, melancholic candlelight, wistful expression, luminous darkness, soft brush strokes, emotional negative space.",
+    "Candid 35mm photo of a tattooed woman in her late twenties sitting cross-legged on rumpled white sheets, topless, warm golden hour light falling through window blinds, relaxed smile, shallow depth of field.",
+    "Editorial photograph of an athletic nude woman in her thirties with short platinum hair, standing in a sunlit concrete loft, side view, strong soft shadows, toned body, high fashion magazine lighting."
+  ],
+  "Showcase": [
+    "showcase1.jpg",
+    "showcase2.jpg",
+    "showcase3.jpg",
+    "showcase4.jpg"
+  ]
+}

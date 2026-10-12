@@ -178,6 +178,12 @@
               <TextBlock Text="ComfyUI" VerticalAlignment="Center"/>
             </StackPanel>
           </Button>
+          <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Bundles_Click" ToolTip="Ready-made setups: a model, its LoRAs and settings, in one click" AutomationProperties.Name="Bundles">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBlock Text="Bundles" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
           <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Models_Click" ToolTip="Installed models and more to download" AutomationProperties.Name="Models">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="&#xE8F1;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -1366,6 +1372,30 @@
           </DockPanel>
           <ScrollViewer x:Name="ModelsScroll" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
             <StackPanel x:Name="ModelsList" Margin="0,0,6,0"/>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+
+    <!-- bundles -->
+    <Grid x:Name="BundlesPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
+      <Border Width="820" MaxHeight="860" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
+              CornerRadius="14" MouseLeftButtonUp="OverlayCard_Click">
+        <DockPanel Margin="26,20,26,24">
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="CloseOverlays_Click" ToolTip="Close (Esc)" AutomationProperties.Name="Close bundles"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Content="Import…" Click="ImportBundle_Click"
+                    ToolTip="Add a bundle someone shared (.emberbundle)"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource Primary}" Height="32" Padding="14,0" Margin="0,0,8,0" Content="Make a bundle…" Click="MakeBundle_Click"
+                    ToolTip="Turn the model and settings on screen into a bundle, with showcase pictures"/>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="Bundles" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock x:Name="BundlesNote" Text="A whole setup in one click: the model, its LoRAs and parts, and its settings. Every file is checked against its published checksum."
+                         Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+            </StackPanel>
+          </DockPanel>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+            <StackPanel x:Name="BundlesList" Margin="0,0,6,0"/>
           </ScrollViewer>
         </DockPanel>
       </Border>

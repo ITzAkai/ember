@@ -8,7 +8,7 @@
     <RootNamespace>ImageForge</RootNamespace>
     <AssemblyName>Ember</AssemblyName>
     <!-- the release tag is v + this; the app updates itself when a higher tag is released -->
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <ApplicationIcon>ember.ico</ApplicationIcon>
     <PublishSingleFile>true</PublishSingleFile>
     <!-- one .exe with .NET inside: runs on PCs without .NET installed -->
@@ -22,6 +22,7 @@
     <Resource Include="ember.ico" />
     <Resource Include="logo.png" />
     <Resource Include="styles\*.jpg" />
+    <EmbeddedResource Include="bundles\**\*" LogicalName="bundles/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Remove="old-browser-version\**" />
     <None Remove="old-browser-version\**" />
   </ItemGroup>
