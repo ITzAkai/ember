@@ -21,6 +21,7 @@ class Job
     public readonly List<Shot> Slots = new();       // placeholders still waiting for a result
     public readonly List<string> Uploads = new();   // its files in ComfyUI\input, removed when done
     public DateTime Started = DateTime.Now;
+    public int Number;                              // which of the pictures asked for together it is: 0, 1, …
     public bool Running;
     public long LogStart;                           // where ComfyUI's log stood when it was sent, to read what it said about this job
     public JsonObject Body;                         // what was sent, to send again at the front of the queue
@@ -34,10 +35,13 @@ public partial class MainWindow
     void Generate_Click(object sender, RoutedEventArgs e) => _ = Generate();
 
     // stops the image being made now; the queue carries on
-    async void Cancel_Click(object sender, RoutedEventArgs e)
+    void Cancel_Click(object sender, RoutedEventArgs e) => _ = Stop(jobs.FirstOrDefault(j => j.Running));
+
+    // by its prompt id, so one that finishes meanwhile doesn't take the next one down instead
+    async Task Stop(Job job)
     {
         Stage("Stopping…", "");
-        try { await http.PostAsync("/interrupt", null); } catch { }
+        try { await http.PostAsync("/interrupt", job?.Id == null ? null : Json(new JsonObject { ["prompt_id"] = job.Id })); } catch { }
     }
 
     async void ClearQueue_Click(object sender, RoutedEventArgs e)
@@ -70,7 +74,7 @@ public partial class MainWindow
     async Task CancelJob(Job job)
     {
         if (!job.Running && job.Id != null) try { await http.PostAsync("/queue", Json(new JsonObject { ["delete"] = new JsonArray(job.Id) })); } catch { }
-        if (job.Running) { Cancel_Click(null, null); return; }       // ComfyUI then reports it interrupted
+        if (job.Running) { await Stop(job); return; }                // ComfyUI then reports it interrupted
         Finish(job, "Cancelled.");                                    // a job still being built is dropped before it's sent
     }
 
@@ -174,7 +178,8 @@ public partial class MainWindow
             bool newPicture = !edit && expand == null;
             var style = newPicture && UsingStylePicture ? await Upload(stylePicture.Png, job) : null;
             bool couple = newPicture && UsingCouple;
-            var g = Graph(seed, image, masked, denoise, count: count, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))));
+            // picture n gets seed + n, so the seed saved with each one makes that same picture again
+            var g = Graph(seed + job.Number, image, masked, denoise, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))));
             // expansions always use the inpainting model when installed (far better joins); painted edits if the setting is on
             if (masked && inpaintModel != null && baseCheckpoint != null && (expand != null || settings.InpaintEdits)) UseInpaintModel(g);
             if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
@@ -185,38 +190,45 @@ public partial class MainWindow
         });
     }
 
-    // placeholders straight away, then build (and upload) the job, then hand it to ComfyUI
+    // a job per picture, so each waits its own turn in ComfyUI's queue and is stopped, cancelled or moved on its own.
+    // Placeholders straight away, then each job is built (and uploaded) and handed to ComfyUI, in order.
     async Task Enqueue(int images, Func<Job, Task<JsonObject>> build, string verb = "Painting · step", string label = null)
     {
-        var job = new Job { Verb = verb };
-        try { job.LogStart = File.Exists(ServerLog) ? new FileInfo(ServerLog).Length : 0; } catch { }
+        var queued = new List<Job>();
         for (int i = 0; i < images; i++)
         {
+            var job = new Job { Verb = verb, Number = i };
+            try { job.LogStart = File.Exists(ServerLog) ? new FileInfo(ServerLog).Length : 0; } catch { }
             var slot = new Shot { Pending = true, Progress = busy ? "Queued" : label ?? "Starting" };
             job.Slots.Add(slot);
             shots.Insert(0, slot);
+            jobs.Add(job);
+            queued.Add(job);
         }
-        jobs.Add(job);
         AllView.IsChecked = true;                    // new images land in "All"
         GalleryScroll.ScrollToTop();
         StripScroll.ScrollToLeftEnd();
         UpdateBusy();
-        try
+        foreach (var job in queued)
         {
-            var body = await build(job);
-            // sharp live previews (TAESD) where they cost nothing measurable: Qwen's and Krea 2's slow steps hide the decode;
-            // on anime models it's about 6% slower, on SDXL about 19%, so those keep the quick preview unless the setting asks
-            if (body["extra_data"] is not JsonObject extra) body["extra_data"] = extra = new JsonObject();
-            extra["preview_method"] ??= Qwen || Krea || settings.SharpPreviewAll ? "taesd" : "auto";
-            if (body["prompt"] is JsonObject sent) lastGraph = (JsonObject)sent.DeepClone();
-            if (!jobs.Contains(job)) { foreach (var f in job.Uploads) try { File.Delete(f); } catch { } return; }    // cancelled while being built
-            job.Body = body;
-            using var r = await http.PostAsync("/prompt", Json(body));
-            var j = JsonNode.Parse(await r.Content.ReadAsStringAsync());
-            if (!r.IsSuccessStatusCode || j?["error"] != null) throw new Exception(j?["error"]?["message"]?.GetValue<string>() ?? $"HTTP {(int)r.StatusCode}");
-            job.Id = j["prompt_id"].GetValue<string>();
+            if (!jobs.Contains(job)) continue;       // cancelled, or the queue cleared, before it was built
+            try
+            {
+                var body = await build(job);
+                // sharp live previews (TAESD) where they cost nothing measurable: Qwen's and Krea 2's slow steps hide the decode;
+                // on anime models it's about 6% slower, on SDXL about 19%, so those keep the quick preview unless the setting asks
+                if (body["extra_data"] is not JsonObject extra) body["extra_data"] = extra = new JsonObject();
+                extra["preview_method"] ??= Qwen || Krea || settings.SharpPreviewAll ? "taesd" : "auto";
+                if (body["prompt"] is JsonObject sent) lastGraph = (JsonObject)sent.DeepClone();
+                if (!jobs.Contains(job)) { foreach (var f in job.Uploads) try { File.Delete(f); } catch { } continue; }    // cancelled while being built
+                job.Body = body;
+                using var r = await http.PostAsync("/prompt", Json(body));
+                var j = JsonNode.Parse(await r.Content.ReadAsStringAsync());
+                if (!r.IsSuccessStatusCode || j?["error"] != null) throw new Exception(j?["error"]?["message"]?.GetValue<string>() ?? $"HTTP {(int)r.StatusCode}");
+                job.Id = j["prompt_id"].GetValue<string>();
+            }
+            catch (Exception e) { Finish(job, "Couldn't start: " + e.Message); }
         }
-        catch (Exception e) { Finish(job, "Couldn't start: " + e.Message); }
     }
 
     // into ComfyUI's input/forge folder under a fresh name, so queued jobs never overwrite each other's photo
