@@ -1,5 +1,5 @@
 """Calibration run (developer tool): fixed non-explicit test prompts and seeds, swept over the settings that matter per family,
-saved as labelled contact sheets for review. Mirrors Image Forge's own graphs. Re-runnable: finished images are reused.
+saved as labelled contact sheets for review. Mirrors Ember's own graphs. Re-runnable: finished images are reused.
 
   python_embeded\\python.exe tools\\calibrate.py --api http://127.0.0.1:8190 --comfy "<ComfyUI folder>" --out docs\\calibration [--only krea2,anima]
 

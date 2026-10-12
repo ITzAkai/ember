@@ -176,8 +176,8 @@ public partial class MainWindow
         foreach (var group in Recommended.GroupBy(p => p.Group))
         {
             PluginsList.Children.Add(new TextBlock { Text = group.Key, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 6) });
-            if (group.Key == "Image quality") PluginsList.Children.Add(PluginRow("Image Forge colour finish", nodeNames.Contains("ImageForgeFinish") ? "Built in" : "Built in (loads after a ComfyUI restart)",
-                "Image Forge's own small node for the Colour finish booster: plain torch, no extra packages.", "", false, null));
+            if (group.Key == "Image quality") PluginsList.Children.Add(PluginRow("Ember colour finish", nodeNames.Contains("ImageForgeFinish") ? "Built in" : "Built in (loads after a ComfyUI restart)",
+                "Ember's own small node for the Colour finish booster: plain torch, no extra packages.", "", false, null));
             if (group.Key == "Image quality" && ManagerShipped) PluginsList.Children.Add(PluginRow(ManagerName,
                 PipManager ? "Installed" : LegacyManager ? "Installed (older add-on version)" : "Not installed",
                 "Install, update and switch off ComfyUI plugins. Started with ComfyUI.", "about 20 MB", ManagerMissing, null));
@@ -279,7 +279,7 @@ public partial class MainWindow
         {
             var other = await ComfyOnPort();
             if (other == null) { PluginProgress($"Another program is using ComfyUI's port ({Port}). Close it, then install again."); return; }
-            if (MessageBox.Show(this, "ComfyUI is already running (left running from before, or opened outside Image Forge).\n\nStop it, install the plugins and start it again?",
+            if (MessageBox.Show(this, "ComfyUI is already running (left running from before, or opened outside Ember).\n\nStop it, install the plugins and start it again?",
                     "Install plugins", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
             server = other;         // from here on it's stopped and restarted like the one this window starts
         }

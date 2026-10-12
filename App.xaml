@@ -523,13 +523,19 @@
           <ControlTemplate TargetType="MenuItem">
             <Border x:Name="B" CornerRadius="6" Padding="10,7,18,7" Background="Transparent">
               <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" FontFamily="{StaticResource Icons}"
+                <TextBlock x:Name="Icon" Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" FontFamily="{StaticResource Icons}"
                            Foreground="{DynamicResource Muted}" Width="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                <!-- no access keys: menus list file, model and LoRA names, whose underscores must show -->
+                <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="False"/>
               </StackPanel>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="B" Property="Background" Value="{DynamicResource Raised2}"/></Trigger>
+              <!-- a ticked choice shows its tick where the icon goes -->
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Icon" Property="Text" Value="&#xE73E;"/>
+                <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource Accent}"/>
+              </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>

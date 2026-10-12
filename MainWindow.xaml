@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-        Title="Image Forge" Width="1320" Height="860" MinWidth="980" MinHeight="640"
-        WindowStartupLocation="CenterScreen" Icon="forge.ico"
+        Title="Ember" Width="1320" Height="860" MinWidth="980" MinHeight="640"
+        WindowStartupLocation="CenterScreen" Icon="ember.ico"
         Background="{DynamicResource Bg}" Foreground="{DynamicResource Ink}"
         FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display" PreviewKeyDown="Window_PreviewKeyDown">
@@ -17,7 +17,7 @@
     <DataTemplate x:Key="CardTemplate">
       <!-- a button, so cards work from the keyboard (Tab, Enter) and screen readers read the prompt -->
       <Button x:Name="Card" Width="{DynamicResource Card}" Height="{DynamicResource Card}" Margin="6" Cursor="Hand" Click="Card_Click"
-              PreviewMouseLeftButtonDown="Card_MouseDown" PreviewMouseMove="Card_MouseMove"
+              PreviewMouseLeftButtonDown="Card_MouseDown" PreviewMouseMove="Card_MouseMove" ContextMenuOpening="Card_ContextMenuOpening"
               FocusVisualStyle="{x:Null}" AutomationProperties.Name="{Binding Caption}">
         <Button.Template>
           <ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate>
@@ -164,7 +164,7 @@
       <DockPanel Margin="20,0">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
           <Button x:Name="UpdateBtn" Style="{StaticResource Primary}" Height="32" Padding="12,0" Margin="0,0,16,0" Visibility="Collapsed" Click="Update_Click"
-                  ToolTip="A new version is downloaded: restart now to use it, or it's installed when you close Image Forge" AutomationProperties.Name="Update">
+                  ToolTip="A new version is downloaded: restart now to use it, or it's installed when you close Ember" AutomationProperties.Name="Update">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="&#xE896;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
               <TextBlock x:Name="UpdateBtnText" Text="Update" VerticalAlignment="Center"/>
@@ -172,7 +172,7 @@
           </Button>
           <TextBlock x:Name="GpuText" Style="{StaticResource Note}" Margin="0,0,16,0"/>
           <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Expert_Click" AutomationProperties.Name="ComfyUI"
-                  ToolTip="ComfyUI's own node editor, inside Image Forge. The most advanced option.">
+                  ToolTip="ComfyUI's own node editor, inside Ember. The most advanced option.">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="&#xE943;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
               <TextBlock Text="ComfyUI" VerticalAlignment="Center"/>
@@ -194,7 +194,7 @@
         </StackPanel>
         <Image Source="logo.png" Width="36" Height="36" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
         <StackPanel VerticalAlignment="Center" Margin="12,0,0,0">
-          <TextBlock Text="Image Forge" FontSize="15" FontWeight="SemiBold"/>
+          <TextBlock Text="Ember" FontSize="15" FontWeight="SemiBold"/>
           <TextBlock Text="Local image generation with ComfyUI" FontSize="11.5" Foreground="{DynamicResource Muted}"/>
         </StackPanel>
       </DockPanel>
@@ -339,6 +339,12 @@
                     </StackPanel>
                   </Button>
                 </DockPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <Button x:Name="CharactersBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Content="Saved characters…"
+                          Click="Characters_Click" ToolTip="Use a character or place you saved before"/>
+                  <Button x:Name="SaveCharacterBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Margin="8,0,0,0" Content="Save as character…"
+                          Click="SaveCharacter_Click" Visibility="Collapsed" ToolTip="Keep these pictures under a name, to use again later"/>
+                </StackPanel>
                 <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"
                            Text="Drop, paste or add up to 3 pictures. New pictures keep the same face or place: just say what happens, e.g. &quot;she is reading in a café&quot;. Qwen-Image 2.1 keeps them; any other model then redraws the picture in its own style."/>
                 <StackPanel x:Name="RefStylePanel" Visibility="Collapsed" Margin="0,10,0,0">
@@ -572,6 +578,8 @@
                 <StackPanel x:Name="ModelSectionBody" Visibility="{Binding IsChecked, ElementName=ModelSectionToggle, Converter={StaticResource BoolVis}}">
                 <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,10,0,8"/>
                 <ComboBox x:Name="ModelBox" SelectionChanged="Model_SelectionChanged"/>
+                <Button x:Name="CompareModelsBtn" Style="{StaticResource Ghost}" Height="26" Padding="10,0" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Left"
+                        Content="Compare with other models…" Click="CompareModels_Click" ToolTip="The same prompt and seed on a few models, one picture each"/>
                 <TextBlock x:Name="ModelNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
                 <Grid x:Name="PartsSection" Margin="0,10,0,0" Visibility="Collapsed">
                   <Grid.ColumnDefinitions>
@@ -1202,15 +1210,15 @@
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                   <TextBlock Text="Theme" FontWeight="SemiBold"/>
-                  <TextBlock x:Name="ThemeNote" Text="Takes effect when Image Forge opens." Style="{StaticResource Note}" Margin="0,2,0,0"/>
+                  <TextBlock x:Name="ThemeNote" Text="Takes effect when Ember opens." Style="{StaticResource Note}" Margin="0,2,0,0"/>
                 </StackPanel>
               </DockPanel>
               <Button x:Name="RestartAppBtn" Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="Collapsed"
-                      Content="Restart Image Forge now" Click="RestartApp_Click"/>
+                      Content="Restart Ember now" Click="RestartApp_Click"/>
 
               <TextBlock Text="ComfyUI" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
               <CheckBox x:Name="KeepComfySwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
-                        Content="Keep ComfyUI running after closing Image Forge" Click="SettingSwitch_Click"/>
+                        Content="Keep ComfyUI running after closing Ember" Click="SettingSwitch_Click"/>
               <TextBlock Text="Opens instantly next time, but keeps using graphics-card memory until you restart Windows or close it from the Task Manager."
                          Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
               <CheckBox x:Name="InpaintSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,16,0,0"
@@ -1221,6 +1229,8 @@
                         Content="Faster attention (int8: slightly less exact)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
               <CheckBox x:Name="Fp16AccSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,8,0,0"
                         Content="fp16 accumulation (faster on RTX 40; some LoRAs then give black pictures)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
+              <CheckBox x:Name="SharpPreviewSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,8,0,0"
+                        Content="Sharp live preview on every model (anime about 6% slower, SDXL about 19%; Qwen and Krea 2 always sharp)" Click="SettingSwitch_Click"/>
               <DockPanel Margin="0,8,0,0">
                 <TextBox x:Name="ReserveVramBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" LostFocus="Perf_Changed"
                          Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" CaretBrush="{DynamicResource Accent}"
@@ -1235,8 +1245,8 @@
 
               <TextBlock x:Name="PluginsHeading" Text="Plugins" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
               <CheckBox x:Name="FastStartSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
-                        Content="Fast start: load only the plugins Image Forge uses" Click="FastStart_Click"/>
-              <TextBlock Text="Plugins run their own code inside ComfyUI. Image Forge only installs the versions listed here, checked against their published fingerprints."
+                        Content="Fast start: load only the plugins Ember uses" Click="FastStart_Click"/>
+              <TextBlock Text="Plugins run their own code inside ComfyUI. Ember only installs the versions listed here, checked against their published fingerprints."
                          Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
               <StackPanel x:Name="PluginsList" Margin="0,4,0,0"/>
               <DockPanel Margin="0,4,0,0">
@@ -1329,9 +1339,9 @@
           <DockPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
               <Button x:Name="LoadLastJobBtn" Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Content="Load the last job" Click="LoadLastJob_Click"
-                      ToolTip="Open Image Forge's last picture job in the editor to change it by hand"/>
+                      ToolTip="Open Ember's last picture job in the editor to change it by hand"/>
               <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Content="Open in browser" Click="ExpertBrowser_Click"/>
-              <Button Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="ExpertClose_Click" ToolTip="Back to Image Forge" AutomationProperties.Name="Close ComfyUI"/>
+              <Button Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="ExpertClose_Click" ToolTip="Back to Ember" AutomationProperties.Name="Close ComfyUI"/>
             </StackPanel>
             <StackPanel VerticalAlignment="Center">
               <TextBlock Text="ComfyUI (Expert)" FontSize="15" FontWeight="SemiBold"/>

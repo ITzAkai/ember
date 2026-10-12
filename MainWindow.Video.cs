@@ -96,7 +96,7 @@ public partial class MainWindow
             return new JsonObject
             {
                 ["prompt"] = g, ["client_id"] = clientId,
-                ["extra_data"] = new JsonObject { ["extra_pnginfo"] = new JsonObject { ["forge"] = JsonSerializer.SerializeToNode(meta) } },
+                ["extra_data"] = new JsonObject { ["extra_pnginfo"] = new JsonObject { ["forge"] = JsonSerializer.SerializeToNode(meta) }, ["preview_method"] = "auto" },
             };
         }, "Filming · step", "Starting");
     }

@@ -1,15 +1,21 @@
-# Image Forge
+<img src="logo.png" width="96" alt="Ember logo">
 
-A Windows app for making pictures and short videos on your own PC with [ComfyUI](https://github.com/comfyanonymous/ComfyUI). Nothing is sent to the cloud.
+# Ember
 
-![Image Forge](screenshot.png)
+**Make pictures and short videos with AI, on your own Windows PC.**
+
+Type an idea, pick a style, and Ember does the rest: it runs [ComfyUI](https://github.com/comfyanonymous/ComfyUI) for you, picks good settings for each model, and lets you watch the picture form. Keep a character across pictures, compare models side by side, and fix faces and details with one switch. Everything stays on your computer: no account, no cloud, nothing to pay per picture.
+
+Ember was called Image Forge until version 1.8.8; your settings, gallery and models carry over.
 
 ## What it does
 
 - **Create** pictures from a prompt, with styles, aspect ratios and up to 4 at once
 - **Edit photo**: remove objects, expand the picture, fix details, cut out the background, upscale
 - **Video**: text-to-video and picture-to-video (Wan 2.1)
-- **Reference pictures**: drop a character or a place, and new pictures keep the same face or place (Qwen-Image 2.1)
+- **Reference pictures**: drop or paste a character or a place, and new pictures keep the same face or place (Qwen-Image 2.1 reads it; other models redraw it in their own style). Save it as a named character to use again
+- **Compare models**: the same prompt and seed on several models, one picture each
+- **Queue and live view**: click a picture being made to watch it form; right-click a waiting one to cancel it or make it next
 - **Improve prompt** and **Describe image** with a local text model
 - **LoRA add-ons**: several at once, with descriptions and trigger words looked up on Civitai
 - **Models page**: download from the built-in list, or paste a Hugging Face / Civitai link
@@ -26,7 +32,7 @@ Supported model families: Krea 2, Qwen-Image 2.1, Anima, SDXL, Wan 2.1.
 
 ## Install
 
-1. Download `Image.Forge.exe` from [Releases](../../releases/latest) and run it.
+1. Download `Ember.exe` from [Releases](../../releases/latest) and run it.
    If Windows says it protected your PC, click **More info** → **Run anyway** (the app isn't code-signed).
 2. Press **Set up ComfyUI** and pick a folder with about 12 GB free. The app downloads the official [ComfyUI](https://github.com/Comfy-Org/ComfyUI/releases) portable build (2 GB) and sets it up there.
    Already have the ComfyUI portable build? Pick its folder instead.
@@ -73,7 +79,7 @@ The Qwen-Image text encoder (`qwen3vl_8b`) also powers **Improve prompt** and **
 | Plugin | Adds |
 |---|---|
 | Impact Pack + Subpack | Fix faces |
-| Inpaint Crop & Stitch | Sharper edits of small painted areas |
+| Inpaint Crop & Stitch | Sharper edits of small painted areas, and Fix faces on Qwen-Image and Anima |
 | Ultimate SD Upscale | Upscale > 2× with added detail |
 | ComfyUI-GGUF (leejet) | Smaller GGUF Krea 2 files for 6–8 GB graphics cards |
 
@@ -95,7 +101,7 @@ Needs the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 dotnet publish -c Release -o publish
 ```
 
-This makes one self-contained `publish\Image Forge.exe`.
+This makes one self-contained `publish\Ember.exe`.
 
 ## Content
 

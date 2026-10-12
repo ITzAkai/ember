@@ -16,6 +16,7 @@ public partial class MainWindow
         (settings.Theme == "light" ? ThemeLight : ThemeDark).IsChecked = true;
         KeepComfySwitch.IsChecked = settings.KeepComfyRunning;
         InpaintSwitch.IsChecked = settings.InpaintEdits;
+        SharpPreviewSwitch.IsChecked = settings.SharpPreviewAll;
         quietSettings = false;
         InpaintSwitch.IsEnabled = inpaintModel != null;
         InpaintNote.Text = inpaintModel != null
@@ -28,7 +29,7 @@ public partial class MainWindow
         ShowPlugins();
         ShowPerformance();
         _ = ShowHelperChoice();
-        AboutText.Text = $"Image Forge {AppVersion.ToString(2)}, ComfyUI in {Root.TrimEnd('\\')}\nComfyUI {(server != null ? "started by this app" : "already running")} at {Api}\nSettings in {Path.GetDirectoryName(Settings.FilePath)}";
+        AboutText.Text = $"Ember {AppVersion.ToString(2)}, ComfyUI in {Root.TrimEnd('\\')}\nComfyUI {(server != null ? "started by this app" : "already running")} at {Api}\nSettings in {Path.GetDirectoryName(Settings.FilePath)}";
         SettingsPanel.Visibility = Visibility.Visible;
     }
 
@@ -92,6 +93,7 @@ public partial class MainWindow
     {
         settings.KeepComfyRunning = KeepComfySwitch.IsChecked == true;
         settings.InpaintEdits = InpaintSwitch.IsChecked == true;
+        settings.SharpPreviewAll = SharpPreviewSwitch.IsChecked == true;
         settings.Save();
     }
 
@@ -121,14 +123,14 @@ public partial class MainWindow
         for (int i = shots.Count - 1; i >= 0; i--) if (!shots[i].Pending) shots.RemoveAt(i);
         await LoadGallery();
         if (server != null) Restart_Click(null, null);
-        else Note("ComfyUI was already running before Image Forge, so restart it yourself to use the new folder.", true);
+        else Note("ComfyUI was already running before Ember, so restart it yourself to use the new folder.", true);
     }
 
     void StartMenu_Click(object sender, RoutedEventArgs e) =>
-        MakeShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Image Forge.lnk"), "Start menu");
+        MakeShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Ember.lnk"), "Start menu");
 
     void DesktopShortcut_Click(object sender, RoutedEventArgs e) =>
-        MakeShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Image Forge.lnk"), "desktop");
+        MakeShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Ember.lnk"), "desktop");
 
     // Windows' own shortcut maker (the WScript.Shell COM object)
     void MakeShortcut(string lnk, string where)

@@ -11,7 +11,7 @@ namespace ImageForge;
 
 public partial class MainWindow
 {
-    const string LatestRelease = "https://api.github.com/repos/ITzAkai/image-forge/releases/latest";
+    const string LatestRelease = "https://api.github.com/repos/ITzAkai/ember/releases/latest";
     static readonly Version AppVersion = Assembly.GetEntryAssembly().GetName().Version;
     static string NewExe => Environment.ProcessPath + ".new";
     static string OldExe => Environment.ProcessPath + ".old";
@@ -34,7 +34,7 @@ public partial class MainWindow
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, LatestRelease);
-            req.Headers.UserAgent.ParseAdd("ImageForge/" + AppVersion);
+            req.Headers.UserAgent.ParseAdd("Ember/" + AppVersion);
             using var res = await web.SendAsync(req);
             if (!res.IsSuccessStatusCode) return false;
             var release = JsonNode.Parse(await res.Content.ReadAsStringAsync());

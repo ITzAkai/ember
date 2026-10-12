@@ -296,18 +296,21 @@ public partial class MainWindow
                 if (value is JsonArray { Count: 2 } l && l[0]?.ToString() == "10")
                     inputs[key] = Link("60", l[1]!.GetValue<int>() == 0 ? 1 : 2);
         }
-        g["60"] = Node("InpaintCropImproved", new()
-        {
-            ["image"] = Link("10", 0), ["mask"] = Link("10", 1),
-            ["downscale_algorithm"] = "bilinear", ["upscale_algorithm"] = "bicubic", ["preresize"] = false, ["preresize_mode"] = "ensure minimum resolution",
-            ["preresize_min_width"] = 1024, ["preresize_min_height"] = 1024, ["preresize_max_width"] = 8192, ["preresize_max_height"] = 8192,
-            ["mask_fill_holes"] = true, ["mask_expand_pixels"] = 0, ["mask_invert"] = false, ["mask_blend_pixels"] = 32, ["mask_hipass_filter"] = 0.1,
-            ["extend_for_outpainting"] = false, ["extend_up_factor"] = 1.0, ["extend_down_factor"] = 1.0, ["extend_left_factor"] = 1.0, ["extend_right_factor"] = 1.0,
-            ["context_from_mask_extend_factor"] = 1.5, ["output_resize_to_target_size"] = true, ["output_target_width"] = 1024, ["output_target_height"] = 1024,
-            ["output_padding"] = "32", ["device_mode"] = "gpu (much faster)",
-        });
+        g["60"] = CropNode(Link("10", 0), Link("10", 1), 1.5);
         g["61"] = Node("InpaintStitchImproved", new() { ["stitcher"] = Link("60", 0), ["inpainted_image"] = Link("8", 0) });
         g.Remove("14"); g.Remove("15");
         ((JsonObject)g["9"]["inputs"])["images"] = Link("61", 0);
     }
+
+    // the masked area with `context` times its size around it, at 1024 × 1024. Outputs: stitcher, image, mask
+    static JsonObject CropNode(JsonNode image, JsonNode mask, double context) => Node("InpaintCropImproved", new()
+    {
+        ["image"] = image, ["mask"] = mask,
+        ["downscale_algorithm"] = "bilinear", ["upscale_algorithm"] = "bicubic", ["preresize"] = false, ["preresize_mode"] = "ensure minimum resolution",
+        ["preresize_min_width"] = 1024, ["preresize_min_height"] = 1024, ["preresize_max_width"] = 8192, ["preresize_max_height"] = 8192,
+        ["mask_fill_holes"] = true, ["mask_expand_pixels"] = 0, ["mask_invert"] = false, ["mask_blend_pixels"] = 32, ["mask_hipass_filter"] = 0.1,
+        ["extend_for_outpainting"] = false, ["extend_up_factor"] = 1.0, ["extend_down_factor"] = 1.0, ["extend_left_factor"] = 1.0, ["extend_right_factor"] = 1.0,
+        ["context_from_mask_extend_factor"] = context, ["output_resize_to_target_size"] = true, ["output_target_width"] = 1024, ["output_target_height"] = 1024,
+        ["output_padding"] = "32", ["device_mode"] = "gpu (much faster)",
+    });
 }

@@ -1,5 +1,5 @@
-// ComfyUI (Expert): ComfyUI's own node editor inside Image Forge, through WebView2 (Open in browser when WebView2 isn't there).
-// The most advanced option: nothing changed there touches Image Forge's settings. "Load the last job" opens Image Forge's last
+// ComfyUI (Expert): ComfyUI's own node editor inside Ember, through WebView2 (Open in browser when WebView2 isn't there).
+// The most advanced option: nothing changed there touches Ember's settings. "Load the last job" opens Ember's last
 // picture job in the editor to tweak by hand. Also the full list of installed plugins, with switch off / on and uninstall.
 using System.Diagnostics;
 using System.IO;
@@ -31,16 +31,16 @@ public partial class MainWindow
             await expertView.EnsureCoreWebView2Async(env);
             expertView.CoreWebView2.NavigationCompleted += (_, a) =>
             {
-                if (!a.IsSuccess) ExpertNote.Text = "ComfyUI isn't answering. Start it from Image Forge (or press Restart ComfyUI), then open this page again.";
+                if (!a.IsSuccess) ExpertNote.Text = "ComfyUI isn't answering. Start it from Ember (or press Restart ComfyUI), then open this page again.";
             };
             expertView.CoreWebView2.Navigate(Api);
-            ExpertNote.Text = "ComfyUI's full node editor: the most advanced option. Nothing you change here touches Image Forge's own settings.";
+            ExpertNote.Text = "ComfyUI's full node editor: the most advanced option. Nothing you change here touches Ember's own settings.";
         }
         catch (Exception ex)
         {
             ExpertHost.Child = null;
             expertView = null;
-            ExpertNote.Text = "ComfyUI can't show inside Image Forge on this PC (" + ex.Message + "). Open in browser works instead.";
+            ExpertNote.Text = "ComfyUI can't show inside Ember on this PC (" + ex.Message + "). Open in browser works instead.";
         }
     }
 
@@ -51,8 +51,8 @@ public partial class MainWindow
     {
         if (expertView?.CoreWebView2 == null || lastGraph == null) return;
         var result = await expertView.CoreWebView2.ExecuteScriptAsync(
-            $"(window.app && window.app.loadApiJson) ? (window.app.loadApiJson({lastGraph.ToJsonString()}, 'Image Forge job'), 'ok') : 'missing'");
-        ExpertNote.Text = result.Contains("ok") ? "Loaded Image Forge's last job into the editor." : "This ComfyUI version can't load it directly; use Save in Image Forge's viewer instead.";
+            $"(window.app && window.app.loadApiJson) ? (window.app.loadApiJson({lastGraph.ToJsonString()}, 'Ember job'), 'ok') : 'missing'");
+        ExpertNote.Text = result.Contains("ok") ? "Loaded Ember's last job into the editor." : "This ComfyUI version can't load it directly; use Save in Ember's viewer instead.";
     }
 
     // ---------------- every installed plugin ----------------
@@ -92,7 +92,7 @@ public partial class MainWindow
     void BrowseMorePlugins()
     {
         if (MessageBox.Show(this, "Plugins from the ComfyUI Manager are written by many different people and run their own code on your PC, " +
-                "with the same access as any program you install. Only install ones you trust; Image Forge doesn't check them.\n\nOpen the ComfyUI Manager?",
+                "with the same access as any program you install. Only install ones you trust; Ember doesn't check them.\n\nOpen the ComfyUI Manager?",
                 "Install more plugins", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
         if (settings.FastStart && !PipManager)
         {
@@ -100,6 +100,6 @@ public partial class MainWindow
             return;
         }
         Expert_Click(null, null);
-        ExpertNote.Text = "Use the Manager button in ComfyUI's menu to browse plugins. Restart ComfyUI from Image Forge afterwards.";
+        ExpertNote.Text = "Use the Manager button in ComfyUI's menu to browse plugins. Restart ComfyUI from Ember afterwards.";
     }
 }

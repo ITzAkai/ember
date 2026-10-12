@@ -24,7 +24,7 @@ public partial class MainWindow
         {
             var free = new DriveInfo(Path.GetPathRoot(dir)).AvailableFreeSpace;
             if (free < 12L << 30) { Note($"Only {Size(free)} free on that drive: ComfyUI needs about 12 GB. Pick another one.", true); return; }
-            if (NvidiaBuild() is not string build) { Note("Image Forge needs an NVIDIA graphics card, and none was found.", true); return; }
+            if (NvidiaBuild() is not string build) { Note("Ember needs an NVIDIA graphics card, and none was found.", true); return; }
             SetupPanel.Visibility = Visibility.Collapsed;
             SetState("Setting up", Brush("Accent"));
             try { comfy = await DownloadComfy(build, dir); }

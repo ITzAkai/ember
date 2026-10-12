@@ -13,7 +13,31 @@ namespace ImageForge;
 public partial class MainWindow
 {
     const int MaxReferences = 3;
-    readonly List<(byte[] Png, BitmapSource Thumb)> references = new();
+    class RefPicture { public byte[] Png; public BitmapSource Thumb; public Task<string> Looks; public string Seen; }
+    readonly List<RefPicture> references = new();
+
+    const string LooksSystem = Private + "Another image model will redraw the main subject of this picture, so list what it must keep. If there is a person, " +
+        "describe only that person: hair colour, length and style, eye colour, skin tone, face details, and every piece of clothing and accessory with its colour; " +
+        "nothing around them (no setting, signs, lights or weather). Only if there is no person, describe the place: its main features, materials and colours. " +
+        "No pose, lighting or art style. Reply with 10 to 30 short comma-separated tags only.";
+
+    // the picture in words, for models other than Qwen-Image: their redraw gets them too, so hair, eyes and clothes hold at higher strengths.
+    // Written once per picture, in the background. "" when the words would make the prompt sexual (a reference may show a real person).
+    Task<string> LooksOf(RefPicture r)
+    {
+        if (r.Looks is { IsCompleted: true, Result: null }) r.Looks = null;      // the text model was busy or failed: try again
+        return r.Looks ??= Looks(r);
+    }
+
+    async Task<string> Looks(RefPicture r)
+    {
+        var text = await AskTextModel("List what this looks like.", LooksSystem, r.Png, "Noting what the reference looks like…", maxTokens: 120);
+        if (text == null) return null;
+        if (SexualWords.IsMatch(text)) return "";
+        r.Seen = text;
+        ShowReferences();           // its tooltip shows the words
+        return text;
+    }
 
     // the Qwen-Image model that reads the pictures: the picked one, or the plain one first (it keeps faces best)
     string QwenForReferences => Qwen ? ModelBox.SelectedItem as string
@@ -60,10 +84,15 @@ public partial class MainWindow
         double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         img.Freeze();
-        references.Add((PngOf(img), img));
+        var r = new RefPicture { Png = PngOf(img), Thumb = img };
+        references.Add(r);
         ShowReferences();
         if (QwenForReferences == null) Note("Reference pictures need Qwen-Image 2.1: get it on the Models page.", true);
-        else if (!Qwen) Note($"Qwen-Image keeps who or what is in the picture, then {ModelRec.Label} redraws it in its own style.");
+        else if (!Qwen)
+        {
+            Note($"Qwen-Image keeps who or what is in the picture, then {ModelRec.Label} redraws it in its own style.");
+            if (ready && !busy) _ = LooksOf(r);       // ready by the time it's used; while pictures are being made, Generate asks instead
+        }
     }
 
     bool fillingRefStyle;
@@ -104,12 +133,71 @@ public partial class MainWindow
             ReferenceList.Children.Add(new Grid
             {
                 Width = 72, Height = 72, Margin = new Thickness(0, 0, 8, 8),
+                ToolTip = references[i].Seen is { } seen ? "Seen as: " + seen : null,
                 Children = { new Border { CornerRadius = new CornerRadius(8), Background = new ImageBrush(references[i].Thumb) { Stretch = Stretch.UniformToFill } }, remove },
             });
         }
-        ReferenceList.Visibility = references.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ReferenceList.Visibility = SaveCharacterBtn.Visibility = references.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         AddReferenceRow.Visibility = references.Count < MaxReferences ? Visibility.Visible : Visibility.Collapsed;
         ShowRefStyle();
+    }
+
+    // ---------------- saved characters: reference pictures (and what they look like) kept under a name, to use again ----------------
+    static string CharactersDir => Path.Combine(Path.GetDirectoryName(Settings.FilePath), "characters");
+
+    void SaveCharacter_Click(object sender, RoutedEventArgs e)
+    {
+        if (references.Count == 0 || Ask("Save as character", "") is not string typed) return;
+        var name = string.Concat(typed.Split(Path.GetInvalidFileNameChars())).Trim();
+        if (name == "") return;
+        var dir = Path.Combine(CharactersDir, name);
+        try
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);         // the same name again: these pictures replace the old ones
+            Directory.CreateDirectory(dir);
+            for (int i = 0; i < references.Count; i++)
+            {
+                File.WriteAllBytes(Path.Combine(dir, $"{i + 1}.png"), references[i].Png);
+                if (references[i].Seen is string seen) File.WriteAllText(Path.Combine(dir, $"{i + 1}.txt"), seen);
+            }
+            Note($"Saved as \"{name}\": it's under Saved characters from now on.");
+        }
+        catch (Exception ex) { Note("Couldn't save it: " + ex.Message, true); }
+    }
+
+    void Characters_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = (UIElement)sender };
+        var names = Directory.Exists(CharactersDir) ? Directory.GetDirectories(CharactersDir).Select(Path.GetFileName).Order().ToList() : [];
+        foreach (var n in names)
+        {
+            var item = new MenuItem { Header = n, Tag = "" };
+            item.Click += (_, _) => { menu.IsOpen = false; LoadCharacter(n); };
+            menu.Items.Add(item);
+        }
+        if (names.Count == 0) menu.Items.Add(new MenuItem { Header = "None yet: add pictures, then Save as character", Tag = "", IsEnabled = false });
+        menu.Items.Add(new Separator());
+        var open = new MenuItem { Header = "Open the characters folder (rename or delete them there)", Tag = "" };
+        open.Click += (_, _) => { menu.IsOpen = false; Directory.CreateDirectory(CharactersDir); System.Diagnostics.Process.Start("explorer.exe", CharactersDir); };
+        menu.Items.Add(open);
+        menu.IsOpen = true;
+    }
+
+    void LoadCharacter(string name)
+    {
+        references.Clear();
+        foreach (var png in Directory.GetFiles(Path.Combine(CharactersDir, name), "*.png").Order().Take(MaxReferences))
+        {
+            try
+            {
+                var txt = Path.ChangeExtension(png, ".txt");
+                var seen = File.Exists(txt) ? File.ReadAllText(txt) : null;
+                references.Add(new RefPicture { Png = File.ReadAllBytes(png), Thumb = LoadImage(png, 200), Seen = seen, Looks = seen == null ? null : Task.FromResult(seen) });
+            }
+            catch { }
+        }
+        ShowReferences();
+        Note(references.Count > 0 ? $"Using \"{name}\"." : $"\"{name}\" has no pictures left.", references.Count == 0);
     }
 
     // the encoder sees the pictures; the words tell it to keep who and what is in them

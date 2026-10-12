@@ -189,7 +189,7 @@ public partial class MainWindow
 
     void ExportTabs(List<ModelProfile> tabs)
     {
-        var dlg = new Microsoft.Win32.SaveFileDialog { Title = "Export tabs", FileName = tabs.Count == 1 ? tabs[0].Name : "Image Forge tabs", DefaultExt = ".json", Filter = "Image Forge tabs|*.json" };
+        var dlg = new Microsoft.Win32.SaveFileDialog { Title = "Export tabs", FileName = tabs.Count == 1 ? tabs[0].Name : "Ember tabs", DefaultExt = ".json", Filter = "Ember tabs|*.json" };
         if (dlg.ShowDialog(this) != true) return;
         File.WriteAllText(dlg.FileName, JsonSerializer.Serialize(tabs, new JsonSerializerOptions { WriteIndented = true }));
         Note($"Exported {tabs.Count} tab{(tabs.Count == 1 ? "" : "s")}.");
@@ -197,7 +197,7 @@ public partial class MainWindow
 
     void ImportTabs()
     {
-        var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Import tabs", Filter = "Image Forge tabs|*.json" };
+        var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Import tabs", Filter = "Ember tabs|*.json" };
         if (dlg.ShowDialog(this) != true) return;
         try
         {

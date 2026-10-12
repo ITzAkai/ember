@@ -1,5 +1,5 @@
-// Image Forge: a Windows app for making images with the ComfyUI + SDXL on this PC.
-// "Image Forge.exe" sits in the ComfyUI folder, starts ComfyUI hidden when needed,
+// Ember: a Windows app for making images with the ComfyUI + SDXL on this PC.
+// "Ember.exe" sits in the ComfyUI folder, starts ComfyUI hidden when needed,
 // and stops it again on close so the GPU is free.
 using System.Buffers.Binary;
 using System.Collections.ObjectModel;
@@ -78,6 +78,7 @@ public class Settings
     public List<LoraItemSetting> SavedLoras { get; set; } = new();
     public Dictionary<string, List<LoraItemSetting>> LorasByFamily { get; set; } = new();   // "krea2", "qwen_image", "wan", "sdxl" -> its rows
     public bool InpaintEdits { get; set; } = true;               // painted edits and expansions use the inpainting model, if installed
+    public bool SharpPreviewAll { get; set; }                    // sharp live preview on every model (Qwen and Krea 2 always get it)
     public string Theme { get; set; } = "dark";
     public bool KeepComfyRunning { get; set; }
     public string OutputDir { get; set; } = "";                  // empty: ComfyUI's own output folder
@@ -86,7 +87,7 @@ public class Settings
     public string VideoSize { get; set; } = "832x480";
     public int VideoFrames { get; set; } = 49;
     public string ComfyDir { get; set; } = "";
-    public bool FastStart { get; set; } = true;                  // ComfyUI loads only the recommended plugins Image Forge uses
+    public bool FastStart { get; set; } = true;                  // ComfyUI loads only the recommended plugins Ember uses
     public bool HidePluginBanner { get; set; }
     public double PromptTextSize { get; set; } = 14.5;
     public string HelperModel { get; set; } = "";
@@ -130,6 +131,10 @@ public record StylePreset(string Key, string Label, string Template, string Nega
 {
     public string Apply(string prompt) => Template.Replace("{p}", prompt);
 
+    // anime models only draw: a style's negatives against drawn looks would fight the model itself, so they're left out there
+    static readonly string[] Drawn = { "anime", "cartoon", "drawing", "illustration", "painting", "sketch" };
+    public string NegativeFor(bool anime) => anime ? string.Join(", ", Negative.Split(", ").Where(w => !Drawn.Contains(w))) : Negative;
+
     public static readonly StylePreset[] All =
     {
         new("none", "None", "{p}", ""),
@@ -156,8 +161,11 @@ public record StylePreset(string Key, string Label, string Template, string Nega
             if (prompt.Length >= parts[0].Length + parts[1].Length && prompt.StartsWith(parts[0]) && prompt.EndsWith(parts[1]))
             {
                 var neg = negative ?? "";
-                if (neg.EndsWith(", " + st.Negative)) neg = neg[..^(st.Negative.Length + 2)];
-                else if (neg == st.Negative) neg = "";
+                foreach (var n in new[] { st.Negative, st.NegativeFor(true) }.Where(n => n != ""))
+                {
+                    if (neg.EndsWith(", " + n)) { neg = neg[..^(n.Length + 2)]; break; }
+                    if (neg == n) { neg = ""; break; }
+                }
                 return (prompt[parts[0].Length..^parts[1].Length], neg, st);
             }
         }
@@ -290,7 +298,22 @@ public partial class MainWindow : Window
             _ = CheckForUpdate();
             await StartUp();
         };
-        Closing += (_, _) => { closing = true; RememberWindow(); SaveSettings(); if (!settings.KeepComfyRunning && !restarting) StopServer(); ApplyUpdate(); };
+        Closing += (_, _) =>
+        {
+            closing = true; RememberWindow(); SaveSettings();
+            if (!settings.KeepComfyRunning && !restarting) { AskAboutOtherComfy(); StopServer(); }
+            ApplyUpdate();
+        };
+    }
+
+    // using a ComfyUI this window didn't start (left running before, or opened from its own .bat): ask rather than leave it holding memory
+    void AskAboutOtherComfy()
+    {
+        if (server != null || !ready) return;
+        var other = Task.Run(ComfyOnPort).Result;           // off the UI thread, which its awaits would otherwise wait for
+        if (other != null && MessageBox.Show(this, "ComfyUI was already running when Ember opened, so this window didn't start it.\n\nClose ComfyUI too?",
+                "Ember", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            server = other;
     }
 
     // reopen where it was closed, unless that spot is no longer on any screen
@@ -726,7 +749,9 @@ public partial class MainWindow : Window
     void UsePromptOf(Meta m)
     {
         if (m?.Prompt == null) return;
-        var (prompt, negative, style) = StylePreset.Unwrap(m.Prompt, m.Negative);
+        var saved = m.Negative;                                  // Anima's own quality negative is added again when it's made
+        if (saved != null && (saved == AnimaNegative || saved.EndsWith(", " + AnimaNegative))) saved = saved[..Math.Max(0, saved.Length - AnimaNegative.Length - 2)];
+        var (prompt, negative, style) = StylePreset.Unwrap(m.Prompt, saved);
         PromptBox.Text = prompt;
         if (negative != null) NegativeBox.Text = negative;
         Pick(StyleGroup, style.Key, "none");
@@ -956,6 +981,7 @@ public partial class MainWindow : Window
     bool Qwen => Family == "qwen_image";
     bool Krea => Family == "krea2";
     bool Anima => Family == "anima";
+    bool AnimeModel => Anima || Named("noct") || ModelRec.Label.Contains("Illustrious") || ModelRec.Label == "NoobAI";
     // Anima's own quality negative, from ComfyUI's template (its training used these score tags)
     const string AnimaNegative = "worst quality, low quality, score_1, score_2, score_3, blurry, jpeg artifacts, sepia";
     bool Sdxl => Family == null && !Flux;
@@ -1200,6 +1226,16 @@ public partial class MainWindow : Window
         catch { return null; }
     }
 
+    // --selftest part: on anime models a style keeps no negatives against drawn looks, and "Use prompt" unwraps either version
+    static bool SelfTestStyles()
+    {
+        var cine = StylePreset.All.First(s => s.Key == "cinematic");
+        var anime = cine.NegativeFor(true);
+        return anime == "flat lighting, bright" && cine.NegativeFor(false) == cine.Negative
+            && StylePreset.Unwrap(cine.Apply("a fox"), "blurry, " + anime) is ("a fox", "blurry", var a) && a == cine
+            && StylePreset.Unwrap(cine.Apply("a fox"), "blurry, " + cine.Negative) is ("a fox", "blurry", _);
+    }
+
     // --selftest part: slider LoRAs that train only cross- or only self-attention are still Anima's; Wan's and SDXL's stay theirs
     static bool SelfTestLoraFamily()
     {
@@ -1278,7 +1314,7 @@ public partial class MainWindow : Window
     // create: empty latent -> sampler. edit: photo -> latent (-> noise mask) -> sampler at partial denoise,
     // and with a mask the result is blended back so unpainted pixels stay exactly as they were.
     // plain: no style, no LoRA. count: images to make (0 = the Number of images setting)
-    JsonObject Graph(long seed, string image = null, bool masked = false, double? denoise = null, bool plain = false, int count = 0, string[] refs = null)
+    JsonObject Graph(long seed, string image = null, bool masked = false, double? denoise = null, bool plain = false, int count = 0, string[] refs = null, string looks = null)
     {
         int n = count > 0 ? count : int.Parse(Picked(CountGroup));
         var g = new JsonObject();
@@ -1299,7 +1335,8 @@ public partial class MainWindow : Window
             g["4"] = Node("CheckpointLoaderSimple", new() { ["ckpt_name"] = (string)ModelBox.SelectedItem });
             (model, clip, vae) = (Link("4", 0), Link("4", 1), Link("4", 2));
         }
-        var rawPrompt = plain ? PromptBox.Text.Trim() : CurrentStyle.Apply(PromptBox.Text.Trim());
+        var words = PromptBox.Text.Trim() + (looks is { Length: > 0 } ? ", " + looks : "");        // looks: what the reference character looks like
+        var rawPrompt = plain ? words : CurrentStyle.Apply(words);
         var activeLoras = plain ? new List<(string, double)>() : AllActiveLoras(rawPrompt, out rawPrompt);
 
         int loraNo = 1;
@@ -1311,7 +1348,7 @@ public partial class MainWindow : Window
         }
 
         g["6"] = Node("CLIPTextEncode", new() { ["text"] = rawPrompt, ["clip"] = clip });
-        g["7"] = Node("CLIPTextEncode", new() { ["text"] = Flux ? "" : string.Join(", ", new[] { NegativeBox.Text.Trim(), CurrentStyle.Negative, Anima ? AnimaNegative : "" }.Where(t => t != "")), ["clip"] = clip.DeepClone() });
+        g["7"] = Node("CLIPTextEncode", new() { ["text"] = Flux ? "" : string.Join(", ", new[] { NegativeBox.Text.Trim(), CurrentStyle.NegativeFor(AnimeModel), Anima ? AnimaNegative : "" }.Where(t => t != "")), ["clip"] = clip.DeepClone() });
         g["3"] = Node("KSampler", new()
         {
             ["seed"] = seed, ["steps"] = Steps, ["cfg"] = CfgSlider.Value,
@@ -1409,9 +1446,9 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256);
         }
-        catch { return 2; }
+        catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }
     }
 
@@ -2122,6 +2159,8 @@ public partial class MainWindow : Window
         CloseViewer();
         EditMode.IsChecked = true;
         LoadPhoto(s.FilePath);
+        // variations in the picture's own look: the model it was made with, when it's still installed
+        if (!VideoOn && imageModels.FirstOrDefault(x => x == s.Meta?.Model || separate.TryGetValue(x, out var u) && u.Unet == s.Meta?.Model) is string own) ModelBox.SelectedItem = own;
         UsePromptOf(s.Meta);
         StrengthSlider.Value = 0.5;
         _ = Generate(newSeed: true);
@@ -2171,7 +2210,7 @@ public partial class MainWindow : Window
         && !new[] { "a teen reading a book in a cafe", "nude woman on a beach", "two adults dancing in a park" }.Any(SexualWithMinor);
 
     static readonly Regex Declined = new(@"^\W*(sorry|i'?m sorry|i am sorry|i can(no|')t|i'?m unable|i am unable|as an ai)", RegexOptions.IgnoreCase);
-    const string MinorNote = "Image Forge won't make sexual content involving anyone under 18.";
+    const string MinorNote = "Ember won't make sexual content involving anyone under 18.";
 
     async void Enhance_Click(object sender, RoutedEventArgs e)
     {

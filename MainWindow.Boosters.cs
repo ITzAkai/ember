@@ -71,7 +71,7 @@ public partial class MainWindow
         if (!Sdxl || VideoOn) return (false, false, $"Off: PAG only changes SDXL-type models. On {FamilyLabelNow} it does nothing but still doubles the time.");
         // calibrated: on SDXL base it gave cleaner bodies and composition (docs/calibration/sdxl.jpg); on WAI-illustrious it added
         // mistakes (an extra shield, a floating cup) without a clear gain, so Illustrious-type models start without it
-        bool anime = ModelRec.Label.Contains("Illustrious") || ModelRec.Label == "NoobAI";
+        bool anime = AnimeModel;
         bool on = b.Pag ?? !anime;
         return (true, on, on ? "Cleaner bodies and composition. Each picture takes about 40 % longer; too strong looks harsh."
             : anime ? "Off by default on Illustrious models: in testing it added mistakes without a clear gain." : "Off. On SDXL it gives cleaner bodies and composition, for about 40 % more time.");
@@ -113,17 +113,19 @@ public partial class MainWindow
         if (VideoOn) return (false, false, "Pictures only.");
         if (!nodeNames.Contains("FaceDetailer") || !nodeNames.Contains("UltralyticsDetectorProvider"))
             return (false, false, "Needs the Impact Pack and its face finder (Settings > Plugins).");
-        if (Anima) return (false, false, "Off: the face fixer currently crashes on Anima models (Impact Pack issue 1186).");
-        if (Qwen) return (false, false, "Off: the face fixer currently fails on Qwen-Image models (an Impact Pack error).");   // calibration run, 2026-10-10
+        if ((Anima || Qwen) && !nodeNames.Contains("InpaintCropImproved"))
+            return (false, false, $"On {FamilyLabelNow} it needs Inpaint Crop and Stitch (Settings > Plugins).");
         bool on = b.Faces ?? false;
-        return (true, on, Sdxl ? "Finds each face and redraws it at higher detail." : $"Finds each face and redraws it. Experimental on {FamilyLabelNow}.");
+        return (true, on, Sdxl ? "Finds each face and redraws it at higher detail."
+            : Anima || Qwen ? $"Finds the faces, and {FamilyLabelNow} redraws them larger and blends them back in. Adds a redraw to every picture, even one without a face."
+            : $"Finds each face and redraws it. Experimental on {FamilyLabelNow}.");
     }
 
     (bool Can, bool On, string Why) FinishState()
     {
         var b = CurrentBoosters;
         if (VideoOn) return (false, false, "Pictures only.");
-        if (!nodeNames.Contains("ImageForgeFinish")) return (false, false, "Restart ComfyUI once to load Image Forge's colour finish.");
+        if (!nodeNames.Contains("ImageForgeFinish")) return (false, false, "Restart ComfyUI once to load Ember's colour finish.");
         bool on = b.Finish ?? false;
         return (true, on, "A last colour touch on the finished picture. Keep it subtle.");
     }
@@ -348,7 +350,9 @@ public partial class MainWindow
         if (FacesState().On && clip != null && vae != null)
         {
             g["facefinder"] = Node("UltralyticsDetectorProvider", new() { ["model_name"] = "bbox/face_yolov8m.pt" });
-            g["faces"] = Node("FaceDetailer", new()
+            // the model that redraws the faces: the refine model when that's on (s is its sampler then)
+            if ((RefineState().On ? RecFamilyOf(RefineModel) : Family) is "qwen_image" or "anima") FacesByCrop(g, save, s, vae, b.FaceDenoise);
+            else g["faces"] = Node("FaceDetailer", new()
             {
                 ["image"] = save["images"].DeepClone(), ["model"] = s["model"].DeepClone(), ["clip"] = clip.DeepClone(), ["vae"] = vae.DeepClone(),
                 ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["bbox_detector"] = Link("facefinder", 0),
@@ -372,13 +376,33 @@ public partial class MainWindow
         }
     }
 
-    // ---------------- Image Forge's own colour-finish node ----------------
+    // Qwen-Image and Anima: the Impact Pack's FaceDetailer fails on their conditioning, so only its face finder is used; the faces are cut out
+    // with their surroundings, redrawn at 1024 by the same model and stitched back. One picture at a time (the finder looks at one), and a
+    // picture without a face comes back unchanged. The result is node "faces".
+    void FacesByCrop(JsonObject g, JsonObject save, JsonObject s, JsonNode vae, double denoise)
+    {
+        g["face_list"] = Node("ImpactImageBatchToImageList", new() { ["image"] = save["images"].DeepClone() });
+        g["face_mask"] = Node("BboxDetectorCombined_v2", new() { ["bbox_detector"] = Link("facefinder", 0), ["image"] = Link("face_list", 0), ["threshold"] = 0.5, ["dilation"] = 10 });
+        g["face_crop"] = CropNode(Link("face_list", 0), Link("face_mask", 0), 2.5);
+        g["face_in"] = Node("VAEEncode", new() { ["pixels"] = Link("face_crop", 1), ["vae"] = vae.DeepClone() });
+        g["face_noise"] = Node("SetLatentNoiseMask", new() { ["samples"] = Link("face_in", 0), ["mask"] = Link("face_crop", 2) });
+        g["face_redraw"] = Node("KSampler", new()
+        {
+            ["model"] = s["model"].DeepClone(), ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["latent_image"] = Link("face_noise", 0),
+            ["seed"] = s["seed"].DeepClone(), ["steps"] = Math.Max(4, (int)Math.Round(s["steps"].GetValue<int>() * 0.6)), ["cfg"] = s["cfg"].DeepClone(),
+            ["sampler_name"] = s["sampler_name"].DeepClone(), ["scheduler"] = s["scheduler"].DeepClone(), ["denoise"] = denoise,
+        });
+        g["face_out"] = Node("VAEDecode", new() { ["samples"] = Link("face_redraw", 0), ["vae"] = vae.DeepClone() });
+        g["faces"] = Node("InpaintStitchImproved", new() { ["stitcher"] = Link("face_crop", 0), ["inpainted_image"] = Link("face_out", 0) });
+    }
+
+    // ---------------- Ember's own colour-finish node ----------------
     // a small node of ours (plain torch, no extra packages), written into ComfyUI's custom_nodes so the finish happens before the PNG
     // and its saved settings are written; the post-processing pack that has one needs OpenCV, which portable ComfyUI lacks
     const string FinishFolder = "ImageForge-Finish";
     const string FinishNode = """
-        # Image Forge colour finish: brightness, contrast, saturation, warmth, hue and gamma, in plain torch.
-        # Written by Image Forge; changes here are overwritten when Image Forge starts ComfyUI.
+        # Ember colour finish: brightness, contrast, saturation, warmth, hue and gamma, in plain torch.
+        # Written by Ember; changes here are overwritten when Ember starts ComfyUI.
         import math
         import torch
 
@@ -424,7 +448,7 @@ public partial class MainWindow
 
 
         NODE_CLASS_MAPPINGS = {"ImageForgeFinish": ImageForgeFinish}
-        NODE_DISPLAY_NAME_MAPPINGS = {"ImageForgeFinish": "Image Forge colour finish"}
+        NODE_DISPLAY_NAME_MAPPINGS = {"ImageForgeFinish": "Ember colour finish"}
         """;
 
     void WriteFinishNode()

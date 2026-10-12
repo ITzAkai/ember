@@ -23,6 +23,7 @@ class Job
     public DateTime Started = DateTime.Now;
     public bool Running;
     public long LogStart;                           // where ComfyUI's log stood when it was sent, to read what it said about this job
+    public JsonObject Body;                         // what was sent, to send again at the front of the queue
 }
 
 public partial class MainWindow
@@ -45,7 +46,87 @@ public partial class MainWindow
         foreach (var j in jobs.Where(j => !j.Running).ToList()) Finish(j, null, quiet: true);
     }
 
-    async Task Generate(bool newSeed = false, double? expand = null)
+    static StringContent Json(JsonNode n) => new(n.ToJsonString(), Encoding.UTF8, "application/json");
+
+    // right-click on a picture still waiting or being made: cancel just that one, or let it go next
+    void Card_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not Shot { Pending: true } s) return;
+        e.Handled = true;                                    // the picture menu has nothing to act on yet
+        if (jobs.FirstOrDefault(j => j.Slots.Contains(s)) is not { } job) return;
+        var menu = new ContextMenu { PlacementTarget = (UIElement)sender };
+        var cancel = new MenuItem { Header = job.Running ? "Stop this picture" : "Cancel this picture", Tag = "" };
+        cancel.Click += (_, _) => { menu.IsOpen = false; _ = CancelJob(job); };     // closed here too: an item picked by a screen reader leaves it open
+        menu.Items.Add(cancel);
+        if (!job.Running && job.Id != null && jobs.FirstOrDefault(j => !j.Running && j.Id != null) != job)
+        {
+            var next = new MenuItem { Header = "Make it next", Tag = "" };
+            next.Click += (_, _) => { menu.IsOpen = false; _ = MakeNext(job); };
+            menu.Items.Add(next);
+        }
+        menu.IsOpen = true;
+    }
+
+    async Task CancelJob(Job job)
+    {
+        if (!job.Running && job.Id != null) try { await http.PostAsync("/queue", Json(new JsonObject { ["delete"] = new JsonArray(job.Id) })); } catch { }
+        if (job.Running) { Cancel_Click(null, null); return; }       // ComfyUI then reports it interrupted
+        Finish(job, "Cancelled.");                                    // a job still being built is dropped before it's sent
+    }
+
+    // ComfyUI can't reorder its queue: the waiting prompt comes out and goes in again at the front
+    async Task MakeNext(Job job)
+    {
+        try
+        {
+            await http.PostAsync("/queue", Json(new JsonObject { ["delete"] = new JsonArray(job.Id) }));
+            var q = await http.GetStringAsync("/queue");
+            if (job.Running || !jobs.Contains(job) || q.Contains(job.Id)) return;      // it started (or ended) meanwhile
+            var body = (JsonObject)job.Body.DeepClone();
+            body["front"] = true;
+            using var r = await http.PostAsync("/prompt", Json(body));
+            var j = JsonNode.Parse(await r.Content.ReadAsStringAsync());
+            if (!r.IsSuccessStatusCode || j?["error"] != null) throw new Exception(j?["error"]?["message"]?.GetValue<string>() ?? $"HTTP {(int)r.StatusCode}");
+            job.Id = j["prompt_id"].GetValue<string>();
+            jobs.Remove(job);
+            jobs.Insert(jobs.Count(x => x.Running), job);
+            Note("It's next.");
+        }
+        catch (Exception e) { Finish(job, "Couldn't move it: " + e.Message); }
+    }
+
+    // the same prompt and seed on a few models, one picture each; every model uses its own saved settings
+    void CompareModels_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = (UIElement)sender };
+        var picks = imageModels.Where(m => m != ModelBox.SelectedItem as string)
+            .Select(m => new MenuItem { Header = m, Tag = "", IsCheckable = true, StaysOpenOnClick = true, DataContext = m }).ToList();
+        foreach (var p in picks) menu.Items.Add(p);
+        menu.Items.Add(new Separator());
+        var go = new MenuItem { Header = "Make one picture on each", Tag = "", FontWeight = FontWeights.SemiBold };
+        go.Click += (_, _) => { menu.IsOpen = false; _ = CompareModels(picks.Where(p => p.IsChecked).Select(p => (string)p.DataContext).ToList()); };
+        menu.Items.Add(go);
+        menu.IsOpen = true;
+    }
+
+    async Task CompareModels(List<string> others)
+    {
+        if (others.Count == 0) { Note("Tick the models to compare with first.", true); return; }
+        if (VideoOn || EditMode.IsChecked == true) { Note("Compare is for new pictures: switch to Create first.", true); return; }
+        var first = (string)ModelBox.SelectedItem;
+        bool random = RandomSeed.IsChecked == true;
+        if (random || !long.TryParse(SeedBox.Text, out _)) SeedBox.Text = Random.Shared.NextInt64(0, 1L << 48).ToString();
+        RandomSeed.IsChecked = false;
+        try
+        {
+            // one after another: each picture's graph is built before the next model is picked
+            foreach (var m in others.Prepend(first)) { ModelBox.SelectedItem = m; await Generate(one: true); }
+        }
+        finally { ModelBox.SelectedItem = first; RandomSeed.IsChecked = random; }
+        Note($"Seed {SeedBox.Text} on {others.Count + 1} models: open a picture to see which model made it.");
+    }
+
+    async Task Generate(bool newSeed = false, double? expand = null, bool one = false)
     {
         if (!ready) return;
         if (string.IsNullOrWhiteSpace(PromptBox.Text)) { Note("Write a prompt first.", true); PromptBox.Focus(); return; }
@@ -61,7 +142,7 @@ public partial class MainWindow
         SeedBox.Text = seed.ToString();
         SaveSettings();
         if (VideoOn && expand == null) { await MakeVideo(seed); return; }
-        int count = expand != null ? 1 : int.Parse(Picked(CountGroup));      // an expansion is one picture, not variations
+        int count = expand != null || one ? 1 : int.Parse(Picked(CountGroup));      // an expansion is one picture, not variations
         await Enqueue(count, async job =>
         {
             string image = null;
@@ -83,13 +164,14 @@ public partial class MainWindow
                 masked = mask != null;
                 small = masked && MaskBoxShare(mask, photo.PixelWidth, photo.PixelHeight) < 0.5;
             }
-            string[] refs = null;
+            string[] refs = null, looks = [];
             if (expand == null && UsingReferences)
             {
                 refs = new string[references.Count];
                 for (int i = 0; i < refs.Length; i++) refs[i] = await Upload(references[i].Png, job);
+                if (!Qwen) looks = await Task.WhenAll(references.Select(LooksOf));         // usually written already, when it was added
             }
-            var g = Graph(seed, image, masked, denoise, count: count, refs: refs);
+            var g = Graph(seed, image, masked, denoise, count: count, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))));
             // expansions always use the inpainting model when installed (far better joins); painted edits if the setting is on
             if (masked && inpaintModel != null && baseCheckpoint != null && (expand != null || settings.InpaintEdits)) UseInpaintModel(g);
             if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
@@ -117,8 +199,14 @@ public partial class MainWindow
         try
         {
             var body = await build(job);
+            // sharp live previews (TAESD) where they cost nothing measurable: Qwen's and Krea 2's slow steps hide the decode;
+            // on anime models it's about 6% slower, on SDXL about 19%, so those keep the quick preview unless the setting asks
+            if (body["extra_data"] is not JsonObject extra) body["extra_data"] = extra = new JsonObject();
+            extra["preview_method"] ??= Qwen || Krea || settings.SharpPreviewAll ? "taesd" : "auto";
             if (body["prompt"] is JsonObject sent) lastGraph = (JsonObject)sent.DeepClone();
-            using var r = await http.PostAsync("/prompt", new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"));
+            if (!jobs.Contains(job)) { foreach (var f in job.Uploads) try { File.Delete(f); } catch { } return; }    // cancelled while being built
+            job.Body = body;
+            using var r = await http.PostAsync("/prompt", Json(body));
             var j = JsonNode.Parse(await r.Content.ReadAsStringAsync());
             if (!r.IsSuccessStatusCode || j?["error"] != null) throw new Exception(j?["error"]?["message"]?.GetValue<string>() ?? $"HTTP {(int)r.StatusCode}");
             job.Id = j["prompt_id"].GetValue<string>();

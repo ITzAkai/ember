@@ -88,7 +88,7 @@ public partial class MainWindow
         ("LoRA add-ons", "Small trained styles or subjects. Each fits one model family and only shows up with it."),
         ("Parts", "Text encoders read your prompt and VAEs turn the result into pixels: a model can't run without its two parts."),
         ("Tools", "Used by Expand, Remove, Upscale and Cut out."),
-        ("Other files", "Image Forge can't tell what these are for."),
+        ("Other files", "Ember can't tell what these are for."),
     };
 
     // friendlier names and notes for well-known files that aren't in the catalog (matched on part of the file name)
@@ -446,7 +446,7 @@ public partial class MainWindow
         {
             "checkpoints" => "checkpoints", "diffusion_models" or "unet" => "diffusion_models", "text_encoders" or "clip" => "text_encoders",
             "vae" => "vae", "loras" => "loras", _ => FolderFor(await HeaderKeys(url)),
-        } ?? throw new Exception("Image Forge can't tell what kind of model that is.");
+        } ?? throw new Exception("Ember can't tell what kind of model that is.");
         return new CatalogItem(Path.GetFileNameWithoutExtension(path), KindOf(folder), folder, Path.GetFileName(path), url,
             pick["size"].GetValue<long>(), pick["lfs"]?["sha256"]?.ToString(), $"{repo} · Hugging Face", "From your link.");
     }
@@ -483,7 +483,7 @@ public partial class MainWindow
             ("LORA" or "LoCon" or "DoRA", _) => "loras",
             ("Upscaler", _) => "upscale_models",
             ("Checkpoint", _) => "checkpoints",
-            _ => throw new Exception($"Image Forge can't use this kind of model ({modelType})."),
+            _ => throw new Exception($"Ember can't use this kind of model ({modelType})."),
         };
         return new CatalogItem($"{modelName} · {ver["name"]}", KindOf(folder), folder, name, f["downloadUrl"].ToString(),
             (long)Math.Round(f["sizeKB"].GetValue<double>() * 1024), f["hashes"]?["SHA256"]?.ToString().ToLowerInvariant(),
@@ -536,7 +536,7 @@ public partial class MainWindow
 
     async void RemoveModel(string name, string path, string warning = null)
     {
-        if (MessageBox.Show(this, $"Move {name} ({Size(new FileInfo(path).Length)}) to the Recycle Bin?" + (warning == null ? "" : "\n\n" + warning), "Image Forge",
+        if (MessageBox.Show(this, $"Move {name} ({Size(new FileInfo(path).Length)}) to the Recycle Bin?" + (warning == null ? "" : "\n\n" + warning), "Ember",
                 MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
         try { Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin); }
         catch (Exception ex) { ModelsNote.Text = $"Couldn't remove {name}: {ex.Message}"; return; }

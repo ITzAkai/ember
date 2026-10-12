@@ -202,7 +202,7 @@ public partial class MainWindow
     {
         var picked = Picked();
         if (picked.Count == 0) return;
-        if (picked.Count > 1 && MessageBox.Show(this, $"Move {picked.Count} images to the Recycle Bin?", "Image Forge",
+        if (picked.Count > 1 && MessageBox.Show(this, $"Move {picked.Count} images to the Recycle Bin?", "Ember",
                 MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
         int gone = picked.Count(Delete);
         Note($"Moved {gone} image{(gone == 1 ? "" : "s")} to the Recycle Bin.");
