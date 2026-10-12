@@ -114,10 +114,23 @@ public partial class MainWindow
     }
 
     // ---------------- click, select, drag ----------------
+    // ---------------- live view ----------------
+    // a card being made, big: its preview updates each step, and the finished picture opens in the viewer when it arrives
+    void OpenLive(Shot slot)
+    {
+        LivePanel.DataContext = slot;
+        LivePanel.Visibility = Visibility.Visible;
+    }
+
+    void CloseLive() { LivePanel.Visibility = Visibility.Collapsed; LivePanel.DataContext = null; }
+    void CloseLive_Click(object sender, RoutedEventArgs e) => CloseLive();
+    void LiveBackdrop_Click(object sender, MouseButtonEventArgs e) => CloseLive();
+
     void Card_Click(object sender, RoutedEventArgs e)
     {
         var s = ShotOf(sender);
-        if (s == null || s.Pending) return;
+        if (s?.Pending == true) { OpenLive(s); return; }
+        if (s == null) return;
         if (!selectMode && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) SetSelectMode(true);   // Ctrl+click starts picking
         if (selectMode) { s.Selected = !s.Selected; UpdateSelection(); }
         else OpenViewer(s);

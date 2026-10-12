@@ -337,7 +337,7 @@ public partial class MainWindow
                 if (stepFrom < 0 || v <= stepFrom) { stepFrom = v; stepTime = DateTime.Now; }
                 double left = v > stepFrom ? (DateTime.Now - stepTime).TotalSeconds / (v - stepFrom) * (max - v) : -1;
                 Stage($"{job.Verb} {v} of {max}", left >= 0 ? $"about {Math.Ceiling(left)} s left" : "");
-                foreach (var s in job.Slots) s.Progress = $"{v * 100 / max}%";
+                foreach (var s in job.Slots) { s.Progress = $"{v * 100 / max}%"; s.ProgressValue = (double)v / max; }
                 Taskbar.ProgressState = TaskbarItemProgressState.Normal;
                 Taskbar.ProgressValue = (double)v / max;
                 break;
@@ -377,6 +377,7 @@ public partial class MainWindow
             var slot = job.Slots[0];
             job.Slots.RemoveAt(0);
             int i = shots.IndexOf(slot);
+            if (LivePanel.DataContext == slot) { CloseLive(); OpenViewer(shot); }      // watching it being made: show the result
             if (i >= 0) { shots[i] = shot; ShowNewest(); return; }
         }
         shots.Insert(0, shot);

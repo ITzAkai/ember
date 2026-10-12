@@ -200,6 +200,8 @@ public class Shot : INotifyPropertyChanged
     public bool Selecting { get => selecting; set { selecting = value; Changed(nameof(Selecting)); } }
     string progress = "";
     public string Progress { get => progress; set { progress = value; Changed(nameof(Progress)); } }
+    double progressValue;
+    public double ProgressValue { get => progressValue; set { progressValue = value; Changed(nameof(ProgressValue)); } }    // 0 to 1, for the bars
     ImageSource preview;
     public ImageSource Preview { get => preview; set { preview = value; Changed(nameof(Preview)); } }     // ComfyUI's live preview while it's being made
     bool favorite;
@@ -765,6 +767,7 @@ public partial class MainWindow : Window
     void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if ((SettingsPanel.IsVisible || ModelsPanel.IsVisible) && e.Key == Key.Escape) { CloseOverlays_Click(null, null); e.Handled = true; return; }
+        if (LivePanel.IsVisible && e.Key == Key.Escape) { CloseLive(); e.Handled = true; return; }
         if (ViewerPanel.IsVisible)
         {
             if (e.Key == Key.Escape) CloseViewer();
