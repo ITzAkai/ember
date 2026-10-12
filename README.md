@@ -8,8 +8,6 @@ Type an idea, pick a style, and Ember does the rest: it runs [ComfyUI](https://g
 
 **Works with all models.** Use the ones already in your ComfyUI folder, download them from the Models page, or paste a Hugging Face or Civitai link. Models are not included.
 
-Ember was called Image Forge until version 1.8.8; your settings, gallery and models carry over.
-
 ## What it does
 
 ### Create
