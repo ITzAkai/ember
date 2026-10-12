@@ -12,6 +12,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
@@ -394,41 +395,72 @@ public partial class MainWindow
     }
 
     // name, author, description, adult, recommended and showcase pictures; null when cancelled
+    // a borderless card like the password window: the app's own inputs, switches and buttons on the dark surface
     (string, string, string, bool, bool, List<string>)? BundleDialog(string name, List<string> selected)
     {
-        TextBox Field(string text, bool multi = false) => new()
+        TextBox Field(string text, string hint, bool multi = false) => new()
         {
-            Text = text, Margin = new Thickness(0, 4, 0, 10), Padding = new Thickness(6, 4, 6, 4), MinWidth = 420,
-            AcceptsReturn = multi, TextWrapping = multi ? TextWrapping.Wrap : TextWrapping.NoWrap, Height = multi ? 70 : double.NaN, VerticalScrollBarVisibility = multi ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled,
+            Text = text, Tag = hint, Style = (Style)FindResource("Input"), Height = multi ? 70 : 36,
+            Padding = multi ? new Thickness(10, 8, 10, 8) : new Thickness(10, 0, 10, 0), VerticalContentAlignment = multi ? VerticalAlignment.Top : VerticalAlignment.Center,
+            AcceptsReturn = multi, TextWrapping = multi ? TextWrapping.Wrap : TextWrapping.NoWrap, VerticalScrollBarVisibility = multi ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled,
         };
-        TextBlock Label(string text) => new() { Text = text, FontWeight = FontWeights.SemiBold };
-        var nameBox = Field(name);
-        var authorBox = Field(settings.BundleAuthor ?? "");
-        var aboutBox = Field("", true);
-        var adultBox = new CheckBox { Content = "Adult content (18+): pictures and prompts stay hidden until the viewer confirms their age", Margin = new Thickness(0, 0, 0, 6) };
-        var recBox = new CheckBox { Content = "Recommended: list it at the top", Margin = new Thickness(0, 0, 0, 10) };
+        TextBlock Label(string text) => new() { Text = text, FontWeight = FontWeights.SemiBold, Foreground = Brush("Ink"), Margin = new Thickness(0, 10, 0, 4) };
+        TextBlock Hint(string text) => new() { Text = text, Style = (Style)FindResource("Note"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
+        CheckBox Toggle(string text) => new() { Content = text, Style = (Style)FindResource("Switch"), Foreground = Brush("Ink"), FontSize = 13, HorizontalAlignment = HorizontalAlignment.Left };
+        var nameBox = Field(name, "A short name");
+        var authorBox = Field(settings.BundleAuthor ?? "", "Your name or handle");
+        var aboutBox = Field("", "What it's good at, and anything to know before using it", true);
+        var adultBox = Toggle("Adult content (18+)");
+        var recBox = Toggle("Recommended");
+        recBox.Margin = new Thickness(0, 12, 0, 0);
         var pictures = selected.Where(p => ShowcaseTypes.Contains(Path.GetExtension(p).ToLowerInvariant())).Take(8).ToList();
-        var picNote = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 10) };
+        var picNote = new TextBlock { Style = (Style)FindResource("Note"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) };
         void ShowPics() => picNote.Text = pictures.Count == 0 ? "No showcase pictures yet. Pick a few made with this setup (their prompts become the bundle's sample prompts)."
             : $"{pictures.Count} picture{(pictures.Count == 1 ? "" : "s")}: " + string.Join(", ", pictures.Select(Path.GetFileName));
         ShowPics();
-        var pick = new Button { Content = "Choose showcase pictures…", Padding = new Thickness(10, 3, 10, 3), HorizontalAlignment = HorizontalAlignment.Left };
+        var pick = new Button { Content = "Choose showcase pictures…", Style = (Style)FindResource("Ghost"), Height = 32, Padding = new Thickness(12, 0, 12, 0), HorizontalAlignment = HorizontalAlignment.Left };
         pick.Click += (_, _) =>
         {
             var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Showcase pictures (up to 8)", Multiselect = true, Filter = "Pictures|*.png;*.jpg;*.jpeg;*.webp",
                 InitialDirectory = Directory.Exists(Path.Combine(Output, "forge")) ? Path.Combine(Output, "forge") : Output };
-            if (dlg.ShowDialog(this) == true) { pictures = dlg.FileNames.Take(8).ToList(); ShowPics(); }
+            if (dlg.ShowDialog(Window.GetWindow(pick)) == true) { pictures = dlg.FileNames.Take(8).ToList(); ShowPics(); }
         };
-        var ok = new Button { Content = "Make bundle", IsDefault = true, Width = 110, Margin = new Thickness(0, 0, 8, 0) };
-        var cancel = new Button { Content = "Cancel", IsCancel = true, Width = 80 };
-        var panel = new StackPanel { Margin = new Thickness(18) };
-        foreach (var el in new UIElement[] { Label("Name"), nameBox, Label("Made by"), authorBox, Label("What it does"), aboutBox, Label("Showcase"), picNote, pick,
-                     new Separator { Margin = new Thickness(0, 12, 0, 12) }, adultBox, recBox,
-                     new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Children = { ok, cancel } } })
+
+        // header: icon and title, a close button in the corner
+        var close = new Button { Content = "", Style = (Style)FindResource("IconBtn"), Focusable = false, ToolTip = "Close", Margin = new Thickness(0, -6, -12, -6), VerticalAlignment = VerticalAlignment.Center };
+        System.Windows.Automation.AutomationProperties.SetName(close, "Close");
+        DockPanel.SetDock(close, Dock.Right);
+        var header = new DockPanel { Margin = new Thickness(0, 0, 0, 4), Children = { close, new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children =
+        {
+            new TextBlock { Text = "", FontFamily = (FontFamily)FindResource("Icons"), FontSize = 15, Foreground = Brush("Accent"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 10, 0) },
+            new TextBlock { Text = "Make a bundle from this setup", FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = Brush("Ink"), VerticalAlignment = VerticalAlignment.Center },
+        } } } };
+
+        var cancel = new Button { Content = "Cancel", Style = (Style)FindResource("Ghost"), Height = 36, Width = 84, IsCancel = true };
+        var ok = new Button { Content = "Make bundle", Style = (Style)FindResource("Primary"), Height = 36, Padding = new Thickness(16, 0, 16, 0), Margin = new Thickness(8, 0, 0, 0), IsDefault = true };
+        var panel = new StackPanel();
+        foreach (var el in new UIElement[] { header, Label("Name"), nameBox, Label("Made by"), authorBox, Label("What it does"), aboutBox, Label("Showcase"), picNote, pick,
+                     new Border { Height = 1, Background = Brush("Line"), Margin = new Thickness(0, 18, 0, 14) },
+                     adultBox, Hint("Pictures and prompts stay hidden until the viewer confirms their age."), recBox, Hint("List it at the top of the bundles page."),
+                     new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 22, 0, 0), Children = { cancel, ok } } })
             panel.Children.Add(el);
-        var w = new Window { Title = "Make a bundle from this setup", Owner = this, SizeToContent = SizeToContent.WidthAndHeight, ResizeMode = ResizeMode.NoResize,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner, Content = panel };
-        ok.Click += (_, _) => { if (!string.IsNullOrWhiteSpace(nameBox.Text)) w.DialogResult = true; };
+        // the margin leaves room for the shadow inside the transparent window
+        var card = new Border
+        {
+            Margin = new Thickness(24), CornerRadius = new CornerRadius(14), Background = Brush("Surface"), BorderBrush = Brush("LineStrong"), BorderThickness = new Thickness(1),
+            Padding = new Thickness(26, 20, 26, 22), Effect = new DropShadowEffect { BlurRadius = 30, ShadowDepth = 6, Opacity = 0.5 }, Child = panel,
+        };
+        var w = new Window
+        {
+            Title = "Make a bundle from this setup", Owner = this, Width = 560, SizeToContent = SizeToContent.Height, Content = card,
+            WindowStyle = WindowStyle.None, AllowsTransparency = true, Background = Brushes.Transparent, WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false, FontFamily = new FontFamily("Segoe UI"), FontSize = 13, Foreground = Brush("Ink"), UseLayoutRounding = true,
+        };
+        TextOptions.SetTextFormattingMode(w, TextFormattingMode.Display);
+        card.MouseLeftButtonDown += (_, e) => { if (e.LeftButton == MouseButtonState.Pressed) w.DragMove(); };
+        close.Click += (_, _) => w.DialogResult = false;
+        ok.Click += (_, _) => { if (!string.IsNullOrWhiteSpace(nameBox.Text)) w.DialogResult = true; else nameBox.Focus(); };
+        w.Loaded += (_, _) => { nameBox.Focus(); nameBox.CaretIndex = nameBox.Text.Length; };
         if (w.ShowDialog() != true) return null;
         settings.BundleAuthor = authorBox.Text.Trim();
         settings.Save();
