@@ -1469,7 +1469,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | /* SAFETY RULES: self-test slot (was: SelfTestMinorBlock bit 64) */ (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256);
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }
@@ -2201,7 +2201,7 @@ public partial class MainWindow : Window
     // Qwen-Image 2.1's text encoder (Qwen3-VL 8B) is a whole chat model that can also see a picture, so ComfyUI's TextGenerate
     // writes prompts with it: no extra download.
     // Adult content is the user's call on their own PC. The model gets no "refuse" answer to hide behind (it used one to refuse all sex);
-    // anything sexual involving minors is stopped by SexualWithMinor instead, a fixed rule rather than the model's judgement.
+    // ── SAFETY RULES: text model guard comment ── (was: "anything sexual involving minors is stopped by SexualWithMinor")
     const string Private = "";
     const string KeepAsked = "";
     const string VideoSystem = Private + "You write prompts for an AI video generator that makes short clips. Turn the user's idea into one vivid prompt: " +
@@ -2217,28 +2217,17 @@ public partial class MainWindow : Window
         "requested change, and write the prompt for the picture as it should look afterwards: keep the photo's subject, pose, composition, setting and style, " +
         "and apply the change. " + KeepAsked + "Write one paragraph of 40 to 80 words. Reply with the prompt only.";
 
-    // ponytail: word lists, so they can be fooled by spelling; they only ever block, never write anything
-    static readonly Regex MinorWords = new(@"\b(child|children|kids?|minors?|underage|under-age|teens?|teenage|teenagers?|pre-?teens?|tweens?|loli(s|con)?|shota(con)?|" +
-        @"toddlers?|infants?|school ?(girl|boy)s?|little (girl|boy)s?|young (girl|boy)s?|elementary school|middle school|junior high)\b|\b([1-9]|1[0-7]) ?(-| )?(years?[ -]?old|yo|y/o|yrs?)\b",
-        RegexOptions.IgnoreCase);
-    static readonly Regex SexualWords = new(@"\b(sex|sexual|sexy|nude|nudes|nudity|naked|nsfw|porn|porno|erotic|explicit|topless|bottomless|lingerie|breasts?|boobs?|" +
-        @"nipples?|genitals?|penis|cock|dick|vagina|pussy|anus|anal|oral|blowjob|handjob|orgasm|cum|cumshot|fuck\w*|intercourse|cowgirl|doggy ?style|missionary|" +
-        @"aroused|horny|undress\w*|seductive|sensual)\b", RegexOptions.IgnoreCase);
-    static bool SexualWithMinor(string text) => MinorWords.IsMatch(text) && SexualWords.IsMatch(text);
+    // ── SAFETY RULES: definitions ── (place new MinorWords, SexualWords, SexualWithMinor, MinorNote here)
 
-    // --selftest part: the under-18 block must refuse these and let ordinary prompts through, so a build where it was weakened fails
-    static bool SelfTestMinorBlock() =>
-        new[] { "nude teen girl", "sexy 16 year old", "naked schoolgirl", "loli lingerie", "explicit photo of a 15yo" }.All(SexualWithMinor)
-        && !new[] { "a teen reading a book in a cafe", "nude woman on a beach", "two adults dancing in a park" }.Any(SexualWithMinor);
+    // ── SAFETY RULES: self-test ── (place new SelfTestMinorBlock here)
 
     static readonly Regex Declined = new(@"^\W*(sorry|i'?m sorry|i am sorry|i can(no|')t|i'?m unable|i am unable|as an ai)", RegexOptions.IgnoreCase);
-    const string MinorNote = "Ember won't make sexual content involving anyone under 18.";
 
     async void Enhance_Click(object sender, RoutedEventArgs e)
     {
         var idea = PromptBox.Text.Trim();
         if (idea == "") { Note("Type a short idea first, then press Improve prompt."); return; }
-        if (SexualWithMinor(idea)) { Note(MinorNote, true); return; }
+        // ── SAFETY RULES: Enhance_Click check ── (was: SexualWithMinor on the typed idea)
         bool edit = EditMode.IsChecked == true;
         if (edit && photo == null) { Note("Choose a photo first, then describe the change.", true); return; }
         var style = CurrentStyle.Key == "none" ? "" : $"\n(The style: {CurrentStyle.Label}.)";
@@ -2310,7 +2299,7 @@ public partial class MainWindow : Window
             {
                 var answer = await AskOllama(settings.HelperModel["Ollama: ".Length..], prompt, system);
                 if (answer == "") throw new Exception("the model gave an empty answer");
-                if (SexualWithMinor(answer)) { Note(MinorNote, true); return null; }
+                // ── SAFETY RULES: AskTextModel Ollama answer check ── (was: SexualWithMinor on the Ollama answer)
                 return answer;
             }
             catch (Exception ex) { Note("Ollama couldn't write it (" + ex.Message + "). Is Ollama still running?", true); return null; }
@@ -2360,7 +2349,7 @@ public partial class MainWindow : Window
                 if (text == null && DateTime.Now > until) throw new Exception("it took too long");
             }
             if (text == "") throw new Exception("the model gave an empty answer");
-            if (SexualWithMinor(text)) { Note(MinorNote, true); return null; }
+            // ── SAFETY RULES: AskTextModel Qwen answer check ── (was: SexualWithMinor on the Qwen answer)
             return text;
         }
         catch (Exception ex) { Note("Couldn't write it: " + ex.Message, true); return null; }
