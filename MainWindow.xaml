@@ -239,6 +239,28 @@
             <StackPanel Margin="22,20,22,18">
               <!-- model tabs: a model plus all its settings, one click away -->
               <WrapPanel x:Name="TabsBar" Margin="0,0,0,10"/>
+              <!-- the open tab's unsaved changes: saved into it, or as a new tab that leaves it as it was -->
+              <Border x:Name="TabChanges" Visibility="Collapsed" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Accent}" BorderThickness="1"
+                      CornerRadius="9" Padding="12,10" Margin="0,0,0,12">
+                <StackPanel>
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="10,0" FontSize="12" Content="Discard" Click="TabDiscard_Click"
+                            ToolTip="Go back to the tab as it was saved" AutomationProperties.Name="Discard the changes"/>
+                    <TextBlock Text="&#xE70F;" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="{DynamicResource Accent}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="TabChangesText" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+                  </DockPanel>
+                  <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition/>
+                      <ColumnDefinition Width="8"/>
+                      <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Button Style="{StaticResource Primary}" Height="32" FontSize="12.5" Content="Save changes" Click="TabSave_Click" ToolTip="Keep these changes in this tab"/>
+                    <Button Grid.Column="2" Style="{StaticResource Ghost}" Height="32" FontSize="12.5" Content="Save as new tab" Click="TabSaveNew_Click"
+                            ToolTip="Make a new tab with these changes and keep this one as it was"/>
+                  </Grid>
+                </StackPanel>
+              </Border>
               <Border Style="{StaticResource SegmentHost}" Margin="0,0,0,22">
                 <UniformGrid Rows="1">
                   <RadioButton x:Name="CreateMode" AutomationProperties.Name="Create" Style="{StaticResource Segment}" GroupName="mode" Checked="Mode_Checked">

@@ -270,6 +270,7 @@ public partial class MainWindow : Window
         ApplySettings();
         ApplyPromptSize();
         ShowTabs();
+        WatchTabChanges();
         AllView.IsChecked = true;
         CreateMode.IsChecked = true;
         BrushTool.IsChecked = true;
@@ -421,8 +422,7 @@ public partial class MainWindow : Window
     void SaveSettings()
     {
         if (profileModel != null && !loadingOptions && ModelBox.SelectedItem as string == profileModel) Capture(ProfileOf(profileModel));
-        SaveActiveTab();
-        var size = Picked(SizeGroup).Split('x');
+        var size = Picked(SizeGroup).Split('x');      // (an open tab keeps what was saved in it: changes go in only with Save changes)
         settings.Prompt = PromptBox.Text; settings.Negative = NegativeBox.Text;
         settings.Width = int.Parse(size[0]); settings.Height = int.Parse(size[1]);
         settings.Count = int.Parse(Picked(CountGroup)); settings.Steps = int.Parse(Picked(QualityGroup)); settings.StepsValue = Steps;
@@ -923,6 +923,9 @@ public partial class MainWindow : Window
             unets.AddRange(ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/UnetLoaderGGUF"))?["UnetLoaderGGUF"]?["input"]?["required"]?["unet_name"])
                 .Where(u => u.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)));
             var tes = ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/CLIPLoader"))?["CLIPLoader"]?["input"]?["required"]?["clip_name"]).ToList();
+            // MiniMax H3's text encoder also comes as GGUF (loaded by the GGUF plugin), but only one with its picture reader works
+            tes.AddRange(ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/CLIPLoaderGGUF"))?["CLIPLoaderGGUF"]?["input"]?["required"]?["clip_name"])
+                .Where(t => t.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase) && PartKind("text_encoders", t) == "qwen3vl_32b"));
             var vaes = ComboOptions(JsonNode.Parse(await http.GetStringAsync("/object_info/VAELoader"))?["VAELoader"]?["input"]?["required"]?["vae_name"]).ToList();
             FindParts(tes, vaes);      // by what's inside each file, not its name
             var videos = new List<string>();
@@ -936,16 +939,18 @@ public partial class MainWindow : Window
                 if (family == null) continue;
                 var (te, vae, label) = family switch
                 {
-                    "qwen_image" => (qwenTe, qwenVae, "Qwen-Image 2.1"), "krea2" => (kreaTe, kreaVae, "Krea 2"), "anima" => (animaTe, kreaVae, "Anima"), _ => (wanTe, wanVae, "Wan 2.1"),
+                    "qwen_image" => (qwenTe, qwenVae, "Qwen-Image 2.1"), "krea2" => (kreaTe, kreaVae, "Krea 2"), "anima" => (animaTe, kreaVae, "Anima"),
+                    "minimax_h3" => (h3Te, h3AudioVae == null ? null : h3Vae, "MiniMax H3"),        // and its audio VAE
+                    _ => (wanTe, wanVae, "Wan 2.1"),
                 };
                 if (te == null || vae == null)
                 {
-                    setupNote = $"{Path.GetFileNameWithoutExtension(u)} needs the {label} text encoder and VAE: get them on the Models page.";
+                    setupNote = $"{Path.GetFileNameWithoutExtension(u)} needs the {label} text encoder and VAE{(family == "minimax_h3" ? "s (video and audio)" : "")}: get them on the Models page.";
                     continue;
                 }
                 var name = u.Contains("qwen_image_2.1", StringComparison.OrdinalIgnoreCase) ? QwenName : u;   // the original keeps the name saved settings know
                 separate[name] = (u, family);
-                (family.StartsWith("wan") ? videos : models).Add(name);
+                (IsVideoFamily(family) ? videos : models).Add(name);
             }
             if (models.Count == 0) models.AddRange(ckpts.Where(IsFullCheckpoint));        // SDXL base only when there's nothing else
             (imageModels, videoModels) = (models, videos);
@@ -1051,6 +1056,7 @@ public partial class MainWindow : Window
                 var head = new byte[n]; f.ReadExactly(head);
                 keys = Encoding.UTF8.GetString(head);
             }
+            if (keys.Contains("video_patch_proj.weight") && keys.Contains("audio_patch_proj.weight")) return "minimax_h3";     // MiniMax H3: video and sound
             if (keys.Contains("llm_adapter.")) return "anima";           // Anima (Cosmos-based, a Qwen3 0.6B adapter)
             if (Regex.IsMatch(keys, @"txtfusion\.projector\.weight(?![\w.])")) return "krea2";
             if (Regex.IsMatch(keys, @"txt_in\.text_norm\.weight(?![\w.])")) return "qwen_image";
@@ -1063,20 +1069,27 @@ public partial class MainWindow : Window
     }
 
     // --selftest part: a GGUF file's family comes from the tensor names in its header, like a safetensors file's
+    // (MiniMax H3 GGUFs say "wan" as their architecture so the GGUF plugin loads them: the tensor names still tell)
     static bool SelfTestGguf()
     {
         var file = Path.Combine(Path.GetTempPath(), "imageforge-selftest.gguf");
-        try
+        string Family(params string[] names)
         {
             using (var w = new BinaryWriter(File.Create(file)))
             {
-                w.Write(Encoding.ASCII.GetBytes("GGUF")); w.Write(3u); w.Write(2UL); w.Write(0UL);
-                foreach (var name in new[] { "txtfusion.projector.weight", "blocks.0.attn.qkv.weight" })
+                w.Write(Encoding.ASCII.GetBytes("GGUF")); w.Write(3u); w.Write((ulong)names.Length); w.Write(0UL);
+                foreach (var name in names)
                 {
                     w.Write((ulong)name.Length); w.Write(Encoding.UTF8.GetBytes(name)); w.Write(2u); w.Write(64UL); w.Write(64UL); w.Write(0u); w.Write(0UL);
                 }
             }
-            return FamilyOfFile(file) == "krea2";
+            return FamilyOfFile(file);
+        }
+        try
+        {
+            return Family("txtfusion.projector.weight", "blocks.0.attn.qkv.weight") == "krea2"
+                && Family("blocks.0.attn.qkv.weight", "video_patch_proj.weight", "audio_patch_proj.weight") == "minimax_h3"
+                && H3Frames(33) == 56 && H3Frames(49) == 73 && H3Frames(81) == 124;      // 2, 3 and 5 s on H3's 17k + 5 grid
         }
         finally { try { File.Delete(file); } catch { } }
     }
@@ -1213,9 +1226,11 @@ public partial class MainWindow : Window
             if (label.Contains("krea")) return "krea2";
             if (label.Contains("qwen")) return "qwen_image";
             if (label.Contains("anima")) return "anima";
+            if (label.Contains("minimax")) return "minimax_h3";
             if (label.Contains("wan")) return "wan";
             if (label.Contains("sdxl") || label.Contains("stable-diffusion-xl")) return "sdxl";
             var keys = string.Join('\n', json.Select(k => k.Key));
+            if (Regex.IsMatch(keys, @"(?<![\w])token_refiner\.") || keys.Contains("audio_patch_proj")) return "minimax_h3";   // H3's own layers (not Hunyuan's individual_token_refiner)
             if (keys.Contains(".attn.wk.") || keys.Contains(".attn.gate.") || keys.Contains("txtfusion") || keys.Contains("text_fusion")) return "krea2";
             if (keys.Contains("img_mlp") || keys.Contains("txt_mlp") || keys.Contains("img_mod")) return "qwen_image";
             if (keys.Contains("llm_adapter") || keys.Contains("adaln_modulation")) return "anima";
@@ -1274,6 +1289,8 @@ public partial class MainWindow : Window
                     + (Named("noctq") ? " Start prompts with \"An anime illustration of…\"." : "")
                 : Krea ? "Krea 2: realistic photos and art; the negative prompt isn't used. Check the model's licence before commercial use."
                 : Anima ? "Anima: anime and illustration. Tags (1girl, masterpiece) or plain sentences both work; a quality negative prompt is added for you."
+                : H3 ? "MiniMax H3: video with its own sound, 24 frames a second. Describe what happens, how the camera moves and what you hear. "
+                    + "Slow on small graphics cards; check the MiniMax H3 licence for where it may be used."
                 : PictureVideo ? "Wan 2.1 picture-to-video: the clip starts on your picture. Describe what moves and how the camera moves."
                 : Wan ? "Wan 2.1 video, 16 frames a second. A clip takes a few minutes; describe the movement and the camera."
                 : Flux ? "Good at readable text. Slower; the negative prompt isn't used." : "";
@@ -1405,6 +1422,9 @@ public partial class MainWindow : Window
     static JsonObject UnetNode(string unet) => unet.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)
         ? Node("UnetLoaderGGUF", new() { ["unet_name"] = unet })
         : Node("UNETLoader", new() { ["unet_name"] = unet, ["weight_dtype"] = "default" });
+    static JsonObject ClipNode(string te, string type) => te.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)
+        ? Node("CLIPLoaderGGUF", new() { ["clip_name"] = te, ["type"] = type })
+        : Node("CLIPLoader", new() { ["clip_name"] = te, ["type"] = type });
     static JsonArray Link(string node, int slot) => new() { node, slot };
 
     void StopServer()
@@ -1449,7 +1469,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256);
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }
@@ -1637,7 +1657,7 @@ public partial class MainWindow : Window
         CountSection.Visibility = video ? Visibility.Collapsed : Visibility.Visible;
         EditorPanel.Visibility = PhotoSection.Visibility = StrengthSection.Visibility = edit ? Visibility.Visible : Visibility.Collapsed;
         PromptHeading.Text = edit ? "Describe the result" : video ? "Describe the video" : "Prompt";
-        TabsBar.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
+        TabsBar.Visibility = edit ? Visibility.Collapsed : Visibility.Visible;     // video models have tabs too (MiniMax H3 bundles open as one)
         PromptBox.Tag = edit ? "e.g. the same scene in winter, snow on the roofs, golden hour"
             : video ? "e.g. a fox running through snowy woods, the camera following it" : "Describe the image: subject, style, lighting, mood…";
         GenerateText.Text = edit ? "Apply edit" : video ? "Make video" : "Generate";
@@ -2218,6 +2238,7 @@ public partial class MainWindow : Window
     {
         var idea = PromptBox.Text.Trim();
         if (idea == "") { Note("Type a short idea first, then press Improve prompt."); return; }
+        if (SexualWithMinor(idea)) { Note(MinorNote, true); return; }
         bool edit = EditMode.IsChecked == true;
         if (edit && photo == null) { Note("Choose a photo first, then describe the change.", true); return; }
         var style = CurrentStyle.Key == "none" ? "" : $"\n(The style: {CurrentStyle.Label}.)";
@@ -2289,6 +2310,7 @@ public partial class MainWindow : Window
             {
                 var answer = await AskOllama(settings.HelperModel["Ollama: ".Length..], prompt, system);
                 if (answer == "") throw new Exception("the model gave an empty answer");
+                if (SexualWithMinor(answer)) { Note(MinorNote, true); return null; }
                 return answer;
             }
             catch (Exception ex) { Note("Ollama couldn't write it (" + ex.Message + "). Is Ollama still running?", true); return null; }
@@ -2338,6 +2360,7 @@ public partial class MainWindow : Window
                 if (text == null && DateTime.Now > until) throw new Exception("it took too long");
             }
             if (text == "") throw new Exception("the model gave an empty answer");
+            if (SexualWithMinor(text)) { Note(MinorNote, true); return null; }
             return text;
         }
         catch (Exception ex) { Note("Couldn't write it: " + ex.Message, true); return null; }

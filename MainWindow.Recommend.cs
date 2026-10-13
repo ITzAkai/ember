@@ -28,7 +28,7 @@ public partial class MainWindow
 {
     const string RecommendationsJson = """
     {
-      "version": 7,
+      "version": 8,
       "families": {
         "sdxl": { "maxMp": 1.2, "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.6, "badScheduler": null,
@@ -48,6 +48,9 @@ public partial class MainWindow
         "wan_i2v": { "maxMp": 0.5, "label": "Wan 2.1 picture-to-video", "sampler": "uni_pc", "scheduler": "simple", "steps": [15, 20, 40], "stepsRange": [15, 50], "cfg": 6, "cfgRange": [5, 7],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Wan 2.1 Fun InP: 20 steps at CFG 6, as in ComfyUI's template." },
+        "minimax_h3": { "maxMp": 0.5, "label": "MiniMax H3", "sampler": "res_multistep", "scheduler": "simple", "steps": [12, 20, 30], "stepsRange": [8, 40], "cfg": 1, "cfgRange": [1, 2],
+          "negative": false, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
+          "why": "MiniMax H3: 20 steps at CFG 1 with res_multistep, as in ComfyUI's template. It makes the sound with the picture; a CFG above 1 doubles the time." },
         "flux": { "maxMp": 1.2, "label": "FLUX schnell", "sampler": "euler", "scheduler": "simple", "steps": [3, 4, 6], "stepsRange": [1, 8], "cfg": 1, "cfgRange": [1, 1],
           "negative": false, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null, "why": "FLUX schnell: 4 steps at CFG 1." }
       },
@@ -93,6 +96,10 @@ public partial class MainWindow
           "why": "Anima Aesthetic: CFG 3.5. Quality tags are optional: it was trained only on high-quality pictures." },
         { "match": "nova ?anime ?am", "family": "anima", "label": "Nova Anime AM", "sampler": "euler_ancestral", "scheduler": "normal", "steps": [20, 28, 30], "stepsRange": [20, 32],
           "cfg": 5, "cfgRange": [4, 6], "why": "Nova Anime AM (an Anima 2.9B merge): Euler a, 20 to 30 steps, CFG 4 to 6, from its author." },
+        { "match": "eros.*turbo|turbo.*eros", "family": "minimax_h3", "label": "10Eros Max Turbo (MiniMax H3)", "steps": [6, 8, 10], "stepsRange": [4, 12], "cfg": 1, "cfgRange": [1, 1.5],
+          "negative": false, "why": "10Eros Max Turbo has the speed-up built in: res_multistep / simple, 6 to 8 steps, from its author." },
+        { "match": "10[-_ ]?eros|eros[-_ ]?max", "family": "minimax_h3", "label": "10Eros Max (MiniMax H3)", "cfg": 1.5, "cfgRange": [1, 2], "negative": true,
+          "why": "10Eros Max: res_multistep / simple with CFG about 1.5, from its author. Keep CFG at 2 or lower or the sound turns to static; it needs the fp32 audio VAE." },
         { "match": "dev", "family": "flux", "label": "FLUX dev", "steps": [15, 20, 30], "stepsRange": [12, 50],
           "why": "FLUX dev: 20 steps at CFG 1, as in ComfyUI's example; it isn't a few-step model like schnell." }
       ]

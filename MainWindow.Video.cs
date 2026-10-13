@@ -1,5 +1,6 @@
-// Video: Wan 2.1 text-to-video (the 1.3B model fits a 12 GB card). A clip is an MP4 in forge\clips plus a PNG poster frame with the
-// same name in forge, so the gallery, favourites, search, delete and export all work through the poster.
+// Video: Wan 2.1 text-to-video (the 1.3B model fits a 12 GB card), and MiniMax H3, which makes the clip's sound with it.
+// A clip is an MP4 in forge\clips plus a PNG poster frame with the same name in forge, so the gallery, favourites, search, delete
+// and export all work through the poster.
 // (Two folders because ComfyUI numbers files across every type in a folder: side by side they'd get different numbers.)
 using System.IO;
 using System.Text.Json;
@@ -12,10 +13,12 @@ namespace ImageForge;
 
 public partial class MainWindow
 {
-    string wanTe, wanVae;
+    string wanTe, wanVae, h3Te, h3Vae, h3AudioVae;
     List<string> imageModels = new(), videoModels = new();
     bool showingVideoModels;
     bool Wan => Family is "wan" or "wan_i2v";
+    bool H3 => Family == "minimax_h3";
+    static bool IsVideoFamily(string family) => family is "wan" or "wan_i2v" or "minimax_h3";
     bool PictureVideo => Family == "wan_i2v";           // Wan 2.1 Fun InP: the clip starts on a picture
     byte[] startPicture;                                // that picture, as PNG, at most 1280 px
     string startName;
@@ -36,6 +39,7 @@ public partial class MainWindow
 
     async Task MakeVideo(long seed)
     {
+        if (H3) { await MakeH3Video(seed); return; }
         var start = PictureVideo ? startPicture : null;
         if (PictureVideo && start == null) { Note("Choose the start picture first (above Video shape).", true); return; }
         var from = startName;
@@ -99,6 +103,81 @@ public partial class MainWindow
                 ["extra_data"] = new JsonObject { ["extra_pnginfo"] = new JsonObject { ["forge"] = JsonSerializer.SerializeToNode(meta) }, ["preview_method"] = "auto" },
             };
         }, "Filming · step", "Starting");
+    }
+
+    // ---------------- MiniMax H3 ----------------
+    // The clip and its sound in one pass, as in ComfyUI's template: MiniMaxH3ImageToVideo reads the prompt (Qwen3-VL-32B) and makes
+    // the joint video+audio latent, the sampler runs on both, and the two VAEs decode the frames and the soundtrack into one MP4.
+    // CFG 1 is the template's single pass; above 1 the negative prompt steers away from what it names, at twice the time.
+    async Task MakeH3Video(long seed)
+    {
+        var model = (string)ModelBox.SelectedItem;
+        if (h3AudioVae == null) { Note("MiniMax H3 needs its audio VAE (minimax_h3_audio_vae_fp32) in the vae folder.", true); return; }
+        var size = Picked(VideoSizeGroup).Split('x').Select(v => (int.Parse(v) + 16) / 32 * 32).ToArray();     // H3 works in steps of 32 pixels
+        int frames = H3Frames(int.Parse(Picked(LengthGroup))), steps = Steps;
+        var rawPrompt = CurrentStyle.Apply(PromptBox.Text.Trim());
+        var activeLoras = AllActiveLoras(rawPrompt, out rawPrompt);
+        var prompt = rawPrompt;
+        var negative = string.Join(", ", new[] { NegativeBox.Text.Trim(), CurrentStyle.Negative }.Where(t => t != ""));
+        double cfg = CfgSlider.Value;
+        string sampler = (string)SamplerBox.SelectedItem, scheduler = (string)SchedulerBox.SelectedItem;
+        string te = TeFor("minimax_h3"), vae = VaeFor("minimax_h3"), audioVae = h3AudioVae;
+        await Enqueue(1, async job =>
+        {
+            var name = $"vid_{DateTime.Now:yyMMdd_HHmmss_fff}";
+            var g = new JsonObject
+            {
+                ["4"] = UnetNode(separate[model].Unet),
+                ["44"] = ClipNode(te, "minimax"),
+                ["45"] = Node("VAELoader", new() { ["vae_name"] = vae }),
+                ["48"] = Node("VAELoader", new() { ["vae_name"] = audioVae }),
+            };
+            var m = "4";            // the node whose model goes on: a fresh link each use, since a JSON node can't sit in two places
+            int loraNo = 1;
+            foreach (var (loraName, strength) in activeLoras)        // H3 LoRAs change the model only: its text encoder isn't trained
+            {
+                var idStr = $"lora{loraNo++}";
+                g[idStr] = Node("LoraLoaderModelOnly", new() { ["model"] = Link(m, 0), ["lora_name"] = loraName, ["strength_model"] = strength });
+                m = idStr;
+            }
+            g["6"] = Node("MiniMaxH3ImageToVideo", new()
+            {
+                ["clip"] = Link("44", 0), ["vae"] = Link("45", 0), ["prompt"] = prompt, ["width"] = size[0], ["height"] = size[1], ["length"] = frames,
+            });
+            if (cfg > 1)
+            {
+                g["7"] = Node("CLIPTextEncode", new() { ["text"] = negative, ["clip"] = Link("44", 0) });
+                g["51"] = Node("CFGGuider", new() { ["model"] = Link(m, 0), ["positive"] = Link("6", 0), ["negative"] = Link("7", 0), ["cfg"] = cfg });
+            }
+            else g["51"] = Node("BasicGuider", new() { ["model"] = Link(m, 0), ["conditioning"] = Link("6", 0) });
+            g["52"] = Node("RandomNoise", new() { ["noise_seed"] = seed });
+            g["53"] = Node("KSamplerSelect", new() { ["sampler_name"] = sampler });
+            g["54"] = Node("BasicScheduler", new() { ["model"] = Link(m, 0), ["scheduler"] = scheduler, ["steps"] = steps, ["denoise"] = 1.0 });
+            g["3"] = Node("SamplerCustomAdvanced", new()
+            {
+                ["noise"] = Link("52", 0), ["guider"] = Link("51", 0), ["sampler"] = Link("53", 0), ["sigmas"] = Link("54", 0), ["latent_image"] = Link("6", 1),
+            });
+            g["8"] = Node("VAEDecode", new() { ["samples"] = Link("3", 0), ["vae"] = Link("45", 0) });
+            g["49"] = Node("VAEDecodeAudio", new() { ["samples"] = Link("3", 0), ["vae"] = Link("48", 0) });
+            g["40"] = Node("CreateVideo", new() { ["images"] = Link("8", 0), ["audio"] = Link("49", 0), ["fps"] = 24.0 });   // H3 makes 24 frames a second
+            g["41"] = Node("SaveVideo", new() { ["video"] = Link("40", 0), ["filename_prefix"] = $"forge/clips/{name}", ["format"] = "auto", ["format.codec"] = "auto" });
+            g["47"] = Node("ImageFromBatch", new() { ["image"] = Link("8", 0), ["batch_index"] = frames / 2, ["length"] = 1 });
+            g["9"] = Node("SaveImage", new() { ["filename_prefix"] = $"forge/{name}", ["images"] = Link("47", 0) });
+            var meta = new Meta(prompt, cfg > 1 ? negative : "", seed, steps, cfg, sampler, scheduler, model);
+            return new JsonObject
+            {
+                ["prompt"] = g, ["client_id"] = clientId,
+                ["extra_data"] = new JsonObject { ["extra_pnginfo"] = new JsonObject { ["forge"] = JsonSerializer.SerializeToNode(meta) }, ["preview_method"] = "auto" },
+            };
+        }, "Filming · step", "Starting");
+    }
+
+    // the Length choice is Wan's frame count (16 a second); H3 makes 24 a second on a 17k + 5 frame grid: 2 s → 56, 3 s → 73, 5 s → 124
+    static int H3Frames(int wanFrames)
+    {
+        int n = Math.Max(5, (int)Math.Round((wanFrames - 1) / 16.0 * 24));
+        while (n % 17 != 5) n++;
+        return n;
     }
 
     // ---------------- the start picture (picture-to-video) ----------------

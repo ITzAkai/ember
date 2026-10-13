@@ -126,10 +126,13 @@ public partial class MainWindow
         }
     }
 
-    // where an installed file lives: Civitai's "Checkpoint" files without their own parts are moved to diffusion_models on download
-    static string InstalledPath(BundleFile f) =>
-        new[] { f.Folder, f.Folder == "checkpoints" ? "diffusion_models" : null, f.Folder == "text_encoders" ? "clip" : null }
-            .Where(d => d != null).Select(d => Path.Combine(ModelsDir, d, f.File)).FirstOrDefault(File.Exists);
+    // where an installed file lives: Civitai's "Checkpoint" files without their own parts are moved to diffusion_models on download,
+    // and GGUF model cards often say unet (ComfyUI loads diffusion models from either)
+    static string InstalledPath(BundleFile f) => PartPaths(f.Folder, f.File).FirstOrDefault(File.Exists);
+
+    static IEnumerable<string> PartPaths(string folder, string file) =>
+        new[] { folder, folder == "checkpoints" ? "diffusion_models" : null, folder is "checkpoints" or "diffusion_models" ? "unet" : null, folder == "text_encoders" ? "clip" : null }
+            .Where(d => d != null).Select(d => Path.Combine(ModelsDir, d, file));
 
     void BuildBundles()
     {
@@ -279,14 +282,15 @@ public partial class MainWindow
                 await Download(new CatalogItem(f.Name, KindOf(f.Folder), f.Folder, f.File, f.Url, f.Size, f.Sha256, f.License, "From the bundle " + b.Name));
                 if (InstalledPath(f) == null) { BundlesNote.Text = $"{b.Name}: {f.Name} didn't download. {ModelsNote.Text}"; return; }
             }
-            if (ready && !ModelBox.Items.Contains(b.Tab.Model)) await LoadOptions();
+            bool Listed(string model) => imageModels.Contains(model) || videoModels.Contains(model);
+            if (ready && !Listed(b.Tab.Model)) await LoadOptions();
             var tab = Clone(b.Tab);
             tab.Name = Unique(string.IsNullOrWhiteSpace(tab.Name) ? b.Name : tab.Name, null);
             tab.Loras ??= new();
             settings.Tabs.Add(tab);
             settings.Save();
             ShowTabs();
-            if (ready && ModelBox.Items.Contains(tab.Model))
+            if (ready && Listed(tab.Model))
             {
                 OpenTab(tab);
                 BundlesPanel.Visibility = Visibility.Collapsed;
@@ -302,7 +306,7 @@ public partial class MainWindow
     async void MakeBundle_Click(object sender, RoutedEventArgs e)
     {
         if (ModelBox.SelectedItem is not string model) { BundlesNote.Text = "Pick a model first: a bundle is made from the model and settings on screen."; return; }
-        SaveActiveTab();
+        // the model's settings only: the prompt on screen stays out of a bundle that gets shared (its sample prompts come from its pictures)
         var tab = new ModelProfile { Name = ActiveTab?.Name ?? Path.GetFileNameWithoutExtension(model), Model = model };
         Capture(tab);
         tab.Boosters = Clone(CurrentBoosters);
@@ -316,24 +320,26 @@ public partial class MainWindow
         var prompts = pictures.Select(p => { try { return ReadMeta(p)?.Prompt; } catch { return null; } })
             .Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct().Take(4).ToList();
         var everything = string.Join("\n", new[] { name, about, tab.Negative }.Concat(prompts));
-        adult |= false;       // placeholder for updated rules
+        if (SexualWithMinor(everything)) { BundlesNote.Text = MinorNote; return; }
+        adult |= SexualWords.IsMatch(everything);       // sexual prompts or text always get the 18+ gate
 
         // the files it needs: the model, its LoRAs, and for model-only files the text encoder and VAE it runs with
         var needed = new List<(string Folder, string File)>();
-        var modelFolder = File.Exists(Path.Combine(ModelsDir, "diffusion_models", model)) ? "diffusion_models" : "checkpoints";
+        var modelFolder = PartPaths("diffusion_models", model).Any(File.Exists) ? "diffusion_models" : "checkpoints";     // diffusion_models or unet
         needed.Add((modelFolder, model));
         foreach (var l in tab.Loras.Where(l => l.Name is { Length: > 0 } and not "None")) needed.Add(("loras", l.Name));
-        if (modelFolder == "diffusion_models" && FamilyOf(model) is string fam && fam is "krea2" or "qwen_image" or "anima" or "wan" or "wan_i2v")
+        if (modelFolder == "diffusion_models" && FamilyOf(model) is string fam && fam is "krea2" or "qwen_image" or "anima" or "wan" or "wan_i2v" or "minimax_h3")
         {
             var family = fam == "wan_i2v" ? "wan" : fam;
             if ((tab.TextEncoder ?? TeFor(family, model)) is string te) needed.Add(("text_encoders", te));
             if ((tab.Vae ?? VaeFor(family, model)) is string vae) needed.Add(("vae", vae));
+            if (family == "minimax_h3" && h3AudioVae != null) needed.Add(("vae", h3AudioVae));       // its sound has a VAE of its own
         }
 
         var files = new List<BundleFile>();
         foreach (var (folder, file) in needed.Distinct())
         {
-            var path = new[] { folder, folder == "text_encoders" ? "clip" : null }.Where(d => d != null).Select(d => Path.Combine(ModelsDir, d, file)).FirstOrDefault(File.Exists);
+            var path = PartPaths(folder, file).FirstOrDefault(File.Exists);
             if (path == null) { BundlesNote.Text = $"{file} isn't in the models folder, so it can't go in a bundle."; return; }
             BundlesNote.Text = $"Checking {file} ({Size(new FileInfo(path).Length)})…";
             var sha = await Task.Run(() => { using var s = File.OpenRead(path); return Convert.ToHexString(SHA256.HashData(s)).ToLowerInvariant(); });
@@ -494,14 +500,16 @@ public partial class MainWindow
             foreach (var f in b.Files)
             {
                 if (!ModelFolders.Contains(f.Folder)) throw new Exception($"it puts a file in an unknown folder ({f.Folder}).");
-                if (f.File != Path.GetFileName(f.File) || !f.File.EndsWith(".safetensors", StringComparison.OrdinalIgnoreCase)) throw new Exception($"{f.File} isn't a plain .safetensors file name.");
+                if (f.File != Path.GetFileName(f.File) || !(f.File.EndsWith(".safetensors", StringComparison.OrdinalIgnoreCase) || f.File.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)))
+                    throw new Exception($"{f.File} isn't a plain .safetensors or .gguf file name.");
                 if (!Uri.TryCreate(f.Url, UriKind.Absolute, out var u) || u.Scheme != "https" || !(u.Host is "huggingface.co" or "www.huggingface.co" || IsCivitai(u)))
                     throw new Exception($"{f.File} doesn't come from Hugging Face or Civitai.");
                 if (f.Sha256 is not { Length: 64 } || !Regex.IsMatch(f.Sha256, "^[0-9a-fA-F]+$")) throw new Exception($"{f.File} has no checksum.");
                 f.Sha256 = f.Sha256.ToLowerInvariant();
             }
             var text = string.Join("\n", new[] { b.Name, b.Description, b.Tab.Negative }.Concat(b.Prompts ?? new()));
-            b.Adult |= false;
+            if (SexualWithMinor(text)) throw new Exception(MinorNote);
+            b.Adult |= SexualWords.IsMatch(text);
             b.Showcase = (b.Showcase ?? new()).Where(s => s == Path.GetFileName(s) && ShowcaseTypes.Contains(Path.GetExtension(s).ToLowerInvariant()) && File.Exists(Path.Combine(temp, s))).ToList();
             b.Prompts ??= new();
             b.Tab.Loras ??= new();

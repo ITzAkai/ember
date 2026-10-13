@@ -53,10 +53,13 @@ public partial class MainWindow
                 "3f5062b8400c94b7159665b21ba5c62acdcd7682262743d7f2aefedef00e6581", 847_517_512),
             new("https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors", "clip_vision", "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
                 "6ca9667da1ca9e0b0f75e46bb030f7e011f44f86cbfb8d5a36590fcd7507b030", 2_528_373_448)),
-        new("ComfyUI-GGUF", "GGUF loader (Krea 2)", "Optional", false, "leejet/ComfyUI-GGUF", "373048b840", "2.0.0",
+        new("ComfyUI-GGUF", "GGUF loader (Krea 2, MiniMax H3)", "Optional", false, "leejet/ComfyUI-GGUF", "373048b840", "2.0.0",
             "51e9582593aea82fe3c847a51ebb87ceca2e32584b5f2b4ad843b056c83646b0", 122_247, "UnetLoaderGGUF",
-            "Loads smaller GGUF Krea 2 files for 6–8 GB graphics cards. Experimental; Qwen-Image GGUF files don't work yet."),
+            "Loads smaller GGUF files: Krea 2 for 6–8 GB graphics cards, and MiniMax H3 video and its text encoder. Experimental; Qwen-Image GGUF files don't work yet."),
     };
+
+    // forks pinned above whose original has the same nodes: the original counts as installed (its version numbers are its own)
+    static readonly Dictionary<string, string> ForkOriginals = new() { ["leejet/comfyui-gguf"] = "city96/comfyui-gguf" };
 
     string CustomNodesDir => Path.Combine(Root, "ComfyUI", "custom_nodes");
     string Python => Path.Combine(Root, "python_embeded", "python.exe");
@@ -117,9 +120,11 @@ public partial class MainWindow
         var (dir, disabled) = FindPack(p.Folder);
         if (dir == null) return (PluginState.Missing, null);
         if (disabled) return (PluginState.Disabled, dir);
-        if (RepoOf(dir) is string repo && repo != p.Repo.ToLowerInvariant()) return (PluginState.Other, dir);
+        var repo = RepoOf(dir);
+        bool original = repo != null && ForkOriginals.GetValueOrDefault(p.Repo.ToLowerInvariant()) == repo;
+        if (repo != null && repo != p.Repo.ToLowerInvariant() && !original) return (PluginState.Other, dir);
         if (FailedPacks().Contains(Path.GetFileName(dir))) return (PluginState.Failed, dir);
-        if (VersionOf(dir) is Version v && Version.TryParse(p.Version, out var pin) && v < pin) return (PluginState.Older, dir);
+        if (!original && VersionOf(dir) is Version v && Version.TryParse(p.Version, out var pin) && v < pin) return (PluginState.Older, dir);
         return (PluginState.Installed, dir);
     }
 

@@ -1,6 +1,7 @@
 // Settings per model, and model tabs. Every model remembers its own steps, CFG, sampler, size, count, strength, LoRAs, boosters,
 // negative prompt and style: switching models saves the old one's and restores the new one's. A tab is a named preset (a model plus
-// those settings) that switches everything at once, saves itself as you change things, and exports to JSON for sharing.
+// those settings, the prompt and the other options on screen) that switches everything at once and exports to JSON for sharing.
+// A tab changes only when asked: anything changed after opening it shows a bar to save it into the tab or as a new tab.
 // Models without a saved profile start from the older per-family LoRAs and boosters, so nothing from before is lost.
 using System.IO;
 using System.Text.Json;
@@ -29,6 +30,15 @@ public class ModelProfile
     public string TextEncoder { get; set; }         // null: the automatic choice for the family
     public string Vae { get; set; }
     public bool Saved { get; set; }                 // false: only its boosters are set so far
+    // a tab's own: the prompt and the options outside the model's settings (null in a model's profile and in older tabs: left as they are)
+    public string Prompt { get; set; }
+    public string VideoSize { get; set; }
+    public int? VideoFrames { get; set; }
+    public bool? CustomSize { get; set; }
+    public int? CustomWidth { get; set; }
+    public int? CustomHeight { get; set; }
+    public bool? RandomSeed { get; set; }
+    public long? Seed { get; set; }
 }
 
 public partial class MainWindow
@@ -73,20 +83,12 @@ public partial class MainWindow
         UpdateLoraChip();
     }
 
-    // called from the model drop-down: before its defaults are applied (save the old model) and after (restore the new one)
+    // called from the model drop-down: before its defaults are applied (save the old model) and after (restore the new one).
+    // An open tab stays as it was saved: another model is a change it shows, to save into the tab or as a new one.
     void LeavingModel()
     {
         if (applyingProfile || profileModel == null || loadingOptions) return;
-        var old = ProfileOf(profileModel);
-        Capture(old);
-        // leaving a tab's model by the drop-down: the tab keeps what was on screen and stops being the open one
-        if (ActiveTab is { } tab && tab.Model == profileModel && ModelBox.SelectedItem as string != profileModel)
-        {
-            Capture(tab);
-            tab.Boosters = Clone(old.Boosters);
-            settings.ActiveTab = null;
-            ShowTabs();
-        }
+        Capture(ProfileOf(profileModel));
     }
 
     void ArrivedAtModel()
@@ -99,11 +101,104 @@ public partial class MainWindow
     // ---------------- tabs ----------------
     ModelProfile ActiveTab => settings.Tabs.FirstOrDefault(t => t.Name == settings.ActiveTab);
 
-    void SaveActiveTab()
+    // a tab is the model's settings plus the prompt and the other options on screen
+    void CaptureTab(ModelProfile tab)
     {
-        if (ActiveTab is not { } tab || ModelBox.SelectedItem as string != tab.Model) return;
+        if (ModelBox.SelectedItem is string model) tab.Model = model;
         Capture(tab);
         tab.Boosters = Clone(CurrentBoosters);
+        var own = settings.Profiles.GetValueOrDefault(tab.Model ?? "");
+        (tab.TextEncoder, tab.Vae) = (own?.TextEncoder, own?.Vae);
+        tab.Prompt = PromptBox.Text;
+        tab.VideoSize = Picked(VideoSizeGroup);
+        tab.VideoFrames = int.TryParse(Picked(LengthGroup), out var frames) ? frames : null;
+        tab.CustomSize = CustomSizeBox.IsChecked == true;
+        tab.CustomWidth = int.TryParse(CustomW.Text, out var w) ? w : null;
+        tab.CustomHeight = int.TryParse(CustomH.Text, out var h) ? h : null;
+        tab.RandomSeed = RandomSeed.IsChecked == true;
+        tab.Seed = long.TryParse(SeedBox.Text, out var seed) ? seed : null;
+    }
+
+    // the tab's own options, after Apply has set the model's settings; what an older tab doesn't have stays as it is
+    void ApplyTab(ModelProfile tab)
+    {
+        if (tab.Prompt != null) PromptBox.Text = tab.Prompt;
+        if (tab.VideoSize != null) Pick(VideoSizeGroup, tab.VideoSize, "832x480");
+        if (tab.VideoFrames is int frames) Pick(LengthGroup, frames.ToString(), "49");
+        if (tab.CustomSize is bool custom) CustomSizeBox.IsChecked = custom;
+        if (tab.CustomWidth is int w) CustomW.Text = w.ToString();
+        if (tab.CustomHeight is int h) CustomH.Text = h.ToString();
+        if (tab.RandomSeed is bool random) RandomSeed.IsChecked = random;
+        if (tab.Seed is long seed) SeedBox.Text = seed.ToString();
+        var own = ProfileOf(tab.Model);
+        if (tab.TextEncoder != null) own.TextEncoder = tab.TextEncoder;
+        if (tab.Vae != null) own.Vae = tab.Vae;
+        ShowParts();
+    }
+
+    // ---------------- unsaved changes in the open tab ----------------
+    string tabBaseline;                 // the open tab as it looked on screen right after opening or saving it
+    System.Windows.Threading.DispatcherTimer tabWatch;
+
+    // what's on screen, in a tab's shape; with a new seed each time the seed itself isn't a change
+    string TabSnapshot()
+    {
+        var t = new ModelProfile();
+        CaptureTab(t);
+        if (t.RandomSeed == true) t.Seed = null;
+        return JsonSerializer.Serialize(t);
+    }
+
+    // once the screen has settled (lists filled, profile applied), that is the tab's starting point
+    void ResetTabBaseline()
+    {
+        tabBaseline = null;
+        TabChanges.Visibility = Visibility.Collapsed;
+        Dispatcher.BeginInvoke(() => { if (ActiveTab != null && ready && !loadingOptions) tabBaseline = TabSnapshot(); }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
+    void WatchTabChanges()
+    {
+        tabWatch = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        tabWatch.Tick += (_, _) =>
+        {
+            // (in the other mode, where its model isn't in the list, the tab isn't what's on screen: nothing to save into it)
+            if (ActiveTab is not { } tab || !ready || loadingOptions || applyingProfile || TabsBar.Visibility != Visibility.Visible || !ModelBox.Items.Contains(tab.Model))
+            { TabChanges.Visibility = Visibility.Collapsed; return; }
+            if (tabBaseline == null) { tabBaseline = TabSnapshot(); return; }       // just started: what's on screen is where changes count from
+            bool changed = TabSnapshot() != tabBaseline;
+            TabChanges.Visibility = changed ? Visibility.Visible : Visibility.Collapsed;
+            if (changed) TabChangesText.Text = $"Unsaved changes in \"{tab.Name}\"";
+        };
+        tabWatch.Start();
+    }
+
+    void TabSave_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActiveTab is not { } tab) return;
+        CaptureTab(tab);
+        settings.Save();
+        ShowTabs();
+        ResetTabBaseline();
+        Note($"Saved the changes to \"{tab.Name}\".");
+    }
+
+    void TabSaveNew_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActiveTab is not { } old) return;
+        var tab = new ModelProfile { Name = Unique(old.Name, null) };
+        CaptureTab(tab);
+        settings.Tabs.Add(tab);
+        settings.ActiveTab = tab.Name;
+        settings.Save();
+        ShowTabs();
+        ResetTabBaseline();
+        Note($"Saved as the new tab \"{tab.Name}\". \"{old.Name}\" is kept as it was.");
+    }
+
+    void TabDiscard_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActiveTab is { } tab) { OpenTab(tab); Note($"Back to \"{tab.Name}\" as it was saved."); }
     }
 
     void ShowTabs()
@@ -115,7 +210,7 @@ public partial class MainWindow
             var b = new Button { Content = new TextBlock { Text = tab.Name }, Style = (Style)FindResource("Ghost"), Height = 28, Padding = new Thickness(10, 0, 10, 0), FontSize = 12,
                 Margin = new Thickness(0, 0, 6, 6), ToolTip = $"{tab.Model}\nRight-click to rename, duplicate, export or delete" };
             if (active) { b.BorderBrush = Brush("Accent"); b.Foreground = Brush("Accent"); }
-            b.Click += (_, _) => OpenTab(tab);
+            b.Click += (_, _) => OpenTab(tab);         // the open tab again: back to how it was saved
             var menu = new ContextMenu();
             void Item(string text, Action act) { var i = new MenuItem { Header = text }; i.Click += (_, _) => act(); menu.Items.Add(i); }
             Item("Rename…", () => { if (Ask("Rename tab", tab.Name) is string name) { if (active) settings.ActiveTab = name; tab.Name = Unique(name, tab); settings.Save(); ShowTabs(); } });
@@ -143,31 +238,35 @@ public partial class MainWindow
         TabsBar.Children.Add(add);
     }
 
+    // a new tab from what's on screen; the tab that was open keeps what it had
     void NewTab()
     {
         if (ModelBox.SelectedItem is not string model) return;
-        SaveActiveTab();
         var name = Path.GetFileNameWithoutExtension(model);
-        var tab = new ModelProfile { Name = Unique(name.Length > 24 ? name[..24] : name, null), Model = model };
-        Capture(tab);
-        tab.Boosters = Clone(CurrentBoosters);
+        var tab = new ModelProfile { Name = Unique(name.Length > 24 ? name[..24] : name, null) };
+        CaptureTab(tab);
         settings.Tabs.Add(tab);
         settings.ActiveTab = tab.Name;
         settings.Save();
         ShowTabs();
-        Note($"Saved as the tab \"{tab.Name}\". Changes you make are kept in it.");
+        ResetTabBaseline();
+        Note($"Saved as the tab \"{tab.Name}\", with its prompt. Change anything and you can save it into the tab or as a new one.");
     }
 
+    // switches to the tab as it was saved: changes not saved to the tab that was open are left behind
     void OpenTab(ModelProfile tab)
     {
+        // the model list shows pictures or videos: a video model's tab switches to Video first, and a picture model's back
+        if (videoModels.Contains(tab.Model) && !VideoOn) VideoMode.IsChecked = true;
+        else if (imageModels.Contains(tab.Model) && VideoOn) CreateMode.IsChecked = true;
         if (!ModelBox.Items.Contains(tab.Model)) { Note($"{tab.Model} isn't installed, so this tab can't open.", true); return; }
-        SaveActiveTab();
         LeavingModel();
         applyingProfile = true;
         try
         {
             ModelBox.SelectedItem = tab.Model;
             Apply(tab);
+            ApplyTab(tab);
             ProfileOf(tab.Model).Boosters = Clone(tab.Boosters) ?? new Boosters();
             ShowBoosters();
             RefreshGuard();
@@ -177,6 +276,7 @@ public partial class MainWindow
         settings.ActiveTab = tab.Name;
         settings.Save();
         ShowTabs();
+        ResetTabBaseline();
     }
 
     string Unique(string name, ModelProfile self)

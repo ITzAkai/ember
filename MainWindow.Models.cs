@@ -99,10 +99,14 @@ public partial class MainWindow
         ("fineporn", "FinePorn v5", "Realistic photos and art, uncensored (a Krea 2 fine-tune)."),
         ("wan_1.3b_", "NSFW Wan 1.3B", "Short clips, uncensored (a Wan 2.1 fine-tune)."),
         ("fun_inp", "Wan 2.1 picture-to-video", "Starts a clip from your picture. Works with Wan 1.3B LoRAs."),
+        ("10eros", "10Eros Max", "Video with its own sound, uncensored (a MiniMax H3 fine-tune)."),
         ("anima", "Anima", "Anime and illustration. Tags (1girl, masterpiece) or plain sentences both work."),
     };
 
-    static string FamilyLabel(string family) => family switch { "krea2" => "Krea 2", "qwen_image" => "Qwen-Image", "wan" => "Wan 2.1", "anima" => "Anima", "sdxl" => "SDXL", _ => null };
+    static string FamilyLabel(string family) => family switch
+    {
+        "krea2" => "Krea 2", "qwen_image" => "Qwen-Image", "wan" => "Wan 2.1", "anima" => "Anima", "minimax_h3" => "MiniMax H3", "sdxl" => "SDXL", _ => null,
+    };
 
     Installed Inspect(string folder, string path)
     {
@@ -120,6 +124,7 @@ public partial class MainWindow
             {
                 "wan" => ("Video models", "wan", "Short video clips."),
                 "wan_i2v" => ("Video models", "wan", "Starts a clip from your picture."),
+                "minimax_h3" => ("Video models", "minimax_h3", "Video with its own sound."),
                 "krea2" => ("Picture models", "krea2", "Realistic photos and art."),
                 "qwen_image" => ("Picture models", "qwen_image", "Lettering, logos, and edits by instruction."),
                 "anima" => ("Picture models", "anima", "Anime and illustration."),
@@ -132,7 +137,8 @@ public partial class MainWindow
         };
         var named = folder == "diffusion_models" ? KnownModels.FirstOrDefault(k => Has(k.Part)) : default;
         var name = known?.Name ?? named.Name
-            ?? (info.Group == "Parts" && info.Family != null ? $"{FamilyLabel(info.Family)} {(folder == "vae" ? "VAE" : "text encoder")}" : Path.GetFileNameWithoutExtension(file).Replace('_', ' '));
+            ?? (info.Group == "Parts" && info.Family != null
+                ? $"{FamilyLabel(info.Family)} {(folder == "vae" ? (PartKind(folder, file) == "h3_audio_vae" ? "audio VAE" : "VAE") : "text encoder")}" : Path.GetFileNameWithoutExtension(file).Replace('_', ' '));
         var about = known?.About ?? named.About ?? info.About
             ?? (folder == "loras" ? (info.Family == null ? "Can't tell which models it fits, so it's listed with all of them." : $"For {FamilyLabel(info.Family)} models.") : null);
         return new Installed(path, folder, name, info.Group, info.Family, about, known?.License);
@@ -141,7 +147,7 @@ public partial class MainWindow
     bool MissingParts(string family) => family switch
     {
         "qwen_image" => qwenTe == null || qwenVae == null, "krea2" => kreaTe == null || kreaVae == null, "wan" => wanTe == null || wanVae == null,
-        "anima" => animaTe == null || kreaVae == null, _ => false,
+        "anima" => animaTe == null || kreaVae == null, "minimax_h3" => h3Te == null || h3Vae == null || h3AudioVae == null, _ => false,
     };
 
     void BuildModels()
@@ -150,7 +156,7 @@ public partial class MainWindow
         downloadUi.Clear();
         var files = ModelFolders.Where(f => Directory.Exists(Path.Combine(ModelsDir, f)))
             .SelectMany(f => Directory.GetFiles(Path.Combine(ModelsDir, f)).Select(p => (Folder: f, Path: p)))
-            .Where(x => x.Path.EndsWith(".safetensors") || x.Path.EndsWith(".ckpt") || x.Path.EndsWith(".pth") || x.Path.EndsWith(".onnx"))
+            .Where(x => x.Path.EndsWith(".safetensors") || x.Path.EndsWith(".gguf") || x.Path.EndsWith(".ckpt") || x.Path.EndsWith(".pth") || x.Path.EndsWith(".onnx"))
             .Select(x => Inspect(x.Folder, x.Path)).ToList();
         try
         {
@@ -234,7 +240,7 @@ public partial class MainWindow
     {
         if (family != null && family != ModelFamily)
         {
-            bool video = family == "wan";
+            bool video = IsVideoFamily(family);
             var model = family == "sdxl" ? imageModels.FirstOrDefault(i => !separate.ContainsKey(i))
                 : (video ? videoModels : imageModels).FirstOrDefault(i => separate.TryGetValue(i, out var s) && s.Family == family);
             if (model == null) { ModelsNote.Text = $"No {FamilyLabel(family)} model is installed for this LoRA."; return; }
