@@ -48,6 +48,9 @@ public partial class MainWindow
                 await DownloadFile(url, NewExe);
                 if (!Sha256Is(NewExe, sha)) { File.Delete(NewExe); return false; }
             }
+            // a release holding an older build would reinstall itself on every start
+            if (!Version.TryParse(System.Diagnostics.FileVersionInfo.GetVersionInfo(NewExe).FileVersion, out var got) || got <= AppVersion)
+            { File.Delete(NewExe); return true; }
             updateReady = true;
             UpdateBtnText.Text = $"Update to {tag}";
             UpdateBtn.Visibility = Visibility.Visible;
