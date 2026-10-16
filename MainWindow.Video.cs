@@ -286,13 +286,27 @@ public partial class MainWindow
 
     void SetEnd(string path)
     {
-        BitmapSource img;
-        try { img = Oriented(path); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); return; }
+        try { SetEnd(Oriented(path), Path.GetFileName(path)); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); }
+    }
+
+    // the Paste button: a copied file, a browser's picture or a screenshot
+    void PasteEnd_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (ClipboardPicture() is { } p) SetEnd(p.Image, p.Name ?? "Pasted picture");
+            else Note("Copy a picture first: Copy image in a browser, a screenshot, or a file in Explorer.", true);
+        }
+        catch (Exception ex) { Note("Couldn't paste that: " + ex.Message, true); }
+    }
+
+    void SetEnd(BitmapSource img, string name)
+    {
         double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         endPicture = PngOf(img);
         EndThumb.ImageSource = img;
-        EndName.Text = Path.GetFileName(path);
+        EndName.Text = name;
         EndCard.Visibility = Visibility.Visible;
         ChooseEndBtn.Visibility = Visibility.Collapsed;
     }

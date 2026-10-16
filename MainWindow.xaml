@@ -565,12 +565,21 @@
                 <!-- MiniMax H3: the clip can end on a picture too, and H3 makes the motion between the two -->
                 <StackPanel x:Name="EndSection" Visibility="Collapsed" AllowDrop="True" DragOver="Start_DragOver" Drop="End_Drop">
                   <TextBlock Text="End picture (optional)" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
-                  <Button x:Name="ChooseEndBtn" Style="{StaticResource Ghost}" Height="44" Click="ChooseEnd_Click" AutomationProperties.Name="Choose end picture">
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                      <TextBlock Text="Choose a picture…" VerticalAlignment="Center"/>
-                    </StackPanel>
-                  </Button>
+                  <DockPanel x:Name="ChooseEndBtn">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="44" Padding="14,0" Margin="6,0,0,0" Click="PasteEnd_Click"
+                            ToolTip="Use a copied picture: Copy image in a browser, a screenshot, or a file copied in Explorer" AutomationProperties.Name="Paste end picture">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE77F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Paste" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Ghost}" Height="44" Click="ChooseEnd_Click" AutomationProperties.Name="Choose end picture">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="Choose a picture…" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+                  </DockPanel>
                   <Border x:Name="EndCard" Visibility="Collapsed" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
                           CornerRadius="9" Padding="8">
                     <DockPanel>
