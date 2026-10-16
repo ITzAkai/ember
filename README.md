@@ -14,7 +14,7 @@ Type an idea, pick a style, and Ember does the rest: it runs [ComfyUI](https://g
 - **Pictures from a few words**: type an idea, pick a style and a shape, and get up to 4 pictures at once
 - **Improve prompt**: turns a short idea into a rich, detailed prompt
 - **Describe image**: drop or paste any picture and get the prompt that recreates it
-- **Short videos**: from a prompt, or bring one of your pictures to life
+- **Short videos**: from a prompt, or bring one of your pictures to life; pick a camera move, and with MiniMax H3 set an end picture, the amount of motion and up to 10 s
 - **Two people, described apart**: give each person their own description, and their looks never mix
 
 ### Characters and style

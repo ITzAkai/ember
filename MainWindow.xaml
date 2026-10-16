@@ -547,6 +547,8 @@
                   <Border x:Name="StartCard" Visibility="Collapsed" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
                           CornerRadius="9" Padding="8">
                     <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Padding="12,0" Margin="6,0,0,0" Content="Remove" Click="RemoveStart_Click"
+                              AutomationProperties.Name="Remove start picture"/>
                       <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Padding="12,0" Content="Change" Click="ChooseStart_Click"/>
                       <Border Width="44" Height="44" CornerRadius="6">
                         <Border.Background><ImageBrush x:Name="StartThumb" Stretch="UniformToFill"/></Border.Background>
@@ -560,6 +562,32 @@
                   <TextBlock Text="The clip begins on this picture. You can also drop a picture here, or press Make a video in the viewer."
                              Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
                 </StackPanel>
+                <!-- MiniMax H3: the clip can end on a picture too, and H3 makes the motion between the two -->
+                <StackPanel x:Name="EndSection" Visibility="Collapsed" AllowDrop="True" DragOver="Start_DragOver" Drop="End_Drop">
+                  <TextBlock Text="End picture (optional)" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                  <Button x:Name="ChooseEndBtn" Style="{StaticResource Ghost}" Height="44" Click="ChooseEnd_Click" AutomationProperties.Name="Choose end picture">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                      <TextBlock Text="Choose a picture…" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Border x:Name="EndCard" Visibility="Collapsed" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                          CornerRadius="9" Padding="8">
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Padding="12,0" Margin="6,0,0,0" Content="Remove" Click="RemoveEnd_Click"
+                              AutomationProperties.Name="Remove end picture"/>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Padding="12,0" Content="Change" Click="ChooseEnd_Click"/>
+                      <Border Width="44" Height="44" CornerRadius="6">
+                        <Border.Background><ImageBrush x:Name="EndThumb" Stretch="UniformToFill"/></Border.Background>
+                      </Border>
+                      <TextBlock x:Name="EndName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="12,0,8,0"/>
+                    </DockPanel>
+                  </Border>
+                  <TextBlock Text="The clip ends on this picture: H3 makes the motion from the start picture (or from the prompt) to here."
+                             Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                </StackPanel>
+                <TextBlock Text="Camera" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <ComboBox x:Name="CameraBox" AutomationProperties.Name="Camera movement" SelectionChanged="VideoOption_Changed"/>
                 <TextBlock Text="Video shape" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
                 <Border Style="{StaticResource SegmentHost}">
                   <UniformGrid x:Name="VideoSizeGroup" Rows="1">
@@ -589,6 +617,8 @@
                     <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="33" Content="2 s" AutomationProperties.Name="2 seconds"/>
                     <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="49" Content="3 s" AutomationProperties.Name="3 seconds"/>
                     <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="81" Content="5 s" AutomationProperties.Name="5 seconds"/>
+                    <RadioButton x:Name="Length8" Style="{StaticResource Segment}" GroupName="vlen" Tag="129" Content="8 s" AutomationProperties.Name="8 seconds" Visibility="Collapsed"/>
+                    <RadioButton x:Name="Length10" Style="{StaticResource Segment}" GroupName="vlen" Tag="161" Content="10 s" AutomationProperties.Name="10 seconds" Visibility="Collapsed"/>
                   </UniformGrid>
                 </Border>
               </StackPanel>
@@ -688,6 +718,27 @@
                   <StackPanel x:Name="LoraRowsPanel"/>
                 </StackPanel>
                 </StackPanel>
+                <!-- Video mode, MiniMax H3: settings only videos have -->
+                <StackPanel x:Name="VideoAdvArea" Visibility="Collapsed">
+                <DockPanel x:Name="VideoSectionHeader" Margin="0,18,0,0">
+                  <ToggleButton x:Name="VideoSectionToggle" Style="{StaticResource Disclosure}" Content="Video" IsChecked="True" Margin="0" ToolTip="Settings only videos have"/>
+                </DockPanel>
+                <StackPanel x:Name="VideoSectionBody" Visibility="{Binding IsChecked, ElementName=VideoSectionToggle, Converter={StaticResource BoolVis}}">
+                    <!-- MiniMax H3: how much changes over the clip (its sampling shift) -->
+                    <StackPanel x:Name="MotionSection">
+                      <DockPanel Margin="0,10,0,8">
+                        <TextBlock x:Name="MotionValue" DockPanel.Dock="Right" Style="{StaticResource Note}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Motion" Style="{StaticResource Heading}" Margin="0"/>
+                      </DockPanel>
+                      <Slider x:Name="MotionSlider" Minimum="6" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" Value="12"
+                              ValueChanged="Motion_Changed" AutomationProperties.Name="Motion strength"/>
+                      <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="Lively" Style="{StaticResource Note}"/>
+                        <TextBlock Text="Calm" Style="{StaticResource Note}"/>
+                      </DockPanel>
+                    </StackPanel>
+                </StackPanel>
+                </StackPanel>
                 <DockPanel x:Name="SamplingSectionHeader" Margin="0,18,0,0">
                   <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="24" Padding="8,0" FontSize="11" Content="Reset section" Tag="sampling"
                           Click="ResetSection_Click" AutomationProperties.Name="Reset Sampling"/>
@@ -743,6 +794,8 @@
                          PreviewTextInput="Seed_PreviewTextInput" Tag="Seed number"/>
 
                 </StackPanel>
+                <!-- pictures only: hidden in Video mode -->
+                <StackPanel x:Name="BoostersArea">
                 <DockPanel x:Name="BoostersSectionHeader" Margin="0,18,0,0">
                   <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="24" Padding="8,0" FontSize="11" Content="Reset section" Tag="boosters"
                           Click="ResetSection_Click" AutomationProperties.Name="Reset Quality boosters"/>
@@ -750,6 +803,7 @@
                 </DockPanel>
                 <StackPanel x:Name="BoostersSectionBody" Visibility="{Binding IsChecked, ElementName=BoostersSectionToggle, Converter={StaticResource BoolVis}}">
                 <StackPanel x:Name="BoostersPanel"/>
+                </StackPanel>
                 </StackPanel>
               </StackPanel>
             </StackPanel>

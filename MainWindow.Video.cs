@@ -22,7 +22,58 @@ public partial class MainWindow
     bool PictureVideo => Family == "wan_i2v";           // Wan 2.1 Fun InP: the clip starts on a picture
     byte[] startPicture;                                // that picture, as PNG, at most 1280 px
     string startName;
+    byte[] endPicture;                                  // MiniMax H3: the picture the clip ends on (optional)
     bool VideoOn => VideoMode.IsChecked == true;
+    bool fillingVideo;
+
+    // camera moves, written into the prompt: the video models follow camera directions given in words
+    static readonly (string Label, string Words)[] CameraMoves =
+    {
+        ("As the prompt says", ""), ("Still", "static camera, locked-off shot"), ("Slow push in", "the camera slowly pushes in"),
+        ("Pull back", "the camera slowly pulls back"), ("Pan left", "the camera pans left"), ("Pan right", "the camera pans right"),
+        ("Orbit", "the camera orbits around the subject"), ("Follow", "the camera follows the subject"),
+        ("Crane up", "the camera cranes up"), ("Handheld", "handheld camera, gentle natural sway"),
+    };
+    string WithCamera(string prompt) => CameraMoves.FirstOrDefault(c => c.Label == CameraBox.SelectedItem as string).Words is { Length: > 0 } w ? $"{prompt}, {w}" : prompt;
+
+    // the video options each model can use: start picture (Wan Fun InP, H3), end picture, longer clips and Motion (H3)
+    void ShowVideoOptions()
+    {
+        if (EndSection == null) return;
+        if (CameraBox.Items.Count == 0)
+        {
+            fillingVideo = true;
+            foreach (var c in CameraMoves) CameraBox.Items.Add(c.Label);
+            CameraBox.SelectedItem = CameraMoves.Any(c => c.Label == settings.VideoCamera) ? settings.VideoCamera : CameraMoves[0].Label;
+            MotionSlider.Value = settings.VideoMotion;
+            fillingVideo = false;
+        }
+        bool h3 = VideoOn && H3;
+        StartSection.Visibility = VideoOn && (PictureVideo || H3) ? Visibility.Visible : Visibility.Collapsed;
+        EndSection.Visibility = VideoAdvArea.Visibility = Length8.Visibility = Length10.Visibility = h3 ? Visibility.Visible : Visibility.Collapsed;
+        BoostersArea.Visibility = VideoOn ? Visibility.Collapsed : Visibility.Visible;            // the boosters are for pictures only
+        AdvancedToggle.Content = VideoOn ? "Advanced video settings" : "Advanced settings";
+        if (!h3 && (Length8.IsChecked == true || Length10.IsChecked == true)) Pick(LengthGroup, "81", "81");     // Wan breaks past 5 s
+        MotionValue.Text = MotionText;
+    }
+
+    string MotionText => MotionSlider.Value < 11 ? $"Calm ({MotionSlider.Value:0})" : MotionSlider.Value > 13 ? $"Lively ({MotionSlider.Value:0})" : "Normal (12)";
+
+    void VideoOption_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (fillingVideo || !IsLoaded || CameraBox.SelectedItem is not string c) return;
+        settings.VideoCamera = c;
+        settings.Save();
+    }
+
+    void Motion_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (MotionValue == null) return;
+        MotionValue.Text = MotionText;
+        if (fillingVideo || !IsLoaded) return;
+        settings.VideoMotion = e.NewValue;
+        settings.Save();
+    }
 
     // Wan's own negative prompt, which it was trained with: oversaturated, overexposed, static, blurry, subtitles, worst quality,
     // JPEG artefacts, extra or fused fingers, badly drawn hands and faces, deformed limbs, cluttered or crowded background, walking backwards
@@ -45,10 +96,10 @@ public partial class MainWindow
         var from = startName;
         var model = (string)ModelBox.SelectedItem;
         var size = Picked(VideoSizeGroup).Split('x');
-        int frames = int.Parse(Picked(LengthGroup)), steps = Steps;
+        int frames = Math.Min(81, int.Parse(Picked(LengthGroup))), steps = Steps;      // Wan: 5 s at most
         var rawPrompt = CurrentStyle.Apply(PromptBox.Text.Trim());
         var activeLoras = AllActiveLoras(rawPrompt, out rawPrompt);
-        var prompt = rawPrompt;
+        var prompt = WithCamera(rawPrompt);
         var negative = string.Join(", ", new[] { NegativeBox.Text.Trim(), CurrentStyle.Negative }.Where(t => t != ""));
         double cfg = CfgSlider.Value;
         string sampler = (string)SamplerBox.SelectedItem, scheduler = (string)SchedulerBox.SelectedItem;
@@ -117,7 +168,9 @@ public partial class MainWindow
         int frames = H3Frames(int.Parse(Picked(LengthGroup))), steps = Steps;
         var rawPrompt = CurrentStyle.Apply(PromptBox.Text.Trim());
         var activeLoras = AllActiveLoras(rawPrompt, out rawPrompt);
-        var prompt = rawPrompt;
+        var prompt = WithCamera(rawPrompt);
+        var (start, end, from) = (startPicture, endPicture, startName);
+        double motion = MotionSlider.Value;
         var negative = string.Join(", ", new[] { NegativeBox.Text.Trim(), CurrentStyle.Negative }.Where(t => t != ""));
         double cfg = CfgSlider.Value;
         string sampler = (string)SamplerBox.SelectedItem, scheduler = (string)SchedulerBox.SelectedItem;
@@ -140,10 +193,18 @@ public partial class MainWindow
                 g[idStr] = Node("LoraLoaderModelOnly", new() { ["model"] = Link(m, 0), ["lora_name"] = loraName, ["strength_model"] = strength });
                 m = idStr;
             }
-            g["6"] = Node("MiniMaxH3ImageToVideo", new()
+            if (motion != 12)            // H3's own shift is 12: higher spends more of the steps on big changes, so more motion
+            {
+                g["50"] = Node("MiniMaxH3SigmaShift", new() { ["model"] = Link(m, 0), ["shift_video"] = motion, ["shift_audio"] = 3.0 });
+                m = "50";
+            }
+            var h3 = new JsonObject
             {
                 ["clip"] = Link("44", 0), ["vae"] = Link("45", 0), ["prompt"] = prompt, ["width"] = size[0], ["height"] = size[1], ["length"] = frames,
-            });
+            };
+            if (start != null) { g["60"] = Node("LoadImage", new() { ["image"] = await Upload(start, job) }); h3["first_frame"] = Link("60", 0); }
+            if (end != null) { g["61"] = Node("LoadImage", new() { ["image"] = await Upload(end, job) }); h3["last_frame"] = Link("61", 0); }
+            g["6"] = Node("MiniMaxH3ImageToVideo", h3);
             if (cfg > 1)
             {
                 g["7"] = Node("CLIPTextEncode", new() { ["text"] = negative, ["clip"] = Link("44", 0) });
@@ -163,7 +224,7 @@ public partial class MainWindow
             g["41"] = Node("SaveVideo", new() { ["video"] = Link("40", 0), ["filename_prefix"] = $"forge/clips/{name}", ["format"] = "auto", ["format.codec"] = "auto" });
             g["47"] = Node("ImageFromBatch", new() { ["image"] = Link("8", 0), ["batch_index"] = frames / 2, ["length"] = 1 });
             g["9"] = Node("SaveImage", new() { ["filename_prefix"] = $"forge/{name}", ["images"] = Link("47", 0) });
-            var meta = new Meta(prompt, cfg > 1 ? negative : "", seed, steps, cfg, sampler, scheduler, model);
+            var meta = new Meta(prompt, cfg > 1 ? negative : "", seed, steps, cfg, sampler, scheduler, model, From: start == null ? null : $"Started from {from}");
             return new JsonObject
             {
                 ["prompt"] = g, ["client_id"] = clientId,
@@ -205,6 +266,42 @@ public partial class MainWindow
         ChooseStartBtn.Visibility = Visibility.Collapsed;
         double aspect = (double)img.PixelWidth / img.PixelHeight;           // the clip takes the shape closest to the picture
         Pick(VideoSizeGroup, aspect > 1.2 ? "832x480" : aspect < 0.83 ? "480x832" : "624x624", "832x480");
+    }
+
+    void RemoveStart_Click(object sender, RoutedEventArgs e)
+    {
+        startPicture = null; startName = null;
+        StartCard.Visibility = Visibility.Collapsed;
+        ChooseStartBtn.Visibility = Visibility.Visible;
+    }
+
+    // ---------------- the end picture (MiniMax H3) ----------------
+    void ChooseEnd_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Choose the picture the clip ends on", Filter = "Images|*.png;*.jpg;*.jpeg;*.webp;*.bmp;*.gif;*.tif;*.tiff" };
+        if (dlg.ShowDialog(this) == true) SetEnd(dlg.FileName);
+    }
+
+    void End_Drop(object sender, DragEventArgs e) { if (DroppedPicture(e) is string path) SetEnd(path); }
+
+    void SetEnd(string path)
+    {
+        BitmapSource img;
+        try { img = Oriented(path); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); return; }
+        double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
+        if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
+        endPicture = PngOf(img);
+        EndThumb.ImageSource = img;
+        EndName.Text = Path.GetFileName(path);
+        EndCard.Visibility = Visibility.Visible;
+        ChooseEndBtn.Visibility = Visibility.Collapsed;
+    }
+
+    void RemoveEnd_Click(object sender, RoutedEventArgs e)
+    {
+        endPicture = null;
+        EndCard.Visibility = Visibility.Collapsed;
+        ChooseEndBtn.Visibility = Visibility.Visible;
     }
 
     // the viewer's Make a video: this picture, the picture-to-video model, and the Video tab

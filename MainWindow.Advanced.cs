@@ -12,7 +12,7 @@ public partial class MainWindow
     (DockPanel Header, ToggleButton Toggle, StackPanel Body)[] AdvancedSections =>
     [
         (ModelSectionHeader, ModelSectionToggle, ModelSectionBody), (LoraGroupHeader, LoraGroupToggle, LoraGroupBody),
-        (SamplingSectionHeader, SamplingSectionToggle, SamplingSectionBody), (BoostersSectionHeader, BoostersSectionToggle, BoostersSectionBody),
+        (VideoSectionHeader, VideoSectionToggle, VideoSectionBody), (SamplingSectionHeader, SamplingSectionToggle, SamplingSectionBody), (BoostersSectionHeader, BoostersSectionToggle, BoostersSectionBody),
     ];
 
     // every word a section shows or explains: titles, labels, tooltips and item names

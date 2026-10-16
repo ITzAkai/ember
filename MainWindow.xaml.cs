@@ -80,6 +80,8 @@ public class Settings
     public bool InpaintEdits { get; set; } = true;               // painted edits and expansions use the inpainting model, if installed
     public bool SharpPreviewAll { get; set; }                    // sharp live preview on every model (Qwen and Krea 2 always get it)
     public double StyleStrength { get; set; } = 0.4;             // how strongly a style picture's look carries over (IPAdapter weight)
+    public string VideoCamera { get; set; } = "As the prompt says";       // the Camera choice for videos
+    public double VideoMotion { get; set; } = 12;                         // MiniMax H3 Motion: its sampling shift (12 is its own)
     public string Theme { get; set; } = "dark";
     public bool KeepComfyRunning { get; set; }
     public string OutputDir { get; set; } = "";                  // empty: ComfyUI's own output folder
@@ -1281,7 +1283,7 @@ public partial class MainWindow : Window
         foreach (var r in QualityGroup.Children.OfType<RadioButton>())
             ((TextBlock)((StackPanel)r.Content).Children[1]).Text = $"{StepsFor((string)r.Tag)} steps";
         if (LoraSection != null) { LoraSection.IsEnabled = !Flux; FillLoras(); }
-        if (StartSection != null) StartSection.Visibility = VideoOn && PictureVideo ? Visibility.Visible : Visibility.Collapsed;
+        ShowVideoOptions();
         UpdateLoraChip();
         if (ModelNote != null)
         {
@@ -1653,7 +1655,7 @@ public partial class MainWindow : Window
         GalleryPanel.Visibility = edit ? Visibility.Collapsed : Visibility.Visible;
         SizeSection.Visibility = ReferenceSection.Visibility = CoupleSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
         VideoSection.Visibility = video ? Visibility.Visible : Visibility.Collapsed;
-        StartSection.Visibility = video && PictureVideo ? Visibility.Visible : Visibility.Collapsed;
+        ShowVideoOptions();
         CountSection.Visibility = video ? Visibility.Collapsed : Visibility.Visible;
         EditorPanel.Visibility = PhotoSection.Visibility = StrengthSection.Visibility = edit ? Visibility.Visible : Visibility.Collapsed;
         PromptHeading.Text = edit ? "Describe the result" : video ? "Describe the video" : "Prompt";
@@ -2243,7 +2245,7 @@ public partial class MainWindow : Window
         if (edit && photo == null) { Note("Choose a photo first, then describe the change.", true); return; }
         var style = CurrentStyle.Key == "none" ? "" : $"\n(The style: {CurrentStyle.Label}.)";
         // in Edit photo the model sees the photo: Qwen edits by instruction, the other models repaint from a description of the result
-        bool fromPicture = VideoOn && PictureVideo && startPicture != null;        // picture-to-video: it looks at the start picture
+        bool fromPicture = VideoOn && (PictureVideo || H3) && startPicture != null;        // picture-to-video: it looks at the start picture
         var system = edit ? (Qwen ? EditInstructionSystem : EditResultSystem) : fromPicture ? VideoFromPictureSystem : VideoOn ? VideoSystem : EnhanceSystemFor();
         EnhanceText.Text = "Writing…";
         var text = await AskTextModel(idea + style, system, edit ? EditPng(null) : fromPicture ? startPicture : null,
