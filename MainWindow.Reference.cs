@@ -33,7 +33,7 @@ public partial class MainWindow
     {
         var text = await AskTextModel("List what this looks like.", LooksSystem, r.Png, "Noting what the reference looks like…", maxTokens: 120);
         if (text == null) return null;
-        // ── SAFETY RULES: reference description check ── (was: SexualWords.IsMatch suppressing sexual reference descriptions)
+        if (SexualWords.IsMatch(text)) return "";
         r.Seen = text;
         ShowReferences();           // its tooltip shows the words
         return text;

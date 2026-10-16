@@ -320,8 +320,8 @@ public partial class MainWindow
         var prompts = pictures.Select(p => { try { return ReadMeta(p)?.Prompt; } catch { return null; } })
             .Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct().Take(4).ToList();
         var everything = string.Join("\n", new[] { name, about, tab.Negative }.Concat(prompts));
-        // ── SAFETY RULES: MakeBundle check ── (was: SexualWithMinor on bundle text)
-        // ── SAFETY RULES: MakeBundle adult flag ── (was: adult |= SexualWords.IsMatch for auto 18+ gate)
+        if (SexualWithMinor(everything)) { BundlesNote.Text = MinorNote; return; }
+        adult |= SexualWords.IsMatch(everything);       // sexual prompts or text always get the 18+ gate
 
         // the files it needs: the model, its LoRAs, and for model-only files the text encoder and VAE it runs with
         var needed = new List<(string Folder, string File)>();
@@ -508,8 +508,8 @@ public partial class MainWindow
                 f.Sha256 = f.Sha256.ToLowerInvariant();
             }
             var text = string.Join("\n", new[] { b.Name, b.Description, b.Tab.Negative }.Concat(b.Prompts ?? new()));
-            // ── SAFETY RULES: ImportBundle check ── (was: SexualWithMinor on imported bundle text)
-            // ── SAFETY RULES: ImportBundle adult flag ── (was: b.Adult |= SexualWords.IsMatch for auto 18+ gate)
+            if (SexualWithMinor(text)) throw new Exception(MinorNote);
+            b.Adult |= SexualWords.IsMatch(text);
             b.Showcase = (b.Showcase ?? new()).Where(s => s == Path.GetFileName(s) && ShowcaseTypes.Contains(Path.GetExtension(s).ToLowerInvariant()) && File.Exists(Path.Combine(temp, s))).ToList();
             b.Prompts ??= new();
             b.Tab.Loras ??= new();

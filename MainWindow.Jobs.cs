@@ -135,13 +135,15 @@ public partial class MainWindow
         if (!ready) return;
         if (string.IsNullOrWhiteSpace(PromptBox.Text)) { Note("Write a prompt first.", true); PromptBox.Focus(); return; }
         var words = PromptBox.Text + "\n" + CoupleText;           // everything typed that goes into the picture, the two-people boxes too
-        // ── SAFETY RULES: Generate check ── (was: SexualWithMinor on words, blocking pictures and video)
+        if (SexualWithMinor(words)) { Note(MinorNote, true); return; }       // the uncensored models won't stop it, so the app does (pictures and video)
         Remember(PromptBox.Text.Trim());
         if (ModelBox.SelectedItem == null) { Note(VideoOn ? "No video model yet: get Wan 2.1 on the Models page." : "No model selected.", true); return; }
         bool edit = EditMode.IsChecked == true;
         if (edit && photo == null) { Note("Choose a photo to edit first.", true); return; }
         if (edit && CropLayer.Visibility == Visibility.Visible) { Note("Apply or cancel the crop first.", true); return; }
-        // ── SAFETY RULES: reference/style + sexual check ── (was: SexualWords.IsMatch blocking refs and style pictures with sexual prompts)
+        // a reference or style picture may show a real person, so it never goes into a nude or sexual picture
+        if (UsingReferences && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
+        if (!edit && UsingStylePicture && SexualWords.IsMatch(words)) { Note("Style pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
         if (!edit && UsingCouple && (CoupleLeftBox.Text.Trim() == "" || CoupleRightBox.Text.Trim() == ""))
         { Note("Describe both people, or turn off Two people.", true); return; }
         long seed = newSeed || RandomSeed.IsChecked == true || !long.TryParse(SeedBox.Text, out var typed) ? Random.Shared.NextInt64(0, 1L << 48) : typed;
@@ -305,7 +307,7 @@ public partial class MainWindow
     {
         if (!ready) { ViewerNote.Text = "ComfyUI isn't ready yet."; return; }
         var prompt = s.Meta?.Prompt ?? PromptBox.Text.Trim();
-        // ── SAFETY RULES: DetailUpscale check ── (was: SexualWithMinor on the picture's prompt)
+        if (SexualWithMinor(prompt)) { ViewerNote.Text = MinorNote; return; }
         CloseViewer();
         long seed = Random.Shared.NextInt64(0, 1L << 48);
         await Enqueue(1, async job =>
