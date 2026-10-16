@@ -15,7 +15,8 @@ using System.Windows.Controls;
 namespace ImageForge;
 
 // Strength: the strength its page recommends (one value, or low and high), [] when it gives none, null when not looked for yet
-public record LoraInfo(string Name, string Description, string[] Trigger, string Url, long Size, DateTime Modified, double[] Strength = null);
+public record LoraInfo(string Name, string Description, string[] Trigger, string Url, long Size, DateTime Modified, double[] Strength = null,
+                       string BaseModel = null);     // what it was trained for ("Illustrious", "Pony", "SDXL 1.0"…); "" when nobody says, null when not looked for
 
 public partial class MainWindow
 {
@@ -26,6 +27,7 @@ public partial class MainWindow
     // after the LoRA list loads: cached answers right away, then the new or changed files in the background
     async Task LoadLoraInfo()
     {
+        LoraLineConverter.Line = LoraLine;          // the lines under the names in the LoRA lists
         if (lookingUpLoras) return;
         lookingUpLoras = true;
         try
@@ -38,7 +40,7 @@ public partial class MainWindow
                 var path = Path.Combine(ModelsDir, "loras", lora);
                 if (!File.Exists(path)) continue;
                 var fi = new FileInfo(path);
-                if (loraInfo.TryGetValue(lora, out var known) && known.Size == fi.Length && known.Modified == fi.LastWriteTimeUtc && known.Strength != null && known.Trigger is { Length: > 0 }) continue;
+                if (loraInfo.TryGetValue(lora, out var known) && known.Size == fi.Length && known.Modified == fi.LastWriteTimeUtc && known.Strength != null && known.Trigger is { Length: > 0 } && known.BaseModel != null) continue;
                 loraInfo[lora] = await LookUp(path, fi);
                 try { File.WriteAllText(LoraInfoFile, JsonSerializer.Serialize(loraInfo)); } catch { }
                 ShowLoraInfo();
@@ -68,7 +70,7 @@ public partial class MainWindow
                 about = Short(about ?? verAbout ?? local.Description);
                 var trigger = (ver["trainedWords"] as JsonArray)?.Select(t => t?.ToString()?.Trim()).Where(t => !string.IsNullOrEmpty(t)).ToArray() ?? [];
                 return new LoraInfo(ver["model"]?["name"]?.ToString() ?? local.Name, about, trigger.Length > 0 ? trigger : local.Trigger,
-                    $"https://{host}/models/{modelId}", fi.Length, fi.LastWriteTimeUtc, strength);
+                    $"https://{host}/models/{modelId}", fi.Length, fi.LastWriteTimeUtc, strength, ver["baseModel"]?.ToString() is { Length: > 0 } bm ? bm : local.BaseModel);
             }
         }
         catch { /* offline, or Civitai busy: the file's own notes will do */ }
@@ -78,7 +80,7 @@ public partial class MainWindow
     // what the trainer wrote into the file: a title or description if any, else the tags it learned most
     static LoraInfo FromMetadata(string path, FileInfo fi)
     {
-        string name = null, about = null; string[] trigger = [];
+        string name = null, about = null, baseModel = ""; string[] trigger = [];
         try
         {
             using var f = File.OpenRead(path);
@@ -90,6 +92,7 @@ public partial class MainWindow
                 var meta = JsonNode.Parse(head)?["__metadata__"];
                 name = meta?["modelspec.title"]?.ToString() is { Length: > 0 } t && !t.StartsWith("training_") ? t : null;
                 about = Short(Plain(meta?["modelspec.description"]?.ToString()));
+                baseModel = $"{meta?["ss_base_model_version"]} {meta?["modelspec.architecture"]}".Trim();
                 if (meta?["modelspec.trigger_phrase"]?.ToString() is { Length: > 0 } phrase) trigger = phrase.Split(',').Select(x => x.Trim()).Where(x => x != "").ToArray();
                 if (meta?["ss_tag_frequency"]?.ToString() is { Length: > 0 } freq)
                 {
@@ -102,7 +105,7 @@ public partial class MainWindow
             }
         }
         catch { }
-        return new LoraInfo(name, about, trigger, null, fi.Length, fi.LastWriteTimeUtc, StrengthIn(about) ?? []);
+        return new LoraInfo(name, about, trigger, null, fi.Length, fi.LastWriteTimeUtc, StrengthIn(about) ?? [], baseModel);
     }
 
     // generic booru tags that are never trigger words: body counts, hair/eye colors, common poses
@@ -163,8 +166,79 @@ public partial class MainWindow
     // each LoRA row: what the picked LoRA does, and its trigger words a click away
     void ShowLoraInfo()
     {
-        foreach (var r in loraRows) ShowLoraInfo(r);
+        foreach (var r in loraRows) { ShowLoraInfo(r); r.Box?.Items.Refresh(); }       // the lines in the lists, too
+        ShowLoraFitNote();
         if (ModelsPanel.Visibility == Visibility.Visible && downloads.Count == 0) BuildModels();
+    }
+
+    // ---------------- searching the model and LoRA lists ----------------
+    // a list keeps its chosen item while filtered, so a search never changes what's picked
+    static void ApplySearch(ComboBox box, string q, Func<string, string> extra = null)
+    {
+        if (box == null) return;
+        box.Items.Filter = string.IsNullOrWhiteSpace(q) ? null : o => o is string s && (s == box.SelectedItem as string || s == "None"
+            || s.Contains(q.Trim(), StringComparison.OrdinalIgnoreCase) || extra?.Invoke(s)?.Contains(q.Trim(), StringComparison.OrdinalIgnoreCase) == true);
+    }
+
+    void ModelSearch_TextChanged(object sender, TextChangedEventArgs e) => ApplySearch(ModelBox, ModelSearch.Text);
+
+    // by name, and by what it does: its title, description, trigger words and base model
+    string LoraSearchText(string lora) => loraInfo.GetValueOrDefault(lora) is { } i
+        ? string.Join(" ", new[] { i.Name, i.Description, i.BaseModel }.Concat(i.Trigger ?? [])) : null;
+
+    void LoraSearch_TextChanged(object sender, TextChangedEventArgs e) { foreach (var r in loraRows) ApplySearch(r.Box, LoraSearch.Text, LoraSearchText); }
+
+    // a LoRA's list shows a second line under each name: what it's made for and what it does (only in the open list, not the closed box)
+    static DataTemplate loraItemTemplate;
+    static DataTemplate LoraItemTemplate => loraItemTemplate ??= (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
+        <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:local="clr-namespace:ImageForge;assembly=Ember">
+          <StackPanel>
+            <TextBlock Text="{Binding}"/>
+            <TextBlock x:Name="Line" Text="{Binding Converter={x:Static local:LoraLineConverter.Instance}}" FontSize="11" Opacity="0.7"
+                       TextTrimming="CharacterEllipsis" MaxWidth="340" HorizontalAlignment="Left"/>
+          </StackPanel>
+          <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}, FallbackValue={x:Null}}" Value="{x:Null}">
+              <Setter TargetName="Line" Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Text, ElementName=Line}" Value="">
+              <Setter TargetName="Line" Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+          </DataTemplate.Triggers>
+        </DataTemplate>
+        """);
+
+    // above the LoRA rows: how many of the listed LoRAs were made for another kind of model than the one picked
+    void ShowLoraFitNote()
+    {
+        if (LoraFitNote == null) return;
+        int off = LorasForModel.Count(l => LoraFit(l) != null);
+        LoraFitNote.Text = off == 0 ? "" : $"{off} of your LoRAs {(off == 1 ? "was" : "were")} made for another kind of model than this {ModelLineage} one: they're at the end of the list, marked ⚠.";
+        LoraFitNote.Visibility = off == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    // SDXL LoRAs are trained for one line of models: Pony, Illustrious (NoobAI is built on it) or plain SDXL. Within the line they fit;
+    // across it they often look off. Unknown either way: no warning.
+    static string Lineage(string text) => text?.ToLowerInvariant() is not string t ? null
+        : t.Contains("pony") ? "Pony" : Regex.IsMatch(t, "illustrious|noob|wai") ? "Illustrious" : Regex.IsMatch(t, "sdxl|sd ?xl|stable-diffusion-xl") ? "SDXL" : null;
+    string ModelLineage => Sdxl && ModelBox.SelectedItem is string m ? Lineage($"{ModelRec.Label} {m}") ?? "SDXL" : null;
+
+    // null when the LoRA fits the picked model (or nobody can tell); otherwise a short warning
+    string LoraFit(string lora)
+    {
+        if (ModelLineage is not string want || loraInfo.GetValueOrDefault(lora)?.BaseModel is not { Length: > 0 } made || Lineage(made) is not string have) return null;
+        return have == want || have == "SDXL" && want != "Pony" ? null : $"Made for {have} models: it may look off on this {want} model.";
+    }
+
+    // the line under each LoRA in its list: what it's made for and what it does
+    string LoraLine(string lora)
+    {
+        var info = loraInfo.GetValueOrDefault(lora);
+        var made = info?.BaseModel is { Length: > 0 } b ? b : null;
+        var fit = LoraFit(lora) != null ? "⚠ " : "";
+        var about = info?.Description is { Length: > 0 } d ? (d.Length > 90 ? d[..90].TrimEnd() + "…" : d) : null;
+        return string.Join(" · ", new[] { made == null ? null : fit + made, about }.Where(x => x != null));
     }
 
     void ShowLoraInfo(LoraRow r)
@@ -174,6 +248,7 @@ public partial class MainWindow
         var parts = new List<string>();
         var problem = r.Box?.SelectedItem is string chosen && chosen != "None" ? LoraProblem(chosen) : null;
         if (problem != null) parts.Add(problem);
+        else if (r.Box?.SelectedItem is string f && LoraFit(f) is string fit) parts.Add(fit);
         r.Info.Foreground = Brush(problem != null ? "Danger" : "Muted");
         if (r.FixBtn != null) r.FixBtn.Visibility = problem != null && r.Box.SelectedItem is string pf && HasPeftKeys(Path.Combine(ModelsDir, "loras", pf)) ? Visibility.Visible : Visibility.Collapsed;
         if (info?.Strength is { Length: > 0 } s) parts.Add($"Its page recommends strength {StrengthText(s)}.");
@@ -222,4 +297,13 @@ public partial class MainWindow
     }
 
     static void OpenPage(string url) { try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { } }
+}
+
+// the second line under a LoRA in its list (see LoraItemTemplate); the window supplies the text
+public class LoraLineConverter : System.Windows.Data.IValueConverter
+{
+    public static readonly LoraLineConverter Instance = new();
+    public static Func<string, string> Line = _ => "";
+    public object Convert(object value, Type t, object p, System.Globalization.CultureInfo c) => value is string s && s != "None" ? Line(s) : "";
+    public object ConvertBack(object value, Type t, object p, System.Globalization.CultureInfo c) => throw new NotSupportedException();
 }

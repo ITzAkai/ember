@@ -579,13 +579,14 @@ public partial class MainWindow : Window
 
         var combo = new ComboBox
         {
-            Margin = new Thickness(0, 0, 0, 6)
+            Margin = new Thickness(0, 0, 0, 6), ItemTemplate = LoraItemTemplate,
         };
         var items = new[] { "None" }.Concat(LorasForModel).ToList();
         if (loras.Count == 0 && !string.IsNullOrEmpty(loraName) && loraName != "None" && !items.Contains(loraName))
             items.Add(loraName);
         combo.ItemsSource = items;
         combo.SelectedItem = items.Contains(loraName) ? loraName : "None";
+        ApplySearch(combo, LoraSearch.Text, LoraSearchText);
 
         var slider = new Slider
         {
@@ -1177,7 +1178,8 @@ public partial class MainWindow : Window
     // a LoRA only fits the model family it was trained on: "sdxl", "qwen_image", "krea2", or null when the file doesn't say
     Dictionary<string, string> loraFamily = new();
     string ModelFamily => Family == "wan_i2v" ? "wan" : Family ?? (Flux ? "flux" : "sdxl");      // picture-to-video takes the 1.3B text-to-video LoRAs
-    IEnumerable<string> LorasForModel => loras.Where(l => loraFamily.GetValueOrDefault(l) is not string f || f == ModelFamily);
+    // the ones made for this kind of model first (Pony / Illustrious / plain SDXL), the rest after
+    IEnumerable<string> LorasForModel => loras.Where(l => loraFamily.GetValueOrDefault(l) is not string f || f == ModelFamily).OrderBy(l => LoraFit(l) != null);
 
     string loraFamilyShown;     // the family whose LoRA rows are on screen
 
@@ -1203,10 +1205,12 @@ public partial class MainWindow : Window
                 var current = r.Box.SelectedItem as string ?? "None";
                 r.Box.ItemsSource = items;
                 r.Box.SelectedItem = items.Contains(current) ? current : "None";
+                ApplySearch(r.Box, LoraSearch.Text, LoraSearchText);
             }
         }
         UpdateLoraTitles();
         UpdateLoraChip();
+        ShowLoraFitNote();
     }
 
     List<LoraItemSetting> CurrentLoras() => loraRows.Where(r => r.Box?.SelectedItem is string n && n != "None")
@@ -1255,6 +1259,11 @@ public partial class MainWindow : Window
             && StylePreset.Unwrap(cine.Apply("a fox"), "blurry, " + anime) is ("a fox", "blurry", var a) && a == cine
             && StylePreset.Unwrap(cine.Apply("a fox"), "blurry, " + cine.Negative) is ("a fox", "blurry", _);
     }
+
+    // --selftest part: Civitai's base-model names map to the SDXL line a LoRA fits (NoobAI is built on Illustrious)
+    static bool SelfTestLineage() =>
+        Lineage("Pony") == "Pony" && Lineage("Illustrious") == "Illustrious" && Lineage("NoobAI") == "Illustrious" && Lineage("SDXL 1.0") == "SDXL"
+        && Lineage("Unholy Desire Mix (Illustrious) unholyDesireMixSinister_v90.safetensors") == "Illustrious" && Lineage("Flux.1 D") == null && Lineage(null) == null;
 
     // --selftest part: slider LoRAs that train only cross- or only self-attention are still Anima's; Wan's and SDXL's stay theirs
     static bool SelfTestLoraFamily()
@@ -1471,7 +1480,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512);
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }

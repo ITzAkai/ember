@@ -683,6 +683,8 @@
                 </DockPanel>
                 <StackPanel x:Name="ModelSectionBody" Visibility="{Binding IsChecked, ElementName=ModelSectionToggle, Converter={StaticResource BoolVis}}">
                 <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,10,0,8"/>
+                <TextBox x:Name="ModelSearch" Style="{StaticResource Input}" Height="30" Padding="8,0" VerticalContentAlignment="Center" Margin="0,0,0,6"
+                         Tag="Search models…" TextChanged="ModelSearch_TextChanged" AutomationProperties.Name="Search models"/>
                 <ComboBox x:Name="ModelBox" SelectionChanged="Model_SelectionChanged"/>
                 <Button x:Name="CompareModelsBtn" Style="{StaticResource Ghost}" Height="26" Padding="10,0" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Left"
                         Content="Compare with other models…" Click="CompareModels_Click" ToolTip="The same prompt and seed on a few models, one picture each"/>
@@ -724,6 +726,9 @@
                     <Ellipse x:Name="LoraDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
                     <TextBlock Text="LoRA add-ons" Style="{StaticResource Heading}" Margin="0" ToolTip="Small trained styles or subjects. Multiple LoRAs are combined together."/>
                   </DockPanel>
+                  <TextBox x:Name="LoraSearch" Style="{StaticResource Input}" Height="30" Padding="8,0" VerticalContentAlignment="Center" Margin="0,0,0,8"
+                           Tag="Search LoRAs by name or what they do…" TextChanged="LoraSearch_TextChanged" AutomationProperties.Name="Search LoRAs"/>
+                  <TextBlock x:Name="LoraFitNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
                   <StackPanel x:Name="LoraRowsPanel"/>
                 </StackPanel>
                 </StackPanel>

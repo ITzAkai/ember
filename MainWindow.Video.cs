@@ -86,6 +86,7 @@ public partial class MainWindow
         if (ModelBox.SelectedItem is string current) { if (showingVideoModels) settings.VideoModel = current; else settings.Model = current; }
         showingVideoModels = VideoOn;
         Fill(ModelBox, showingVideoModels ? videoModels : imageModels, showingVideoModels ? settings.VideoModel : settings.Model, showingVideoModels ? "" : "krea");      // no saved choice: Krea 2, the best all-rounder
+        ApplySearch(ModelBox, ModelSearch.Text);
     }
 
     async Task MakeVideo(long seed)
