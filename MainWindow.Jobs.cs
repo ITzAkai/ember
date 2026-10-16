@@ -25,6 +25,14 @@ class Job
     public bool Running;
     public long LogStart;                           // where ComfyUI's log stood when it was sent, to read what it said about this job
     public JsonObject Body;                         // what was sent, to send again at the front of the queue
+    public BatchFiles Shared;                       // the uploads the pictures of one Generate share (one copy of the photo for all)
+}
+
+// files several jobs use: removed when the last of them is done
+class BatchFiles
+{
+    public List<string> Files = new();
+    public int Users;
 }
 
 public partial class MainWindow
@@ -195,13 +203,28 @@ public partial class MainWindow
             if (style != null) UseStylePicture(g, style);
             if (couple) UseCouple(g, left, right);
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };
-        });
+        }, vary: (body, from, to) => Reseed(body, seed + from.Number, seed + to.Number));
+    }
+
+    // the same graph with another picture's seed: every sampler that took the seed (main, refine, hi-res, faces, references) gets the new one
+    static JsonObject Reseed(JsonObject body, long from, long to)
+    {
+        foreach (var (_, node) in (JsonObject)body["prompt"])
+            if (node?["inputs"] is JsonObject inputs)
+                foreach (var key in new[] { "seed", "noise_seed" })
+                    if (inputs[key] is JsonValue v && v.TryGetValue<long>(out var s) && s == from) inputs[key] = to;
+        return body;
     }
 
     // a job per picture, so each waits its own turn in ComfyUI's queue and is stopped, cancelled or moved on its own.
     // Placeholders straight away, then each job is built (and uploaded) and handed to ComfyUI, in order.
-    async Task Enqueue(int images, Func<Job, Task<JsonObject>> build, string verb = "Painting · step", string label = null)
+    // vary: when given, only the first job is built (from the screen as it is now); the others are copies of it made by vary(copy, first, job),
+    // so changing the model, sliders or LoRAs while they wait can't reach them
+    async Task Enqueue(int images, Func<Job, Task<JsonObject>> build, string verb = "Painting · step", string label = null,
+        Func<JsonObject, Job, Job, JsonObject> vary = null)
     {
+        JsonObject template = null;
+        Job first = null;
         var queued = new List<Job>();
         Note("");
         for (int i = 0; i < images; i++)
@@ -223,7 +246,20 @@ public partial class MainWindow
             if (!jobs.Contains(job)) continue;       // cancelled, or the queue cleared, before it was built
             try
             {
-                var body = await build(job);
+                JsonObject body;
+                if (template != null) { body = vary((JsonObject)template.DeepClone(), first, job); job.Before = first.Before; }
+                else
+                {
+                    body = await build(job);
+                    if (vary != null && queued.Count(jobs.Contains) > 1)
+                    {
+                        (template, first) = ((JsonObject)body.DeepClone(), job);
+                        var shared = new BatchFiles { Users = queued.Count(jobs.Contains) };
+                        shared.Files.AddRange(job.Uploads);
+                        job.Uploads.Clear();
+                        foreach (var q in queued.Where(jobs.Contains)) q.Shared = shared;
+                    }
+                }
                 // sharp live previews (TAESD) where they cost nothing measurable: Qwen's and Krea 2's slow steps hide the decode;
                 // on anime models it's about 6% slower, on SDXL about 19%, so those keep the quick preview unless the setting asks
                 if (body["extra_data"] is not JsonObject extra) body["extra_data"] = extra = new JsonObject();
@@ -256,6 +292,7 @@ public partial class MainWindow
         if (error == null && server != null && loraRows.Any(r => r.Box?.SelectedItem is string s && s != "None")) CheckLoraLog(job.LogStart);
         foreach (var slot in job.Slots) shots.Remove(slot);           // nothing came for these
         foreach (var f in job.Uploads) try { File.Delete(f); } catch { }
+        if (job.Shared is { } shared && --shared.Users == 0) foreach (var f in shared.Files) try { File.Delete(f); } catch { }
         if (!quiet)
         {
             if (error == null) { Note($"Finished in {(DateTime.Now - job.Started).TotalSeconds:0} s."); Flash(); }

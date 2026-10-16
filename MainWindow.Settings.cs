@@ -17,6 +17,7 @@ public partial class MainWindow
         KeepComfySwitch.IsChecked = settings.KeepComfyRunning;
         InpaintSwitch.IsChecked = settings.InpaintEdits;
         SharpPreviewSwitch.IsChecked = settings.SharpPreviewAll;
+        PreviewFilesRow.Visibility = PreviewFiles.Any(f => !File.Exists(Path.Combine(ModelsDir, "vae_approx", f.File))) ? Visibility.Visible : Visibility.Collapsed;
         quietSettings = false;
         InpaintSwitch.IsEnabled = inpaintModel != null;
         InpaintNote.Text = inpaintModel != null
@@ -88,6 +89,43 @@ public partial class MainWindow
         var adopt = server is { HasExited: false } ? $"--adopt {server.Id}" : "";
         Process.Start(new ProcessStartInfo(Environment.ProcessPath, adopt) { WorkingDirectory = Root, UseShellExecute = false });
         Close();
+    }
+
+    // ---------------- sharp live preview files ----------------
+    // ComfyUI's portable build brings the SDXL one; these two it doesn't: Wan 2.1's (Krea 2, Anima, Wan, MiniMax H3) and Qwen-Image's.
+    // Qwen's comes with an encoder and other layer names, so it is converted here, and the result checked against its known fingerprint.
+    static readonly (string File, string Url, string Sha256, string Made)[] PreviewFiles =
+    {
+        ("lighttaew2_1.safetensors", "https://huggingface.co/lightx2v/Autoencoders/resolve/main/lighttaew2_1.safetensors",
+            "8666e769f449f2d955651564bcadb0c5e12461b50480e67b7241f32c15f11a19", null),
+        ("taeqi2_1_decoder.safetensors", "https://huggingface.co/madebyollin/taeqi2_1/resolve/main/taeqi2_1.safetensors",
+            "6578b31cc5e336233a2c842eba61b56425bbcac97c7088705f7c7db93291887e", "992112baa2e31f321e4bfd9097666d5652107ff5fdacb373448887e1908a3e40"),
+    };
+
+    async void GetPreviewFiles_Click(object sender, RoutedEventArgs e)
+    {
+        PreviewFilesBtn.IsEnabled = false;
+        var dir = Path.Combine(ModelsDir, "vae_approx");
+        try
+        {
+            Directory.CreateDirectory(dir);
+            foreach (var (file, url, sha, made) in PreviewFiles)
+            {
+                var target = Path.Combine(dir, file);
+                if (File.Exists(target)) continue;
+                var download = made == null ? target + ".part2" : Path.Combine(dir, "taeqi2_1.original");
+                await DownloadFile(url, download, (done, size) => PreviewFilesNote.Text = $"Downloading {file}: {Size(done)} of {Size(size)}…");
+                if (!Sha256Is(download, sha)) { File.Delete(download); throw new Exception($"{file} didn't match its fingerprint."); }
+                if (made == null) { File.Move(download, target); continue; }
+                await Task.Run(() => TaeDecoder.Convert(download, target));
+                File.Delete(download);
+                if (!Sha256Is(target, made)) { File.Delete(target); throw new Exception($"{file} didn't convert as expected."); }
+            }
+            PreviewFilesRow.Visibility = Visibility.Collapsed;
+            Note("Sharp preview files ready: they're used from the next picture.");
+        }
+        catch (Exception ex) { PreviewFilesNote.Text = "Couldn't get them: " + ex.Message; }
+        finally { PreviewFilesBtn.IsEnabled = true; }
     }
 
     void SettingSwitch_Click(object sender, RoutedEventArgs e)

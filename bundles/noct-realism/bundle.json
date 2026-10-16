@@ -1,13 +1,13 @@
 {
   "Format": 1,
-  "Id": "noct-realism-nsfw",
-  "Name": "Noct Realism NSFW · Krea 2",
+  "Id": "noct-realism",
+  "Name": "Noct Realism · Krea 2",
   "Author": "Novulon",
   "Description": "Krea Noct Uncensored Realism v6 with the uncensored Heretic text encoder, the wistfall style, Krea2 realism and Midjourney Artful NSFW LoRAs. er_sde / simple, 16 steps, CFG 3, 832×1248 portrait. Add 'ArtfulNSFW' to a prompt for the Midjourney look.",
   "Adult": true,
   "Recommended": true,
   "Tab": {
-    "Name": "Noct Realism NSFW",
+    "Name": "Noct Realism",
     "Model": "Noct_Uncensored_Realism_v6_INT8.safetensors",
     "Quality": "30",
     "Steps": 16,

@@ -87,7 +87,9 @@ public partial class MainWindow
         if (ModelBox.SelectedItem is string current) { if (showingVideoModels) settings.VideoModel = current; else settings.Model = current; }
         showingVideoModels = VideoOn;
         Fill(ModelBox, showingVideoModels ? videoModels : imageModels, showingVideoModels ? settings.VideoModel : settings.Model, showingVideoModels ? "" : "krea");      // no saved choice: Krea 2, the best all-rounder
-        ApplySearch(ModelBox, ModelSearch.Text);
+        LoraLineConverter.ModelLine = ModelLine;
+        ModelBox.ItemTemplate ??= ModelItemTemplate;        // a line under each model: its kind and what it's good at
+        ApplySearch(ModelBox, ModelSearch.Text, ModelLine);
     }
 
     async Task MakeVideo(long seed)
@@ -255,12 +257,26 @@ public partial class MainWindow
 
     void SetStart(string path)
     {
-        BitmapSource img;
-        try { img = Oriented(path); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); return; }
+        try { SetStart(Oriented(path), Path.GetFileName(path)); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); }
+    }
+
+    // the Paste button: a copied file, a browser's picture or a screenshot
+    void PasteStart_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (ClipboardPicture() is { } p) SetStart(p.Image, p.Name ?? "Pasted picture");
+            else Note("Copy a picture first: Copy image in a browser, a screenshot, or a file in Explorer.", true);
+        }
+        catch (Exception ex) { Note("Couldn't paste that: " + ex.Message, true); }
+    }
+
+    void SetStart(BitmapSource img, string name)
+    {
         double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         startPicture = PngOf(img);
-        startName = Path.GetFileName(path);
+        startName = name;
         StartThumb.ImageSource = img;
         StartName.Text = startName;
         StartSize.Text = $"{img.PixelWidth} × {img.PixelHeight}";

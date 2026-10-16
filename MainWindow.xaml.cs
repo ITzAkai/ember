@@ -1263,6 +1263,15 @@ public partial class MainWindow : Window
             && StylePreset.Unwrap(cine.Apply("a fox"), "blurry, " + cine.Negative) is ("a fox", "blurry", _);
     }
 
+    // --selftest part: a batch picture's copy gets its own seed in every sampler that had the first one's, and nothing else changes
+    static bool SelfTestReseed()
+    {
+        var body = JsonNode.Parse("""{"prompt":{"3":{"inputs":{"seed":7,"steps":7}},"refine":{"inputs":{"seed":7}},"52":{"inputs":{"noise_seed":7}},"9":{"inputs":{"seed":8}}}}""").AsObject();
+        var p = Reseed(body, 7, 9)["prompt"];
+        return (long)p["3"]["inputs"]["seed"] == 9 && (long)p["3"]["inputs"]["steps"] == 7 && (long)p["refine"]["inputs"]["seed"] == 9
+            && (long)p["52"]["inputs"]["noise_seed"] == 9 && (long)p["9"]["inputs"]["seed"] == 8;
+    }
+
     // --selftest part: Civitai's base-model names map to the SDXL line a LoRA fits (NoobAI is built on Illustrious)
     static bool SelfTestLineage() =>
         Lineage("Pony") == "Pony" && Lineage("Illustrious") == "Illustrious" && Lineage("NoobAI") == "Illustrious" && Lineage("SDXL 1.0") == "SDXL"
@@ -1486,7 +1495,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512) | (SelfTestReseed() ? 0 : 1024);
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }

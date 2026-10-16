@@ -181,7 +181,24 @@ public partial class MainWindow
             || s.Contains(q.Trim(), StringComparison.OrdinalIgnoreCase) || extra?.Invoke(s)?.Contains(q.Trim(), StringComparison.OrdinalIgnoreCase) == true);
     }
 
-    void ModelSearch_TextChanged(object sender, TextChangedEventArgs e) => ApplySearch(ModelBox, ModelSearch.Text);
+    void ModelSearch_TextChanged(object sender, TextChangedEventArgs e) => ApplySearch(ModelBox, ModelSearch.Text, ModelLine);
+
+    // the line under each model in the picker: its kind and what it's good at (as on the Models page); worked out once per model
+    readonly Dictionary<string, string> modelLines = new();
+    string ModelLine(string m)
+    {
+        if (modelLines.TryGetValue(m, out var known)) return known;
+        string about = null;
+        try
+        {
+            var i = separate.TryGetValue(m, out var s) ? Inspect("diffusion_models", Path.Combine(ModelsDir, "diffusion_models", s.Unet))
+                : Inspect("checkpoints", Path.Combine(ModelsDir, "checkpoints", m));
+            about = i.About;
+        }
+        catch { }
+        var label = RecFor(m)?.Label;
+        return modelLines[m] = string.Join(" · ", new[] { label, about }.Where(x => !string.IsNullOrEmpty(x)).Distinct());
+    }
 
     // picking a model from code: a search could be hiding it, and a hidden item can't be selected (it would stay on the old model)
     void PickLora(ComboBox box, string lora)
@@ -203,13 +220,15 @@ public partial class MainWindow
     void LoraSearch_TextChanged(object sender, TextChangedEventArgs e) { foreach (var r in loraRows) ApplySearch(r.Box, LoraSearch.Text, LoraSearchText); }
 
     // a LoRA's list shows a second line under each name: what it's made for and what it does (only in the open list, not the closed box)
-    static DataTemplate loraItemTemplate;
-    static DataTemplate LoraItemTemplate => loraItemTemplate ??= (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
+    static DataTemplate loraItemTemplate, modelItemTemplate;
+    static DataTemplate LoraItemTemplate => loraItemTemplate ??= LineTemplate("Instance");
+    static DataTemplate ModelItemTemplate => modelItemTemplate ??= LineTemplate("Models");
+    static DataTemplate LineTemplate(string converter) => (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
         <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                       xmlns:local="clr-namespace:ImageForge;assembly=Ember">
           <StackPanel>
             <TextBlock Text="{Binding}"/>
-            <TextBlock x:Name="Line" Text="{Binding Converter={x:Static local:LoraLineConverter.Instance}}" FontSize="11" Opacity="0.7"
+            <TextBlock x:Name="Line" Text="{Binding Converter={x:Static local:LoraLineConverter.CONVERTER}}" FontSize="11" Opacity="0.7"
                        TextTrimming="CharacterEllipsis" MaxWidth="340" HorizontalAlignment="Left"/>
           </StackPanel>
           <DataTemplate.Triggers>
@@ -221,7 +240,7 @@ public partial class MainWindow
             </DataTrigger>
           </DataTemplate.Triggers>
         </DataTemplate>
-        """);
+        """.Replace("CONVERTER", converter));
 
     // above the LoRA rows: how many of the listed LoRAs were made for another kind of model than the one picked
     void ShowLoraFitNote()
@@ -318,8 +337,9 @@ public partial class MainWindow
 // the second line under a LoRA in its list (see LoraItemTemplate); the window supplies the text
 public class LoraLineConverter : System.Windows.Data.IValueConverter
 {
-    public static readonly LoraLineConverter Instance = new();
-    public static Func<string, string> Line = _ => "";
-    public object Convert(object value, Type t, object p, System.Globalization.CultureInfo c) => value is string s && s != "None" ? Line(s) : "";
+    public static readonly LoraLineConverter Instance = new(), Models = new() { ForModels = true };
+    public static Func<string, string> Line = _ => "", ModelLine = _ => "";
+    bool ForModels;
+    public object Convert(object value, Type t, object p, System.Globalization.CultureInfo c) => value is string s && s != "None" ? (ForModels ? ModelLine(s) : Line(s)) : "";
     public object ConvertBack(object value, Type t, object p, System.Globalization.CultureInfo c) => throw new NotSupportedException();
 }

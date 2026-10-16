@@ -538,12 +538,21 @@
                 <!-- picture-to-video: the clip starts on this picture -->
                 <StackPanel x:Name="StartSection" Visibility="Collapsed" AllowDrop="True" DragOver="Start_DragOver" Drop="Start_Drop">
                   <TextBlock Text="Start picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
-                  <Button x:Name="ChooseStartBtn" Style="{StaticResource Ghost}" Height="44" Click="ChooseStart_Click" AutomationProperties.Name="Choose start picture">
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                      <TextBlock Text="Choose a picture…" VerticalAlignment="Center"/>
-                    </StackPanel>
-                  </Button>
+                  <DockPanel x:Name="ChooseStartBtn">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="44" Padding="14,0" Margin="6,0,0,0" Click="PasteStart_Click"
+                            ToolTip="Use a copied picture: Copy image in a browser, a screenshot, or a file copied in Explorer" AutomationProperties.Name="Paste start picture">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE77F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Paste" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Ghost}" Height="44" Click="ChooseStart_Click" AutomationProperties.Name="Choose start picture">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE898;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="Choose a picture…" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+                  </DockPanel>
                   <Border x:Name="StartCard" Visibility="Collapsed" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
                           CornerRadius="9" Padding="8">
                     <DockPanel>
@@ -684,7 +693,7 @@
                 <StackPanel x:Name="ModelSectionBody" Visibility="{Binding IsChecked, ElementName=ModelSectionToggle, Converter={StaticResource BoolVis}}">
                 <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,10,0,8"/>
                 <TextBox x:Name="ModelSearch" Style="{StaticResource Input}" Height="30" Padding="8,0" VerticalContentAlignment="Center" Margin="0,0,0,6"
-                         Tag="Search models…" TextChanged="ModelSearch_TextChanged" AutomationProperties.Name="Search models"/>
+                         Tag="Search models by name or what they do…" TextChanged="ModelSearch_TextChanged" AutomationProperties.Name="Search models"/>
                 <ComboBox x:Name="ModelBox" SelectionChanged="Model_SelectionChanged"/>
                 <Button x:Name="CompareModelsBtn" Style="{StaticResource Ghost}" Height="26" Padding="10,0" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Left"
                         Content="Compare with other models…" Click="CompareModels_Click" ToolTip="The same prompt and seed on a few models, one picture each"/>
@@ -1366,6 +1375,12 @@
                         Content="fp16 accumulation (faster on RTX 40; some LoRAs then give black pictures)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
               <CheckBox x:Name="SharpPreviewSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,8,0,0"
                         Content="Sharp live preview on every model (anime about 6% slower, SDXL about 19%; Qwen and Krea 2 always sharp)" Click="SettingSwitch_Click"/>
+              <DockPanel x:Name="PreviewFilesRow" Margin="0,8,0,0" Visibility="Collapsed">
+                <Button x:Name="PreviewFilesBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Margin="8,0,0,0"
+                        Content="Get them (76 MB)" Click="GetPreviewFiles_Click"/>
+                <TextBlock x:Name="PreviewFilesNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"
+                           Text="Sharp previews need two small preview files for Krea 2, Anima, Wan and Qwen-Image. Without them the preview stays blurry."/>
+              </DockPanel>
               <DockPanel Margin="0,8,0,0">
                 <TextBox x:Name="ReserveVramBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" LostFocus="Perf_Changed"
                          Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" CaretBrush="{DynamicResource Accent}"
