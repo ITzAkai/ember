@@ -81,6 +81,7 @@ public partial class MainWindow
             var made = await Task.Run(() => ConvertLora(Path.Combine(ModelsDir, "loras", lora)));
             Note($"Made {made}. If its effect is too strong or weak, adjust the strength: PEFT files often don't carry their scale.");
             await LoadOptions();                    // ComfyUI lists the new file
+            if (LoraSearch.Text != "") LoraSearch.Text = "";       // a search could hide the new file
             if (row.Box.Items.Contains(made)) row.Box.SelectedItem = made;
         }
         catch (Exception ex) { Note("Couldn't convert it: " + ex.Message, true); }

@@ -53,11 +53,12 @@ public partial class MainWindow
         EndSection.Visibility = VideoAdvArea.Visibility = Length8.Visibility = Length10.Visibility = h3 ? Visibility.Visible : Visibility.Collapsed;
         BoostersArea.Visibility = VideoOn ? Visibility.Collapsed : Visibility.Visible;            // the boosters are for pictures only
         AdvancedToggle.Content = VideoOn ? "Advanced video settings" : "Advanced settings";
-        if (!h3 && (Length8.IsChecked == true || Length10.IsChecked == true)) Pick(LengthGroup, "81", "81");     // Wan breaks past 5 s
+        // only once a Wan model is actually picked: H3's 8 / 10 s survive restarts and mode switches (Wan jobs are capped at 81 frames anyway)
+        if (VideoOn && Wan && (Length8.IsChecked == true || Length10.IsChecked == true)) Pick(LengthGroup, "81", "81");
         MotionValue.Text = MotionText;
     }
 
-    string MotionText => MotionSlider.Value < 11 ? $"Calm ({MotionSlider.Value:0})" : MotionSlider.Value > 13 ? $"Lively ({MotionSlider.Value:0})" : "Normal (12)";
+    string MotionText => MotionSlider.Value < 12 ? $"Calm ({MotionSlider.Value:0})" : MotionSlider.Value > 12 ? $"Lively ({MotionSlider.Value:0})" : "Normal (12)";
 
     void VideoOption_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {

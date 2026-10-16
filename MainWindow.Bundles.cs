@@ -93,9 +93,10 @@ public partial class MainWindow
                 {
                     using var s = asm.GetManifestResourceStream(res);
                     var target = Path.Combine(dir, Path.GetFileName(path));
-                    if (File.Exists(target) && new FileInfo(target).Length == s.Length) continue;
-                    using var o = File.Create(target);
-                    s.CopyTo(o);
+                    var ms = new MemoryStream(); s.CopyTo(ms);
+                    var bytes = ms.ToArray();
+                    if (File.Exists(target) && File.ReadAllBytes(target).AsSpan().SequenceEqual(bytes)) continue;    // by content: a fix can keep the size
+                    File.WriteAllBytes(target, bytes);
                 }
                 b = JsonSerializer.Deserialize<Bundle>(File.ReadAllText(Path.Combine(dir, "bundle.json")));
                 if (b?.Tab == null) continue;
@@ -279,7 +280,10 @@ public partial class MainWindow
             {
                 var f = missing[i];
                 BundlesNote.Text = $"{b.Name}: downloading {i + 1} of {missing.Count}, {f.Name} ({Size(f.Size)})… Progress shows on the Models page.";
-                await Download(new CatalogItem(f.Name, KindOf(f.Folder), f.Folder, f.File, f.Url, f.Size, f.Sha256, f.License, "From the bundle " + b.Name));
+                // the Models page's own entry when it has one, so its progress and Cancel show there; never the same file twice at once
+                if (downloads.Keys.Any(k => k.File == f.File)) { BundlesNote.Text = $"{b.Name}: {f.Name} is already downloading on the Models page. Set up again when it's done."; return; }
+                await Download(Catalog.FirstOrDefault(c => c.File == f.File && string.Equals(c.Sha256, f.Sha256, StringComparison.OrdinalIgnoreCase))
+                    ?? new CatalogItem(f.Name, KindOf(f.Folder), f.Folder, f.File, f.Url, f.Size, f.Sha256, f.License, "From the bundle " + b.Name));
                 if (InstalledPath(f) == null) { BundlesNote.Text = $"{b.Name}: {f.Name} didn't download. {ModelsNote.Text}"; return; }
             }
             bool Listed(string model) => imageModels.Contains(model) || videoModels.Contains(model);
@@ -507,7 +511,7 @@ public partial class MainWindow
                 if (f.Sha256 is not { Length: 64 } || !Regex.IsMatch(f.Sha256, "^[0-9a-fA-F]+$")) throw new Exception($"{f.File} has no checksum.");
                 f.Sha256 = f.Sha256.ToLowerInvariant();
             }
-            var text = string.Join("\n", new[] { b.Name, b.Description, b.Tab.Negative }.Concat(b.Prompts ?? new()));
+            var text = string.Join("\n", new[] { b.Name, b.Description, b.Tab.Negative, b.Tab.Prompt }.Concat(b.Prompts ?? new()));   // its tab's prompt goes in the prompt box too
             if (SexualWithMinor(text)) throw new Exception(MinorNote);
             b.Adult |= SexualWords.IsMatch(text);
             b.Showcase = (b.Showcase ?? new()).Where(s => s == Path.GetFileName(s) && ShowcaseTypes.Contains(Path.GetExtension(s).ToLowerInvariant()) && File.Exists(Path.Combine(temp, s))).ToList();

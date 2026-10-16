@@ -35,7 +35,8 @@ public partial class MainWindow
     void Generate_Click(object sender, RoutedEventArgs e) => _ = Generate();
 
     // stops the image being made now; the queue carries on
-    void Cancel_Click(object sender, RoutedEventArgs e) => _ = Stop(jobs.FirstOrDefault(j => j.Running));
+    // (while nothing is running yet, the first picture is cancelled: an interrupt then would stop someone else's prompt)
+    void Cancel_Click(object sender, RoutedEventArgs e) => _ = jobs.FirstOrDefault(j => j.Running) is { } r ? Stop(r) : jobs.Count > 0 ? CancelJob(jobs[0]) : Task.CompletedTask;
 
     // by its prompt id, so one that finishes meanwhile doesn't take the next one down instead
     async Task Stop(Job job)
@@ -92,7 +93,7 @@ public partial class MainWindow
             var j = JsonNode.Parse(await r.Content.ReadAsStringAsync());
             if (!r.IsSuccessStatusCode || j?["error"] != null) throw new Exception(j?["error"]?["message"]?.GetValue<string>() ?? $"HTTP {(int)r.StatusCode}");
             job.Id = j["prompt_id"].GetValue<string>();
-            jobs.Remove(job);
+            if (!jobs.Remove(job)) { try { await http.PostAsync("/queue", Json(new JsonObject { ["delete"] = new JsonArray(job.Id) })); } catch { } return; }   // cancelled meanwhile
             jobs.Insert(jobs.Count(x => x.Running), job);
             Note("It's next.");
         }
@@ -124,9 +125,9 @@ public partial class MainWindow
         try
         {
             // one after another: each picture's graph is built before the next model is picked
-            foreach (var m in others.Prepend(first)) { ModelBox.SelectedItem = m; await Generate(one: true); }
+            foreach (var m in others.Prepend(first)) { PickModel(m); await Generate(one: true); }
         }
-        finally { ModelBox.SelectedItem = first; RandomSeed.IsChecked = random; }
+        finally { PickModel(first); RandomSeed.IsChecked = random; }
         Note($"Seed {SeedBox.Text} on {others.Count + 1} models: open a picture to see which model made it.");
     }
 
@@ -151,6 +152,8 @@ public partial class MainWindow
         SaveSettings();
         if (VideoOn && expand == null) { await MakeVideo(seed); return; }
         int count = expand != null || one ? 1 : int.Parse(Picked(CountGroup));      // an expansion is one picture, not variations
+        // the words as checked above go into every picture, even if the boxes are edited while the later ones wait their turn
+        string prompt = PromptBox.Text, negative = NegativeBox.Text, left = CoupleLeftBox.Text.Trim(), right = CoupleRightBox.Text.Trim();
         await Enqueue(count, async job =>
         {
             string image = null;
@@ -177,19 +180,20 @@ public partial class MainWindow
             {
                 refs = new string[references.Count];
                 for (int i = 0; i < refs.Length; i++) refs[i] = await Upload(references[i].Png, job);
-                if (!Qwen) looks = await Task.WhenAll(references.Select(LooksOf));         // usually written already, when it was added
+                if (!Qwen) { var l = new List<string>(); foreach (var r in references) l.Add(await LooksOf(r)); looks = l.ToArray(); }   // one at a time (see AddReference)
             }
             bool newPicture = !edit && expand == null;
             var style = newPicture && UsingStylePicture ? await Upload(stylePicture.Png, job) : null;
             bool couple = newPicture && UsingCouple;
             // picture n gets seed + n, so the seed saved with each one makes that same picture again
-            var g = Graph(seed + job.Number, image, masked, denoise, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))));
+            var g = Graph(seed + job.Number, image, masked, denoise, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))),
+                prompt: prompt, negative: negative);
             // expansions always use the inpainting model when installed (far better joins); painted edits if the setting is on
             if (masked && inpaintModel != null && baseCheckpoint != null && (expand != null || settings.InpaintEdits)) UseInpaintModel(g);
             if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
             ApplyBoosters(g, newPicture);
             if (style != null) UseStylePicture(g, style);
-            if (couple) UseCouple(g);
+            if (couple) UseCouple(g, left, right);
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };
         });
     }
@@ -199,6 +203,7 @@ public partial class MainWindow
     async Task Enqueue(int images, Func<Job, Task<JsonObject>> build, string verb = "Painting · step", string label = null)
     {
         var queued = new List<Job>();
+        Note("");
         for (int i = 0; i < images; i++)
         {
             var job = new Job { Verb = verb, Number = i };
@@ -230,6 +235,7 @@ public partial class MainWindow
                 var j = JsonNode.Parse(await r.Content.ReadAsStringAsync());
                 if (!r.IsSuccessStatusCode || j?["error"] != null) throw new Exception(j?["error"]?["message"]?.GetValue<string>() ?? $"HTTP {(int)r.StatusCode}");
                 job.Id = j["prompt_id"].GetValue<string>();
+                if (!jobs.Contains(job)) try { await http.PostAsync("/queue", Json(new JsonObject { ["delete"] = new JsonArray(job.Id) })); } catch { }   // cancelled while it was being sent
             }
             catch (Exception e) { Finish(job, "Couldn't start: " + e.Message); }
         }
@@ -246,6 +252,7 @@ public partial class MainWindow
     void Finish(Job job, string error, bool quiet = false)
     {
         if (!jobs.Remove(job)) return;
+        if (LivePanel.DataContext is Shot watched && job.Slots.Contains(watched)) CloseLive();   // the picture being watched won't come
         if (error == null && server != null && loraRows.Any(r => r.Box?.SelectedItem is string s && s != "None")) CheckLoraLog(job.LogStart);
         foreach (var slot in job.Slots) shots.Remove(slot);           // nothing came for these
         foreach (var f in job.Uploads) try { File.Delete(f); } catch { }
@@ -264,7 +271,7 @@ public partial class MainWindow
         int waiting = jobs.Count(j => !j.Running) - (jobs.Any(j => j.Running) ? 0 : 1);
         QueueRow.Visibility = waiting > 0 ? Visibility.Visible : Visibility.Collapsed;
         QueueText.Text = waiting == 1 ? "1 more waiting" : $"{waiting} more waiting";
-        if (busy) { SetState("Generating", Brush("Accent")); Note(""); }
+        if (busy) SetState("Generating", Brush("Accent"));        // (the note stays: a failed or cancelled picture's message must not vanish)
         else
         {
             Bar.Value = 0;
@@ -386,7 +393,7 @@ public partial class MainWindow
                     using var ms = new MemoryStream();
                     WebSocketReceiveResult res;
                     do { res = await ws.ReceiveAsync(buf, CancellationToken.None); ms.Write(buf, 0, res.Count); } while (!res.EndOfMessage);
-                    if (res.MessageType == WebSocketMessageType.Text) OnMessage(Encoding.UTF8.GetString(ms.ToArray()));
+                    if (res.MessageType == WebSocketMessageType.Text) try { OnMessage(Encoding.UTF8.GetString(ms.ToArray())); } catch { /* one odd message, not a lost connection */ }
                     else if (res.MessageType == WebSocketMessageType.Binary) OnPreview(ms.ToArray());
                 }
             }
@@ -442,6 +449,7 @@ public partial class MainWindow
                 break;
             case "progress":
                 int v = data["value"].GetValue<int>(), max = data["max"].GetValue<int>();
+                if (max <= 0) break;
                 Bar.Maximum = max; Bar.Value = Math.Min(v, max);
                 if (stepFrom < 0 || v <= stepFrom) { stepFrom = v; stepTime = DateTime.Now; }
                 double left = v > stepFrom ? (DateTime.Now - stepTime).TotalSeconds / (v - stepFrom) * (max - v) : -1;

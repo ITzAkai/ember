@@ -230,7 +230,7 @@ public partial class MainWindow
         CloseOverlays_Click(null, null);
         if (video) VideoMode.IsChecked = true;
         else if (VideoOn) CreateMode.IsChecked = true;
-        ModelBox.SelectedItem = item;
+        PickModel(item);
         AdvancedToggle.IsChecked = true;
         Note($"Now using {Path.GetFileNameWithoutExtension(item)}.");
     }
@@ -253,7 +253,7 @@ public partial class MainWindow
         {
             var empty = loraRows.FirstOrDefault(r => (r.Box?.SelectedItem as string ?? "None") == "None");
             if (empty != null)
-                empty.Box.SelectedItem = lora;
+                PickLora(empty.Box, lora);
             else
                 CreateLoraRow(lora, 0.8);
         }

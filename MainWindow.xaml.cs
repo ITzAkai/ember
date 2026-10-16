@@ -1179,7 +1179,10 @@ public partial class MainWindow : Window
     Dictionary<string, string> loraFamily = new();
     string ModelFamily => Family == "wan_i2v" ? "wan" : Family ?? (Flux ? "flux" : "sdxl");      // picture-to-video takes the 1.3B text-to-video LoRAs
     // the ones made for this kind of model first (Pony / Illustrious / plain SDXL), the rest after
-    IEnumerable<string> LorasForModel => loras.Where(l => loraFamily.GetValueOrDefault(l) is not string f || f == ModelFamily).OrderBy(l => LoraFit(l) != null);
+    IEnumerable<string> LorasForModel
+    {
+        get { var want = ModelLineage; return loras.Where(l => loraFamily.GetValueOrDefault(l) is not string f || f == ModelFamily).OrderBy(l => LoraFit(l, want) != null); }
+    }
 
     string loraFamilyShown;     // the family whose LoRA rows are on screen
 
@@ -1345,8 +1348,11 @@ public partial class MainWindow : Window
     // create: empty latent -> sampler. edit: photo -> latent (-> noise mask) -> sampler at partial denoise,
     // and with a mask the result is blended back so unpainted pixels stay exactly as they were.
     // plain: no style, no LoRA. count: images to make (0 = the Number of images setting)
-    JsonObject Graph(long seed, string image = null, bool masked = false, double? denoise = null, bool plain = false, int count = 0, string[] refs = null, string looks = null)
+    // prompt, negative: the words as they were when Generate was pressed (default: the boxes now)
+    JsonObject Graph(long seed, string image = null, bool masked = false, double? denoise = null, bool plain = false, int count = 0, string[] refs = null, string looks = null,
+        string prompt = null, string negative = null)
     {
+        prompt = (prompt ?? PromptBox.Text).Trim(); negative = (negative ?? NegativeBox.Text).Trim();
         int n = count > 0 ? count : int.Parse(Picked(CountGroup));
         var g = new JsonObject();
         JsonArray model, clip, vae;
@@ -1366,7 +1372,7 @@ public partial class MainWindow : Window
             g["4"] = Node("CheckpointLoaderSimple", new() { ["ckpt_name"] = (string)ModelBox.SelectedItem });
             (model, clip, vae) = (Link("4", 0), Link("4", 1), Link("4", 2));
         }
-        var words = PromptBox.Text.Trim() + (looks is { Length: > 0 } ? ", " + looks : "");        // looks: what the reference character looks like
+        var words = prompt + (looks is { Length: > 0 } ? ", " + looks : "");        // looks: what the reference character looks like
         var rawPrompt = plain ? words : CurrentStyle.Apply(words);
         var activeLoras = plain ? new List<(string, double)>() : AllActiveLoras(rawPrompt, out rawPrompt);
 
@@ -1379,7 +1385,7 @@ public partial class MainWindow : Window
         }
 
         g["6"] = Node("CLIPTextEncode", new() { ["text"] = rawPrompt, ["clip"] = clip });
-        g["7"] = Node("CLIPTextEncode", new() { ["text"] = Flux ? "" : string.Join(", ", new[] { NegativeBox.Text.Trim(), CurrentStyle.NegativeFor(AnimeModel), Anima ? AnimaNegative : "" }.Where(t => t != "")), ["clip"] = clip.DeepClone() });
+        g["7"] = Node("CLIPTextEncode", new() { ["text"] = Flux ? "" : string.Join(", ", new[] { negative, CurrentStyle.NegativeFor(AnimeModel), Anima ? AnimaNegative : "" }.Where(t => t != "")), ["clip"] = clip.DeepClone() });
         g["3"] = Node("KSampler", new()
         {
             ["seed"] = seed, ["steps"] = Steps, ["cfg"] = CfgSlider.Value,
@@ -1401,12 +1407,12 @@ public partial class MainWindow : Window
         if (Qwen && !masked && !plain)
         {
             // an instruction ("make it sunset") stays an instruction: the style is a short hint, not its wording wrapped around it
-            AllActiveLoras(PromptBox.Text.Trim(), out var instruction);
+            AllActiveLoras(prompt, out var instruction);
             if (CurrentStyle.Key != "none") instruction += $" ({CurrentStyle.Label} style)";
             // Qwen-Image 2.1 edits by instruction: the photo goes in as a reference, and the picture is redrawn from it
             g["6"] = Node("TextEncodeQwenImage21", new()
             {
-                ["clip"] = clip.DeepClone(), ["prompt"] = instruction, ["negative_prompt"] = NegativeBox.Text.Trim(),
+                ["clip"] = clip.DeepClone(), ["prompt"] = instruction, ["negative_prompt"] = negative,
                 ["vae"] = vae.DeepClone(), ["resolution"] = 1024, ["images.image_1"] = Link("10", 0),
             });
             g.Remove("7");
@@ -2194,7 +2200,7 @@ public partial class MainWindow : Window
         EditMode.IsChecked = true;
         LoadPhoto(s.FilePath);
         // variations in the picture's own look: the model it was made with, when it's still installed
-        if (!VideoOn && imageModels.FirstOrDefault(x => x == s.Meta?.Model || separate.TryGetValue(x, out var u) && u.Unet == s.Meta?.Model) is string own) ModelBox.SelectedItem = own;
+        if (!VideoOn && imageModels.FirstOrDefault(x => x == s.Meta?.Model || separate.TryGetValue(x, out var u) && u.Unet == s.Meta?.Model) is string own) PickModel(own);
         UsePromptOf(s.Meta);
         StrengthSlider.Value = 0.5;
         _ = Generate(newSeed: true);

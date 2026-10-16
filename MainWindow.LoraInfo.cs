@@ -40,7 +40,7 @@ public partial class MainWindow
                 var path = Path.Combine(ModelsDir, "loras", lora);
                 if (!File.Exists(path)) continue;
                 var fi = new FileInfo(path);
-                if (loraInfo.TryGetValue(lora, out var known) && known.Size == fi.Length && known.Modified == fi.LastWriteTimeUtc && known.Strength != null && known.Trigger is { Length: > 0 } && known.BaseModel != null) continue;
+                if (loraInfo.TryGetValue(lora, out var known) && known.Size == fi.Length && known.Modified == fi.LastWriteTimeUtc && known.Strength != null && known.BaseModel != null) continue;     // (many LoRAs have no trigger words: not a reason to look again)
                 loraInfo[lora] = await LookUp(path, fi);
                 try { File.WriteAllText(LoraInfoFile, JsonSerializer.Serialize(loraInfo)); } catch { }
                 ShowLoraInfo();
@@ -92,7 +92,8 @@ public partial class MainWindow
                 var meta = JsonNode.Parse(head)?["__metadata__"];
                 name = meta?["modelspec.title"]?.ToString() is { Length: > 0 } t && !t.StartsWith("training_") ? t : null;
                 about = Short(Plain(meta?["modelspec.description"]?.ToString()));
-                baseModel = $"{meta?["ss_base_model_version"]} {meta?["modelspec.architecture"]}".Trim();
+                // the model it was trained on first: kohya writes sdxl_base_v1-0 as the version even for Pony and Illustrious LoRAs
+                baseModel = $"{meta?["ss_sd_model_name"]} {meta?["ss_base_model_version"]} {meta?["modelspec.architecture"]}".Trim();
                 if (meta?["modelspec.trigger_phrase"]?.ToString() is { Length: > 0 } phrase) trigger = phrase.Split(',').Select(x => x.Trim()).Where(x => x != "").ToArray();
                 if (meta?["ss_tag_frequency"]?.ToString() is { Length: > 0 } freq)
                 {
@@ -182,6 +183,19 @@ public partial class MainWindow
 
     void ModelSearch_TextChanged(object sender, TextChangedEventArgs e) => ApplySearch(ModelBox, ModelSearch.Text);
 
+    // picking a model from code: a search could be hiding it, and a hidden item can't be selected (it would stay on the old model)
+    void PickLora(ComboBox box, string lora)
+    {
+        if (LoraSearch.Text != "") LoraSearch.Text = "";
+        box.SelectedItem = lora;
+    }
+
+    void PickModel(string m)
+    {
+        if (ModelSearch.Text != "") ModelSearch.Text = "";
+        ModelBox.SelectedItem = m;
+    }
+
     // by name, and by what it does: its title, description, trigger words and base model
     string LoraSearchText(string lora) => loraInfo.GetValueOrDefault(lora) is { } i
         ? string.Join(" ", new[] { i.Name, i.Description, i.BaseModel }.Concat(i.Trigger ?? [])) : null;
@@ -213,7 +227,8 @@ public partial class MainWindow
     void ShowLoraFitNote()
     {
         if (LoraFitNote == null) return;
-        int off = LorasForModel.Count(l => LoraFit(l) != null);
+        var want = ModelLineage;
+        int off = LorasForModel.Count(l => LoraFit(l, want) != null);
         LoraFitNote.Text = off == 0 ? "" : $"{off} of your LoRAs {(off == 1 ? "was" : "were")} made for another kind of model than this {ModelLineage} one: they're at the end of the list, marked ⚠.";
         LoraFitNote.Visibility = off == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -221,13 +236,14 @@ public partial class MainWindow
     // SDXL LoRAs are trained for one line of models: Pony, Illustrious (NoobAI is built on it) or plain SDXL. Within the line they fit;
     // across it they often look off. Unknown either way: no warning.
     static string Lineage(string text) => text?.ToLowerInvariant() is not string t ? null
-        : t.Contains("pony") ? "Pony" : Regex.IsMatch(t, "illustrious|noob|wai") ? "Illustrious" : Regex.IsMatch(t, "sdxl|sd ?xl|stable-diffusion-xl") ? "SDXL" : null;
+        : t.Contains("pony") ? "Pony" : Regex.IsMatch(t, "illustrious|noob|(?<![a-z])wai") ? "Illustrious" : Regex.IsMatch(t, "sdxl|sd ?xl|stable-diffusion-xl") ? "SDXL" : null;
     string ModelLineage => Sdxl && ModelBox.SelectedItem is string m ? Lineage($"{ModelRec.Label} {m}") ?? "SDXL" : null;
 
     // null when the LoRA fits the picked model (or nobody can tell); otherwise a short warning
-    string LoraFit(string lora)
+    string LoraFit(string lora) => LoraFit(lora, ModelLineage);
+    string LoraFit(string lora, string want)
     {
-        if (ModelLineage is not string want || loraInfo.GetValueOrDefault(lora)?.BaseModel is not { Length: > 0 } made || Lineage(made) is not string have) return null;
+        if (want == null || loraInfo.GetValueOrDefault(lora)?.BaseModel is not { Length: > 0 } made || Lineage(made) is not string have) return null;
         return have == want || have == "SDXL" && want != "Pony" ? null : $"Made for {have} models: it may look off on this {want} model.";
     }
 

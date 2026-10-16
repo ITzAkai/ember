@@ -295,14 +295,18 @@ public partial class MainWindow
         installingPlugins = true;
         ShowPluginBanner();
         bool wasRunning = server is { HasExited: false };
-        var work = Path.Combine(Path.GetTempPath(), "ImageForge-plugins");
+        // on ComfyUI's own drive: a folder can't be moved from one drive to another (TEMP on C:, ComfyUI on D:)
+        var work = Path.Combine(Root, "ImageForge-plugins");
         try
         {
             if (wasRunning) { PluginProgress("Stopping ComfyUI…"); StopServer(); ready = false; GenerateBtn.IsEnabled = false; SetState("Installing", Brush("Accent")); await Task.Delay(1500); }
             Directory.CreateDirectory(work);
             var requirements = new List<string>();
+            Exception failed = null;
             foreach (var p in list)
             {
+                try
+                {
                 var zip = Path.Combine(work, p.Folder + ".zip");
                 await DownloadFile($"https://codeload.github.com/{p.Repo}/zip/{p.Commit}", zip, (done, _) => PluginProgress($"Downloading {p.Name}: {Size(done)}…"));
                 if (!Sha256Is(zip, p.ZipSha256)) throw new Exception($"{p.Name} didn't match its checksum, so it wasn't installed.");
@@ -310,20 +314,30 @@ public partial class MainWindow
                 if (Directory.Exists(unpacked)) Directory.Delete(unpacked, true);
                 ZipFile.ExtractToDirectory(zip, unpacked);
                 var top = Directory.GetDirectories(unpacked).Single();
+                await GetPluginModels(p, top);                          // its files first: a failed download leaves nothing half-installed
                 var dest = Path.Combine(CustomNodesDir, p.Folder);
-                if (replace != null && Directory.Exists(replace))       // an update or repair: the old copy goes to the Recycle Bin
+                if (replace != null && Directory.Exists(replace))       // an update or repair: the new copy goes in, then the old one to the Recycle Bin
                 {
+                    var fresh = replace + ".new";
+                    if (Directory.Exists(fresh)) Directory.Delete(fresh, true);
+                    Directory.Move(top, fresh);
                     Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(replace, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                    Directory.Move(fresh, replace);
                     dest = replace;
                 }
-                if (Directory.Exists(dest)) throw new Exception($"{dest} already exists.");
-                Directory.Move(top, dest);
+                else
+                {
+                    if (Directory.Exists(dest)) throw new Exception($"{dest} already exists.");
+                    Directory.Move(top, dest);
+                }
                 var req = Path.Combine(dest, "requirements.txt");
                 if (File.Exists(req)) requirements.AddRange(File.ReadAllLines(req));
-                await GetPluginModels(p, dest);
+                }
+                catch (Exception ex) { failed = ex; break; }
             }
             if (manager) requirements.AddRange(File.ReadAllLines(Path.Combine(Root, "ComfyUI", "manager_requirements.txt")));
-            if (requirements.Count > 0) await PipInstall(requirements, work);
+            if (requirements.Count > 0) await PipInstall(requirements, work);     // also for the plugins already in place when a later one failed
+            if (failed != null) throw failed;
             PluginProgress($"Installed {string.Join(", ", list.Select(p => p.Name).Concat(manager ? [ManagerName] : []))}.");
         }
         catch (Exception ex) { PluginProgress("Installing plugins failed: " + ex.Message); }
@@ -347,7 +361,8 @@ public partial class MainWindow
         if (wanted.Count == 0) return;
         PluginProgress("Installing Python packages for the plugins (a few minutes)…");
         var installed = await Run(Python, ["-s", "-m", "pip", "list", "--format=json", "--disable-pip-version-check"]);
-        var pins = JsonNode.Parse(installed.Output)?.AsArray().Where(x => held.Contains(x?["name"]?.ToString().ToLowerInvariant()))
+        // the JSON line only: pip can add warnings after it ("Ignoring invalid distribution …")
+        var pins = JsonNode.Parse(Regex.Match(installed.Output, @"(?m)^\[.*\]\s*$").Value)?.AsArray().Where(x => held.Contains(x?["name"]?.ToString().ToLowerInvariant()))
             .Select(x => $"{x["name"]}=={x["version"]}").ToList() ?? [];
         File.WriteAllLines(Path.Combine(work, "requirements.txt"), wanted);
         File.WriteAllLines(Path.Combine(work, "constraints.txt"), pins);
@@ -375,7 +390,7 @@ public partial class MainWindow
     {
         try
         {
-            var m = Regex.Match((await Run("netstat", ["-ano", "-p", "TCP"])).Output, $@"(?m)^\s*TCP\s+\S+:{Port}\s+\S+\s+LISTENING\s+(\d+)");
+            var m = Regex.Match((await Run("netstat", ["-ano", "-p", "TCP"])).Output, $@"(?m)^\s*TCP\s+\S+:{Port}\s+\S+\s+\S+\s+(\d+)");
             if (!m.Success) return null;
             var p = Process.GetProcessById(int.Parse(m.Groups[1].Value));
             return string.Equals(Path.GetFullPath(p.MainModule.FileName), Path.GetFullPath(Python), StringComparison.OrdinalIgnoreCase) ? p : null;

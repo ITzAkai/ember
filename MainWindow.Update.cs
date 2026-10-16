@@ -16,6 +16,7 @@ public partial class MainWindow
     static string NewExe => Environment.ProcessPath + ".new";
     static string OldExe => Environment.ProcessPath + ".old";
     bool updateReady;
+    static string rejectedDigest;          // a release whose exe turned out older than this one: not downloaded again
 
     async Task CheckForUpdate()
     {
@@ -42,6 +43,7 @@ public partial class MainWindow
             if (!Version.TryParse(tag?.TrimStart('v'), out var latest) || latest <= AppVersion) return true;
             var exe = (release["assets"] as JsonArray)?.FirstOrDefault(a => a?["name"]?.ToString().EndsWith(".exe", StringComparison.OrdinalIgnoreCase) == true);
             if (exe?["browser_download_url"]?.ToString() is not string url || exe["digest"]?.ToString() is not string digest) return true;
+            if (digest == rejectedDigest) return true;
             var sha = digest.Replace("sha256:", "");
             if (!File.Exists(NewExe) || !Sha256Is(NewExe, sha))
             {
@@ -50,7 +52,7 @@ public partial class MainWindow
             }
             // a release holding an older build would reinstall itself on every start
             if (!Version.TryParse(System.Diagnostics.FileVersionInfo.GetVersionInfo(NewExe).FileVersion, out var got) || got <= AppVersion)
-            { File.Delete(NewExe); return true; }
+            { File.Delete(NewExe); rejectedDigest = digest; return true; }
             updateReady = true;
             UpdateBtnText.Text = $"Update to {tag}";
             UpdateBtn.Visibility = Visibility.Visible;
@@ -65,18 +67,19 @@ public partial class MainWindow
         return Convert.ToHexString(SHA256.HashData(s)).Equals(sha, StringComparison.OrdinalIgnoreCase);
     }
 
-    void ApplyUpdate()
+    // false when the files couldn't be swapped (an antivirus holding the new exe, say): this version keeps running
+    bool ApplyUpdate()
     {
-        if (!updateReady) return;
+        if (!updateReady) return true;
         updateReady = false;
-        try { File.Move(Environment.ProcessPath, OldExe, true); File.Move(NewExe, Environment.ProcessPath); }
-        catch { try { if (!File.Exists(Environment.ProcessPath)) File.Move(OldExe, Environment.ProcessPath); } catch { } }
+        try { File.Move(Environment.ProcessPath, OldExe, true); File.Move(NewExe, Environment.ProcessPath); return true; }
+        catch { try { if (!File.Exists(Environment.ProcessPath)) File.Move(OldExe, Environment.ProcessPath); } catch { } return false; }
     }
 
     void Update_Click(object sender, RoutedEventArgs e)
     {
         if (busy) { Note("A picture is being made: update once it's finished.", true); return; }
-        ApplyUpdate();
+        if (!ApplyUpdate() || !File.Exists(Environment.ProcessPath)) { Note("The update couldn't be installed (the new file is in use). Close Ember and try again.", true); return; }
         // the new version starts its own ComfyUI (no taking over this one), so launch settings it adds, like live previews, apply at once
         StopServer();
         restarting = true;

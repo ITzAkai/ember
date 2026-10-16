@@ -106,7 +106,7 @@ public partial class MainWindow
     }
 
     // any other picture model can redraw this one's picture: Anima's or Pony's composition with Krea 2's or a realistic SDXL's look
-    List<string> RefineChoices => imageModels.Where(m => m != ModelBox.SelectedItem as string && RecFamilyOf(m) is "sdxl" or "krea2" or "qwen_image" or "anima").ToList();
+    List<string> RefineChoices => imageModels.Where(m => m != ModelBox.SelectedItem as string && RecFamilyOf(m) is "sdxl" or "krea2" or "qwen_image" or "anima" && !MissingParts(RecFamilyOf(m))).ToList();
     string RefineModel => CurrentBoosters.RefineModel is string m && RefineChoices.Contains(m) ? m : RefineChoices.FirstOrDefault(m => RecFamilyOf(m) == "krea2") ?? RefineChoices.FirstOrDefault();
 
     (bool Can, bool On, string Why) RefineState()
@@ -125,7 +125,8 @@ public partial class MainWindow
         if (VideoOn) return (false, false, "Pictures only.");
         if (!nodeNames.Contains("FaceDetailer") || !nodeNames.Contains("UltralyticsDetectorProvider"))
             return (false, false, "Needs the Impact Pack and its face finder (Settings > Plugins).");
-        if ((Anima || Qwen) && !nodeNames.Contains("InpaintCropImproved"))
+        // the model that redraws the faces decides: the refine model when Refine is on (as in ApplyBoosters)
+        if ((RefineState().On ? RecFamilyOf(RefineModel) : Family) is "qwen_image" or "anima" && !nodeNames.Contains("InpaintCropImproved"))
             return (false, false, $"On {FamilyLabelNow} it needs Inpaint Crop and Stitch (Settings > Plugins).");
         bool on = b.Faces ?? false;
         return (true, on, Sdxl ? "Finds each face and redraws it at higher detail."

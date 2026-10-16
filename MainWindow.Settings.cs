@@ -29,7 +29,7 @@ public partial class MainWindow
         ShowPlugins();
         ShowPerformance();
         _ = ShowHelperChoice();
-        AboutText.Text = $"Ember {AppVersion.ToString(2)}, ComfyUI in {Root.TrimEnd('\\')}\nComfyUI {(server != null ? "started by this app" : "already running")} at {Api}\nSettings in {Path.GetDirectoryName(Settings.FilePath)}";
+        AboutText.Text = $"Ember {AppVersion.ToString(3)}, ComfyUI in {Root.TrimEnd('\\')}\nComfyUI {(server != null ? "started by this app" : "already running")} at {Api}\nSettings in {Path.GetDirectoryName(Settings.FilePath)}";
         SettingsPanel.Visibility = Visibility.Visible;
     }
 
@@ -83,6 +83,7 @@ public partial class MainWindow
     // a fresh copy of the app takes over the running ComfyUI (no 30 s restart), then this one closes, saving as usual
     void RestartApp_Click(object sender, RoutedEventArgs e)
     {
+        ApplyUpdate();                          // a waiting update goes in first, so the restart runs it (as the Update button does)
         restarting = true;
         var adopt = server is { HasExited: false } ? $"--adopt {server.Id}" : "";
         Process.Start(new ProcessStartInfo(Environment.ProcessPath, adopt) { WorkingDirectory = Root, UseShellExecute = false });

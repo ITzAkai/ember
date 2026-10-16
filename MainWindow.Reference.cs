@@ -41,7 +41,7 @@ public partial class MainWindow
 
     // the Qwen-Image model that reads the pictures: the picked one, or the plain one first (it keeps faces best)
     string QwenForReferences => Qwen ? ModelBox.SelectedItem as string
-        : imageModels.Where(m => separate.TryGetValue(m, out var s) && s.Family == "qwen_image").OrderBy(m => m.Contains("noct", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+        : imageModels.Where(m => separate.TryGetValue(m, out var s) && s.Family == "qwen_image" && !MissingParts("qwen_image")).OrderBy(m => m.Contains("noct", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
 
     bool UsingReferences => references.Count > 0 && CreateMode.IsChecked == true && QwenForReferences != null;
 
@@ -91,7 +91,8 @@ public partial class MainWindow
         else if (!Qwen)
         {
             Note($"Qwen-Image keeps who or what is in the picture, then {ModelRec.Label} redraws it in its own style.");
-            if (ready && !busy) _ = LooksOf(r);       // ready by the time it's used; while pictures are being made, Generate asks instead
+            // one at a time: the text model answers one request, and the others would come back empty
+            if (ready && !busy && !references.Any(x => x != r && x.Looks is { IsCompleted: false })) _ = LooksOf(r);       // ready by the time it's used; while pictures are being made, Generate asks instead
         }
     }
 
@@ -148,9 +149,11 @@ public partial class MainWindow
     void SaveCharacter_Click(object sender, RoutedEventArgs e)
     {
         if (references.Count == 0 || Ask("Save as character", "") is not string typed) return;
-        var name = string.Concat(typed.Split(Path.GetInvalidFileNameChars())).Trim();
-        if (name == "") return;
-        var dir = Path.Combine(CharactersDir, name);
+        // Windows drops trailing dots and spaces ("Anna." would overwrite "Anna"), and "." or ".." would point at the folders above
+        var name = string.Concat(typed.Split(Path.GetInvalidFileNameChars())).Trim().TrimEnd('.', ' ');
+        var dir = Path.GetFullPath(Path.Combine(CharactersDir, name));
+        if (name == "" || !string.Equals(Path.GetDirectoryName(dir), Path.GetFullPath(CharactersDir), StringComparison.OrdinalIgnoreCase))
+        { Note("Give the character a name made of letters or numbers.", true); return; }
         try
         {
             if (Directory.Exists(dir)) Directory.Delete(dir, true);         // the same name again: these pictures replace the old ones
@@ -281,7 +284,7 @@ public partial class MainWindow
 
     // whole picture at 0.6 with each half at 0.4 for its person (the plugin's own example); after the boosters, so Hi-res and Fix faces
     // redraw without the left/right split
-    void UseCouple(JsonObject g)
+    void UseCouple(JsonObject g, string left, string right)
     {
         var k = (JsonObject)g["3"]["inputs"];
         var clip = g["6"]["inputs"]["clip"];
@@ -290,8 +293,8 @@ public partial class MainWindow
         g["couple_all"] = Area(0, 1, 0.6);
         g["couple_left_area"] = Area(0, 0.5, 0.4);
         g["couple_right_area"] = Area(0.5, 0.5, 0.4);
-        g["couple_left"] = Node("CLIPTextEncode", new() { ["text"] = CoupleLeftBox.Text.Trim(), ["clip"] = clip.DeepClone() });
-        g["couple_right"] = Node("CLIPTextEncode", new() { ["text"] = CoupleRightBox.Text.Trim(), ["clip"] = clip.DeepClone() });
+        g["couple_left"] = Node("CLIPTextEncode", new() { ["text"] = left, ["clip"] = clip.DeepClone() });
+        g["couple_right"] = Node("CLIPTextEncode", new() { ["text"] = right, ["clip"] = clip.DeepClone() });
         g["couple"] = Node("AttentionCouplePPM", new()
         {
             ["model"] = k["model"].DeepClone(), ["base_cond"] = k["positive"].DeepClone(), ["base_mask"] = Link("couple_all", 0),

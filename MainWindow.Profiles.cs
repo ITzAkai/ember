@@ -131,8 +131,9 @@ public partial class MainWindow
         if (tab.RandomSeed is bool random) RandomSeed.IsChecked = random;
         if (tab.Seed is long seed) SeedBox.Text = seed.ToString();
         var own = ProfileOf(tab.Model);
-        if (tab.TextEncoder != null) own.TextEncoder = tab.TextEncoder;
-        if (tab.Vae != null) own.Vae = tab.Vae;
+        // a tab saved with the automatic part holds null: that's a choice too (only tabs from before prompts were saved leave it alone)
+        if (tab.TextEncoder != null || tab.Prompt != null) own.TextEncoder = tab.TextEncoder;
+        if (tab.Vae != null || tab.Prompt != null) own.Vae = tab.Vae;
         ShowParts();
     }
 
@@ -163,7 +164,7 @@ public partial class MainWindow
         tabWatch.Tick += (_, _) =>
         {
             // (in the other mode, where its model isn't in the list, the tab isn't what's on screen: nothing to save into it)
-            if (ActiveTab is not { } tab || !ready || loadingOptions || applyingProfile || TabsBar.Visibility != Visibility.Visible || !ModelBox.Items.Contains(tab.Model))
+            if (ActiveTab is not { } tab || !ready || loadingOptions || applyingProfile || TabsBar.Visibility != Visibility.Visible || !(VideoOn ? videoModels : imageModels).Contains(tab.Model))
             { TabChanges.Visibility = Visibility.Collapsed; return; }
             if (tabBaseline == null) { tabBaseline = TabSnapshot(); return; }       // just started: what's on screen is where changes count from
             bool changed = TabSnapshot() != tabBaseline;
@@ -213,7 +214,7 @@ public partial class MainWindow
             b.Click += (_, _) => OpenTab(tab);         // the open tab again: back to how it was saved
             var menu = new ContextMenu();
             void Item(string text, Action act) { var i = new MenuItem { Header = text }; i.Click += (_, _) => act(); menu.Items.Add(i); }
-            Item("Rename…", () => { if (Ask("Rename tab", tab.Name) is string name) { if (active) settings.ActiveTab = name; tab.Name = Unique(name, tab); settings.Save(); ShowTabs(); } });
+            Item("Rename…", () => { if (Ask("Rename tab", tab.Name) is string name) { tab.Name = Unique(name, tab); if (active) settings.ActiveTab = tab.Name; settings.Save(); ShowTabs(); } });
             Item("Duplicate", () => { var copy = Clone(tab); copy.Name = Unique(tab.Name + " copy", null); settings.Tabs.Add(copy); settings.Save(); ShowTabs(); });
             Item("Export…", () => ExportTabs([tab]));
             Item("Delete", () => { settings.Tabs.Remove(tab); if (active) settings.ActiveTab = null; settings.Save(); ShowTabs(); });
@@ -259,12 +260,12 @@ public partial class MainWindow
         // the model list shows pictures or videos: a video model's tab switches to Video first, and a picture model's back
         if (videoModels.Contains(tab.Model) && !VideoOn) VideoMode.IsChecked = true;
         else if (imageModels.Contains(tab.Model) && VideoOn) CreateMode.IsChecked = true;
-        if (!ModelBox.Items.Contains(tab.Model)) { Note($"{tab.Model} isn't installed, so this tab can't open.", true); return; }
+        if (!(VideoOn ? videoModels : imageModels).Contains(tab.Model)) { Note($"{tab.Model} isn't installed, so this tab can't open.", true); return; }
         LeavingModel();
         applyingProfile = true;
         try
         {
-            ModelBox.SelectedItem = tab.Model;
+            PickModel(tab.Model);
             Apply(tab);
             ApplyTab(tab);
             ProfileOf(tab.Model).Boosters = Clone(tab.Boosters) ?? new Boosters();
@@ -311,7 +312,7 @@ public partial class MainWindow
             }
             settings.Save();
             ShowTabs();
-            var missing = tabs.Where(t => t != null && !ModelBox.Items.Contains(t.Model)).Select(t => t.Model).Distinct().ToList();
+            var missing = tabs.Where(t => t != null && !imageModels.Contains(t.Model) && !videoModels.Contains(t.Model)).Select(t => t.Model).Distinct().ToList();
             Note($"Imported {tabs.Count} tab{(tabs.Count == 1 ? "" : "s")}." + (missing.Count > 0 ? $" Not installed here: {string.Join(", ", missing)}." : ""));
         }
         catch (Exception ex) { Note("Couldn't read those tabs: " + ex.Message, true); }
