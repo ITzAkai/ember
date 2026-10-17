@@ -77,6 +77,9 @@ public partial class MainWindow
 
     static string Size(long bytes) => bytes >= 1L << 30 ? $"{bytes / (double)(1L << 30):0.0} GB" : $"{bytes / (double)(1 << 20):0} MB";
     static string PathOf(CatalogItem m) => Path.Combine(ModelsDir, m.Folder, m.File);
+    // a model moved to a faster drive leaves a link behind, whose own size is 0: the size is the file it points to
+    static FileInfo RealFile(string path) { var f = new FileInfo(path); return f.LinkTarget != null && f.ResolveLinkTarget(true) is FileInfo t && t.Exists ? t : f; }
+    static long SizeOf(string path) => RealFile(path).Length;
 
     // an installed file and what it's for, worked out from its folder and its contents
     record Installed(string Path, string Folder, string Name, string Group, string Family, string About, string License);
@@ -161,7 +164,7 @@ public partial class MainWindow
         try
         {
             var drive = new DriveInfo(Path.GetPathRoot(ModelsDir));
-            ModelsSummary.Text = $"{files.Count} files, {Size(files.Sum(f => new FileInfo(f.Path).Length))} · {Size(drive.AvailableFreeSpace)} free on {drive.Name.TrimEnd('\\')}";
+            ModelsSummary.Text = $"{files.Count} files, {Size(files.Sum(f => SizeOf(f.Path)))} · {Size(drive.AvailableFreeSpace)} free on {drive.Name.TrimEnd('\\')}";
         }
         catch { ModelsSummary.Text = ""; }
 
@@ -214,7 +217,7 @@ public partial class MainWindow
                     var family = f.Family;
                     use = () => UseLora(file, family);
                 }
-                ModelsList.Children.Add(ModelRow(title, KindOf(f.Folder), about ?? "", f.License == null ? $"{Size(new FileInfo(f.Path).Length)} · {file}" : $"{Size(new FileInfo(f.Path).Length)} · {f.License}",
+                ModelsList.Children.Add(ModelRow(title, KindOf(f.Folder), about ?? "", f.License == null ? $"{Size(SizeOf(f.Path))} · {file}" : $"{Size(SizeOf(f.Path))} · {f.License}",
                     f.Path, null, FamilyLabel(f.Family), inUse, use, warn, page));
             }
         }
@@ -543,7 +546,7 @@ public partial class MainWindow
 
     async void RemoveModel(string name, string path, string warning = null)
     {
-        if (MessageBox.Show(this, $"Move {name} ({Size(new FileInfo(path).Length)}) to the Recycle Bin?" + (warning == null ? "" : "\n\n" + warning), "Ember",
+        if (MessageBox.Show(this, $"Move {name} ({Size(SizeOf(path))}) to the Recycle Bin?" + (warning == null ? "" : "\n\n" + warning), "Ember",
                 MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
         try { Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin); }
         catch (Exception ex) { ModelsNote.Text = $"Couldn't remove {name}: {ex.Message}"; return; }

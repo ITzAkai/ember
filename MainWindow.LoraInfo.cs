@@ -39,7 +39,7 @@ public partial class MainWindow
             {
                 var path = Path.Combine(ModelsDir, "loras", lora);
                 if (!File.Exists(path)) continue;
-                var fi = new FileInfo(path);
+                var fi = RealFile(path);
                 if (loraInfo.TryGetValue(lora, out var known) && known.Size == fi.Length && known.Modified == fi.LastWriteTimeUtc && known.Strength != null && known.BaseModel != null) continue;     // (many LoRAs have no trigger words: not a reason to look again)
                 loraInfo[lora] = await LookUp(path, fi);
                 try { File.WriteAllText(LoraInfoFile, JsonSerializer.Serialize(loraInfo)); } catch { }

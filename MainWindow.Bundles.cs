@@ -345,9 +345,9 @@ public partial class MainWindow
         {
             var path = PartPaths(folder, file).FirstOrDefault(File.Exists);
             if (path == null) { BundlesNote.Text = $"{file} isn't in the models folder, so it can't go in a bundle."; return; }
-            BundlesNote.Text = $"Checking {file} ({Size(new FileInfo(path).Length)})…";
+            BundlesNote.Text = $"Checking {file} ({Size(SizeOf(path))})…";
             var sha = await Task.Run(() => { using var s = File.OpenRead(path); return Convert.ToHexString(SHA256.HashData(s)).ToLowerInvariant(); });
-            var source = await SourceOf(folder, file, sha, new FileInfo(path).Length);
+            var source = await SourceOf(folder, file, sha, SizeOf(path));
             if (source == null) { BundlesNote.Text = $"No download source for {file}, so the bundle wasn't made."; return; }
             files.Add(source);
         }
