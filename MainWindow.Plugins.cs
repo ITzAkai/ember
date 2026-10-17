@@ -73,7 +73,8 @@ public partial class MainWindow
 
     string CustomNodesDir => Path.Combine(Root, "ComfyUI", "custom_nodes");
     string Python => Path.Combine(Root, "python_embeded", "python.exe");
-    string ServerLog => Path.Combine(Root, "comfy_server.log");
+    // a second Ember on another port (tests) keeps its own log: the first one holds comfy_server.log open
+    string ServerLog => Path.Combine(Root, Port == 8188 ? "comfy_server.log" : $"comfy_server_{Port}.log");
     HashSet<string> nodeNames = new();          // every node ComfyUI has loaded, from /object_info
     bool installingPlugins;
 

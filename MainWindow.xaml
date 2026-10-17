@@ -561,6 +561,74 @@
 
               <!-- video mode: clip shape and length (Wan 2.1 makes 16 frames a second) -->
               <StackPanel x:Name="VideoSection" Visibility="Collapsed">
+                <!-- MiniMax H3: start from a video: extend it, put a new character in it, use it as a reference, or restyle it -->
+                <StackPanel x:Name="SourceSection" Visibility="Collapsed" AllowDrop="True" DragOver="Source_DragOver" Drop="Source_Drop">
+                  <TextBlock Text="From a video (optional)" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                  <DockPanel x:Name="ChooseSourceBtn">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="44" Padding="14,0" Margin="6,0,0,0" Click="PasteSource_Click"
+                            ToolTip="Use a video file copied in Explorer" AutomationProperties.Name="Paste video">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE77F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Paste" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Ghost}" Height="44" Click="ChooseSource_Click" AutomationProperties.Name="Choose video">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE714;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="Choose a video…" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+                  </DockPanel>
+                  <StackPanel x:Name="SourceArea" Visibility="Collapsed">
+                    <Border Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="9" Padding="8">
+                      <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Padding="12,0" Margin="6,0,0,0" Content="Remove" Click="RemoveSource_Click"
+                                AutomationProperties.Name="Remove video"/>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Padding="12,0" Content="Change" Click="ChooseSource_Click"/>
+                        <Border Width="44" Height="44" CornerRadius="6" Background="{DynamicResource Line}">
+                          <TextBlock Text="&#xE714;" FontFamily="{StaticResource Icons}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center" Margin="12,0,8,0">
+                          <TextBlock x:Name="SourceName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock x:Name="SourceAbout" Style="{StaticResource Note}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                      </DockPanel>
+                    </Border>
+                    <TextBlock Text="What to do with it" Style="{StaticResource Heading}" Margin="0,14,0,8"/>
+                    <ComboBox x:Name="SourceUseBox" AutomationProperties.Name="What to do with the video" SelectionChanged="SourceUse_Changed"/>
+                    <!-- the new character (replace) or the pictures it may use (reference) -->
+                    <StackPanel x:Name="CharacterArea" Visibility="Collapsed" AllowDrop="True" DragOver="Start_DragOver" Drop="Character_Drop">
+                      <TextBlock Text="Character picture" Style="{StaticResource Heading}" Margin="0,14,0,8"/>
+                      <DockPanel x:Name="ChooseCharacterBtn">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="40" Padding="14,0" Margin="6,0,0,0" Click="PasteCharacter_Click"
+                                AutomationProperties.Name="Paste character picture">
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE77F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Paste" VerticalAlignment="Center"/>
+                          </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource Ghost}" Height="40" Click="ChooseCharacter_Click" AutomationProperties.Name="Choose character picture">
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE77B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBlock Text="Choose a picture…" VerticalAlignment="Center"/>
+                          </StackPanel>
+                        </Button>
+                      </DockPanel>
+                      <Border x:Name="CharacterCard" Visibility="Collapsed" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                              CornerRadius="9" Padding="8">
+                        <DockPanel>
+                          <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Padding="12,0" Margin="6,0,0,0" Content="Remove" Click="RemoveCharacter_Click"
+                                  AutomationProperties.Name="Remove character picture"/>
+                          <Border Width="44" Height="44" CornerRadius="6">
+                            <Border.Background><ImageBrush x:Name="CharacterThumb" Stretch="UniformToFill"/></Border.Background>
+                          </Border>
+                          <TextBlock x:Name="CharacterName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="12,0,8,0"/>
+                        </DockPanel>
+                      </Border>
+                    </StackPanel>
+                    <TextBlock x:Name="SourceNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                  </StackPanel>
+                </StackPanel>
                 <!-- picture-to-video: the clip starts on this picture -->
                 <StackPanel x:Name="StartSection" Visibility="Collapsed" AllowDrop="True" DragOver="Start_DragOver" Drop="Start_Drop">
                   <TextBlock Text="Start picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
@@ -657,14 +725,20 @@
                 </Border>
                 <TextBlock Text="Length" Style="{StaticResource Heading}" Margin="0,22,0,8" ToolTip="Longer clips take longer to make, roughly in proportion"/>
                 <Border Style="{StaticResource SegmentHost}">
-                  <UniformGrid x:Name="LengthGroup" Rows="1">
+                  <UniformGrid x:Name="LengthGroup" Columns="3" ToggleButton.Checked="Length_Checked">
                     <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="33" Content="2 s" AutomationProperties.Name="2 seconds"/>
                     <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="49" Content="3 s" AutomationProperties.Name="3 seconds"/>
                     <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="81" Content="5 s" AutomationProperties.Name="5 seconds"/>
                     <RadioButton x:Name="Length8" Style="{StaticResource Segment}" GroupName="vlen" Tag="129" Content="8 s" AutomationProperties.Name="8 seconds" Visibility="Collapsed"/>
                     <RadioButton x:Name="Length10" Style="{StaticResource Segment}" GroupName="vlen" Tag="161" Content="10 s" AutomationProperties.Name="10 seconds" Visibility="Collapsed"/>
+                    <!-- MiniMax H3: longer videos are made in 10-second parts, each going on from the end of the one before -->
+                    <RadioButton x:Name="Length15" Style="{StaticResource Segment}" GroupName="vlen" Tag="241" Content="15 s" AutomationProperties.Name="15 seconds" Visibility="Collapsed"/>
+                    <RadioButton x:Name="Length30" Style="{StaticResource Segment}" GroupName="vlen" Tag="481" Content="30 s" AutomationProperties.Name="30 seconds" Visibility="Collapsed"/>
+                    <RadioButton x:Name="Length60" Style="{StaticResource Segment}" GroupName="vlen" Tag="961" Content="1 min" AutomationProperties.Name="1 minute" Visibility="Collapsed"/>
                   </UniformGrid>
                 </Border>
+                <TextBlock x:Name="LongNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"
+                           Text="Over 10 seconds, the video is made in 10-second parts, each going on from the end of the one before, and joined. A minute is 7 parts: expect hours on this PC."/>
               </StackPanel>
 
               <StackPanel x:Name="CountSection">
@@ -1298,6 +1372,13 @@
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="&#xE8D2;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                   <TextBlock Text="Use prompt" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="ExtendBtn" Style="{StaticResource Ghost}" Margin="4" Click="ExtendViewed_Click" ToolTip="Go on from the end of this clip with MiniMax H3"
+                      AutomationProperties.Name="Extend this video" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE72A;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Extend" VerticalAlignment="Center"/>
                 </StackPanel>
               </Button>
               <Button x:Name="MakeVideoBtn" Style="{StaticResource Ghost}" Margin="4" Click="MakeVideoFromViewed_Click" ToolTip="Animate this picture into a short clip"

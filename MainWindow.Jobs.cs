@@ -26,6 +26,8 @@ class Job
     public long LogStart;                           // where ComfyUI's log stood when it was sent, to read what it said about this job
     public JsonObject Body;                         // what was sent, to send again at the front of the queue
     public BatchFiles Shared;                       // the uploads the pictures of one Generate share (one copy of the photo for all)
+    public Func<Job, Task<JsonObject>> Next;        // a video made in parts: builds the next part once this one is done
+    public bool Continued;                          // on its second part or later: keeps the time it began
 }
 
 // files several jobs use: removed when the last of them is done
@@ -279,6 +281,28 @@ public partial class MainWindow
         }
     }
 
+    // the next part of a video made in parts, sent to the front of the queue so the parts run one after another.
+    // The old prompt id goes first, so ComfyUI's second "finished" message for the last part can't end the job.
+    async Task Continue(Job job, Func<Job, Task<JsonObject>> next)
+    {
+        (job.Next, job.Id, job.Running, job.Continued) = (null, null, false, true);
+        try
+        {
+            var body = await next(job);
+            if (!jobs.Contains(job)) return;                 // cancelled while it was being built
+            if (body["extra_data"] is not JsonObject extra) body["extra_data"] = extra = new JsonObject();
+            extra["preview_method"] ??= "auto";
+            body["front"] = true;
+            job.Body = body;
+            using var r = await http.PostAsync("/prompt", Json(body));
+            var j = JsonNode.Parse(await r.Content.ReadAsStringAsync());
+            if (!r.IsSuccessStatusCode || j?["error"] != null) throw new Exception(j?["error"]?["message"]?.GetValue<string>() ?? $"HTTP {(int)r.StatusCode}");
+            job.Id = j["prompt_id"].GetValue<string>();
+            if (!jobs.Contains(job)) try { await http.PostAsync("/queue", Json(new JsonObject { ["delete"] = new JsonArray(job.Id) })); } catch { }
+        }
+        catch (Exception e) { Finish(job, "Couldn't go on: " + e.Message); }
+    }
+
     // into ComfyUI's input/forge folder under a fresh name, so queued jobs never overwrite each other's photo
     async Task<string> Upload(byte[] png, Job job)
     {
@@ -289,6 +313,7 @@ public partial class MainWindow
 
     void Finish(Job job, string error, bool quiet = false)
     {
+        if (error == null && job.Next is { } next && jobs.Contains(job)) { _ = Continue(job, next); return; }
         if (!jobs.Remove(job)) return;
         if (LivePanel.DataContext is Shot watched && job.Slots.Contains(watched)) CloseLive();   // the picture being watched won't come
         if (error == null && server != null && loraRows.Any(r => r.Box?.SelectedItem is string s && s != "None")) CheckLoraLog(job.LogStart);
@@ -474,7 +499,7 @@ public partial class MainWindow
         {
             case "execution_start":
                 job.Running = true;
-                job.Started = DateTime.Now;
+                if (!job.Continued) job.Started = DateTime.Now;
                 UpdateBusy();
                 break;
             case "executing" when data["node"] is JsonNode node:

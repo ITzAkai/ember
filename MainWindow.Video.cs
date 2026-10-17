@@ -50,12 +50,15 @@ public partial class MainWindow
         }
         bool h3 = VideoOn && H3;
         StartSection.Visibility = VideoOn && (PictureVideo || H3) ? Visibility.Visible : Visibility.Collapsed;
-        EndSection.Visibility = VideoAdvArea.Visibility = Length8.Visibility = Length10.Visibility = h3 ? Visibility.Visible : Visibility.Collapsed;
+        EndSection.Visibility = VideoAdvArea.Visibility = Length8.Visibility = Length10.Visibility = Length15.Visibility = Length30.Visibility = Length60.Visibility
+            = h3 ? Visibility.Visible : Visibility.Collapsed;
+        LengthGroup.Columns = h3 ? 4 : 3;
         BoostersArea.Visibility = VideoOn ? Visibility.Collapsed : Visibility.Visible;            // the boosters are for pictures only
         AdvancedToggle.Content = VideoOn ? "Advanced video settings" : "Advanced settings";
         // only once a Wan model is actually picked: H3's 8 / 10 s survive restarts and mode switches (Wan jobs are capped at 81 frames anyway)
-        if (VideoOn && Wan && (Length8.IsChecked == true || Length10.IsChecked == true)) Pick(LengthGroup, "81", "81");
+        if (VideoOn && Wan && new[] { Length8, Length10, Length15, Length30, Length60 }.Any(l => l.IsChecked == true)) Pick(LengthGroup, "81", "81");
         MotionValue.Text = MotionText;
+        ShowSourceOptions();
     }
 
     string MotionText => MotionSlider.Value < 12 ? $"Calm ({MotionSlider.Value:0})" : MotionSlider.Value > 12 ? $"Lively ({MotionSlider.Value:0})" : "Normal (12)";
@@ -152,83 +155,6 @@ public partial class MainWindow
             g["47"] = Node("ImageFromBatch", new() { ["image"] = Link("8", 0), ["batch_index"] = frames / 2, ["length"] = 1 });
             g["9"] = Node("SaveImage", new() { ["filename_prefix"] = $"forge/{name}", ["images"] = Link("47", 0) });
             var meta = new Meta(prompt, negative, seed, steps, cfg, sampler, scheduler, model, From: start == null ? null : $"Started from {from}");
-            return new JsonObject
-            {
-                ["prompt"] = g, ["client_id"] = clientId,
-                ["extra_data"] = new JsonObject { ["extra_pnginfo"] = new JsonObject { ["forge"] = JsonSerializer.SerializeToNode(meta) }, ["preview_method"] = "auto" },
-            };
-        }, "Filming · step", "Starting");
-    }
-
-    // ---------------- MiniMax H3 ----------------
-    // The clip and its sound in one pass, as in ComfyUI's template: MiniMaxH3ImageToVideo reads the prompt (Qwen3-VL-32B) and makes
-    // the joint video+audio latent, the sampler runs on both, and the two VAEs decode the frames and the soundtrack into one MP4.
-    // CFG 1 is the template's single pass; above 1 the negative prompt steers away from what it names, at twice the time.
-    async Task MakeH3Video(long seed)
-    {
-        var model = (string)ModelBox.SelectedItem;
-        if (h3AudioVae == null) { Note("MiniMax H3 needs its audio VAE (minimax_h3_audio_vae_fp32) in the vae folder.", true); return; }
-        var size = Picked(VideoSizeGroup).Split('x').Select(v => (int.Parse(v) + 16) / 32 * 32).ToArray();     // H3 works in steps of 32 pixels
-        int frames = H3Frames(int.Parse(Picked(LengthGroup))), steps = Steps;
-        var rawPrompt = CurrentStyle.Apply(PromptBox.Text.Trim());
-        var activeLoras = AllActiveLoras(rawPrompt, out rawPrompt);
-        var prompt = WithCamera(rawPrompt);
-        var (start, end, from) = (startPicture, endPicture, startName);
-        double motion = MotionSlider.Value;
-        var negative = string.Join(", ", new[] { NegativeBox.Text.Trim(), CurrentStyle.Negative }.Where(t => t != ""));
-        double cfg = CfgSlider.Value;
-        string sampler = (string)SamplerBox.SelectedItem, scheduler = (string)SchedulerBox.SelectedItem;
-        string te = TeFor("minimax_h3"), vae = VaeFor("minimax_h3"), audioVae = h3AudioVae;
-        await Enqueue(1, async job =>
-        {
-            var name = $"vid_{DateTime.Now:yyMMdd_HHmmss_fff}";
-            var g = new JsonObject
-            {
-                ["4"] = UnetNode(separate[model].Unet),
-                ["44"] = ClipNode(te, "minimax"),
-                ["45"] = Node("VAELoader", new() { ["vae_name"] = vae }),
-                ["48"] = Node("VAELoader", new() { ["vae_name"] = audioVae }),
-            };
-            var m = "4";            // the node whose model goes on: a fresh link each use, since a JSON node can't sit in two places
-            int loraNo = 1;
-            foreach (var (loraName, strength) in activeLoras)        // H3 LoRAs change the model only: its text encoder isn't trained
-            {
-                var idStr = $"lora{loraNo++}";
-                g[idStr] = Node("LoraLoaderModelOnly", new() { ["model"] = Link(m, 0), ["lora_name"] = loraName, ["strength_model"] = strength });
-                m = idStr;
-            }
-            if (motion != 12)            // H3's own shift is 12: higher spends more of the steps on big changes, so more motion
-            {
-                g["50"] = Node("MiniMaxH3SigmaShift", new() { ["model"] = Link(m, 0), ["shift_video"] = motion, ["shift_audio"] = 3.0 });
-                m = "50";
-            }
-            var h3 = new JsonObject
-            {
-                ["clip"] = Link("44", 0), ["vae"] = Link("45", 0), ["prompt"] = prompt, ["width"] = size[0], ["height"] = size[1], ["length"] = frames,
-            };
-            if (start != null) { g["60"] = Node("LoadImage", new() { ["image"] = await Upload(start, job) }); h3["first_frame"] = Link("60", 0); }
-            if (end != null) { g["61"] = Node("LoadImage", new() { ["image"] = await Upload(end, job) }); h3["last_frame"] = Link("61", 0); }
-            g["6"] = Node("MiniMaxH3ImageToVideo", h3);
-            if (cfg > 1)
-            {
-                g["7"] = Node("CLIPTextEncode", new() { ["text"] = negative, ["clip"] = Link("44", 0) });
-                g["51"] = Node("CFGGuider", new() { ["model"] = Link(m, 0), ["positive"] = Link("6", 0), ["negative"] = Link("7", 0), ["cfg"] = cfg });
-            }
-            else g["51"] = Node("BasicGuider", new() { ["model"] = Link(m, 0), ["conditioning"] = Link("6", 0) });
-            g["52"] = Node("RandomNoise", new() { ["noise_seed"] = seed });
-            g["53"] = Node("KSamplerSelect", new() { ["sampler_name"] = sampler });
-            g["54"] = Node("BasicScheduler", new() { ["model"] = Link(m, 0), ["scheduler"] = scheduler, ["steps"] = steps, ["denoise"] = 1.0 });
-            g["3"] = Node("SamplerCustomAdvanced", new()
-            {
-                ["noise"] = Link("52", 0), ["guider"] = Link("51", 0), ["sampler"] = Link("53", 0), ["sigmas"] = Link("54", 0), ["latent_image"] = Link("6", 1),
-            });
-            g["8"] = Node("VAEDecode", new() { ["samples"] = Link("3", 0), ["vae"] = Link("45", 0) });
-            g["49"] = Node("VAEDecodeAudio", new() { ["samples"] = Link("3", 0), ["vae"] = Link("48", 0) });
-            g["40"] = Node("CreateVideo", new() { ["images"] = Link("8", 0), ["audio"] = Link("49", 0), ["fps"] = 24.0 });   // H3 makes 24 frames a second
-            g["41"] = Node("SaveVideo", new() { ["video"] = Link("40", 0), ["filename_prefix"] = $"forge/clips/{name}", ["format"] = "auto", ["format.codec"] = "auto" });
-            g["47"] = Node("ImageFromBatch", new() { ["image"] = Link("8", 0), ["batch_index"] = frames / 2, ["length"] = 1 });
-            g["9"] = Node("SaveImage", new() { ["filename_prefix"] = $"forge/{name}", ["images"] = Link("47", 0) });
-            var meta = new Meta(prompt, cfg > 1 ? negative : "", seed, steps, cfg, sampler, scheduler, model, From: start == null ? null : $"Started from {from}");
             return new JsonObject
             {
                 ["prompt"] = g, ["client_id"] = clientId,
@@ -361,6 +287,7 @@ public partial class MainWindow
         if (clip) ViewerVideo.Play();
         foreach (var b in new UIElement[] { EditThisBtn, MoreLikeThisBtn, UpscaleBtn, CutoutBtn, ExpandViewedBtn, DescribeBtn, CopyBtn, MakeVideoBtn, SecretViewedBtn })
             b.Visibility = s.IsVideo ? Visibility.Collapsed : Visibility.Visible;
+        ExtendBtn.Visibility = clip ? Visibility.Visible : Visibility.Collapsed;
     }
 
     void StopClip() { ViewerVideo.Stop(); ViewerVideo.Source = null; }     // also lets go of the file, so it can be deleted

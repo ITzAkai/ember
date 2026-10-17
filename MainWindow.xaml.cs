@@ -857,7 +857,7 @@ public partial class MainWindow : Window
 
     void OpenLog_Click(object sender, RoutedEventArgs e)
     {
-        var log = Path.Combine(Root, "comfy_server.log");
+        var log = ServerLog;
         if (File.Exists(log)) Process.Start(new ProcessStartInfo(log) { UseShellExecute = true });
     }
 
@@ -889,7 +889,7 @@ public partial class MainWindow : Window
             if (!string.IsNullOrWhiteSpace(settings.OutputDir)) args += $" --output-directory \"{settings.OutputDir.TrimEnd('\\')}\"";
             server = new Process
             {
-                StartInfo = new ProcessStartInfo("cmd.exe", $"/s /c \"\"{python}\" {args} > comfy_server.log 2>&1\"")
+                StartInfo = new ProcessStartInfo("cmd.exe", $"/s /c \"\"{python}\" {args} > {Path.GetFileName(ServerLog)} 2>&1\"")
                 { WorkingDirectory = Root, UseShellExecute = false, CreateNoWindow = true }
             };
             server.Start();
@@ -1240,7 +1240,9 @@ public partial class MainWindow : Window
             if (label.Contains("wan")) return "wan";
             if (label.Contains("sdxl") || label.Contains("stable-diffusion-xl")) return "sdxl";
             var keys = string.Join('\n', json.Select(k => k.Key));
-            if (Regex.IsMatch(keys, @"(?<![\w])token_refiner\.") || keys.Contains("audio_patch_proj")) return "minimax_h3";   // H3's own layers (not Hunyuan's individual_token_refiner)
+            // H3's own layers (not Hunyuan's individual_token_refiner), or its blocks' attn.qkv_proj and mlp.fc1/fc2 for LoRAs that train only those
+            if (Regex.IsMatch(keys, @"(?<![\w])token_refiner\.") || keys.Contains("audio_patch_proj")
+                || Regex.IsMatch(keys, @"blocks[._]\d+[._]attn[._]qkv_proj") && Regex.IsMatch(keys, @"mlp[._]fc[12]")) return "minimax_h3";
             if (keys.Contains(".attn.wk.") || keys.Contains(".attn.gate.") || keys.Contains("txtfusion") || keys.Contains("text_fusion")) return "krea2";
             if (keys.Contains("img_mlp") || keys.Contains("txt_mlp") || keys.Contains("img_mod")) return "qwen_image";
             if (keys.Contains("llm_adapter") || keys.Contains("adaln_modulation")) return "anima";
@@ -1278,7 +1280,8 @@ public partial class MainWindow : Window
         Lineage("Pony") == "Pony" && Lineage("Illustrious") == "Illustrious" && Lineage("NoobAI") == "Illustrious" && Lineage("SDXL 1.0") == "SDXL"
         && Lineage("Unholy Desire Mix (Illustrious) unholyDesireMixSinister_v90.safetensors") == "Illustrious" && Lineage("Flux.1 D") == null && Lineage(null) == null;
 
-    // --selftest part: slider LoRAs that train only cross- or only self-attention are still Anima's; Wan's and SDXL's stay theirs
+    // --selftest part: slider LoRAs that train only cross- or only self-attention are still Anima's; Wan's and SDXL's stay theirs;
+    // an H3 LoRA in kohya names (attn_qkv_proj, mlp_fc1) is H3's
     static bool SelfTestLoraFamily()
     {
         var file = Path.Combine(Path.GetTempPath(), "imageforge-selftest-family.safetensors");
@@ -1293,7 +1296,8 @@ public partial class MainWindow : Window
             return Family("lora_unet_blocks_0_cross_attn_k_proj.lora_down.weight") == "anima"
                 && Family("lora_unet_blocks_0_self_attn_q_proj.lora_down.weight", "lora_unet_blocks_0_mlp_layer1.lora_up.weight") == "anima"
                 && Family("diffusion_model.blocks.0.self_attn.q.lora_A.weight", "diffusion_model.blocks.0.cross_attn.k.lora_A.weight", "diffusion_model.blocks.0.ffn.0.lora_A.weight") == "wan"
-                && Family("lora_unet_input_blocks_4_1_transformer_blocks_0_attn1_to_q.lora_down.weight") == "sdxl";
+                && Family("lora_unet_input_blocks_4_1_transformer_blocks_0_attn1_to_q.lora_down.weight") == "sdxl"
+                && Family("lora_unet_blocks_0_attn_qkv_proj.lora_down.weight", "lora_unet_blocks_0_mlp_fc1.lora_down.weight") == "minimax_h3";
         }
         finally { try { File.Delete(file); } catch { } }
     }
