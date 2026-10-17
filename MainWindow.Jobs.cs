@@ -192,7 +192,7 @@ public partial class MainWindow
             }
             bool newPicture = !edit && expand == null;
             var style = newPicture && UsingStylePicture ? await Upload(stylePicture.Png, job) : null;
-            var pose = newPicture && UsingPosePicture ? await Upload(posePicture.Png, job) : null;
+            var pose = newPicture && UsingPosePicture ? await Upload(PosePng(), job) : null;
             bool couple = newPicture && UsingCouple;
             // picture n gets seed + n, so the seed saved with each one makes that same picture again
             var g = Graph(seed + job.Number, image, masked, denoise, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))),

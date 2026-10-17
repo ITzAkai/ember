@@ -446,6 +446,27 @@ public partial class MainWindow
 
     void PosePicRemove_Click(object sender, RoutedEventArgs e) { posePicture = null; ShowPosePicture(); }
 
+    // ComfyUI fits the pose map to the new picture by cutting out its middle, which loses arms and swords on a picture of another
+    // shape; black bars to the new picture's shape keep the whole pose
+    byte[] PosePng()
+    {
+        var (w, h) = PictureSize();
+        var img = posePicture.Thumb;
+        int iw = img.PixelWidth, ih = img.PixelHeight;
+        double want = (double)w / h, have = (double)iw / ih;
+        if (Math.Abs(want / have - 1) < 0.02) return posePicture.Png;
+        int pw = have < want ? (int)Math.Round(ih * want) : iw, ph = have < want ? ih : (int)Math.Round(iw / want);
+        var v = new DrawingVisual();
+        using (var dc = v.RenderOpen())
+        {
+            dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, pw, ph));
+            dc.DrawImage(img, new Rect((pw - iw) / 2.0, (ph - ih) / 2.0, iw, ih));
+        }
+        var rt = new RenderTargetBitmap(pw, ph, 96, 96, PixelFormats.Pbgra32);
+        rt.Render(v);
+        return PngOf(rt);
+    }
+
     void PosePicSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (fillingPose || !IsLoaded) return;
