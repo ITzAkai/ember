@@ -382,6 +382,108 @@ public partial class MainWindow
         finally { StylePicGetBtn.IsEnabled = true; ShowStylePicture(); }
     }
 
+    // ---------------- pose picture (ControlNet, SDXL): the people in new pictures take the pose of the people in this picture ----------------
+    RefPicture posePicture;
+    bool fillingPose;
+    static Plugin PosePlugin => Recommended.First(p => p.Folder == "comfyui_controlnet_aux");
+    string PoseModelFile => PosePlugin.Models.First(m => m.Folder == "controlnet").File;
+    bool PoseFilesThere => File.Exists(Path.Combine(ModelsDir, "controlnet", PoseModelFile))
+        && StateOf(PosePlugin).Path is string dir && PosePlugin.Models.Where(m => m.InPack).All(m => File.Exists(Path.Combine(dir, m.Folder, m.File)));
+    bool PoseReady => nodeNames.Contains("DWPreprocessor") && PoseFilesThere;
+    bool UsingPosePicture => posePicture != null && CreateMode.IsChecked == true && !VideoOn && Sdxl && PoseReady;
+
+    void ShowPosePicture()
+    {
+        if (PosePicSection == null) return;
+        bool plugin = nodeNames.Contains("DWPreprocessor"), ready = plugin && PoseFilesThere;
+        PosePicSection.Visibility = Sdxl && CreateMode.IsChecked == true && !VideoOn ? Visibility.Visible : Visibility.Collapsed;
+        PosePicThumb.Visibility = PosePicStrength.Visibility = posePicture != null ? Visibility.Visible : Visibility.Collapsed;
+        if (posePicture != null) PosePicImage.Background = new ImageBrush(posePicture.Thumb) { Stretch = Stretch.UniformToFill };
+        PosePicAddRow.Visibility = posePicture == null && ready ? Visibility.Visible : Visibility.Collapsed;
+        PosePicGetBtn.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
+        PosePicGetBtn.Content = plugin ? $"Get its files ({Size(PosePlugin.Models.Sum(m => m.Bytes))})" : "Install pose control…";
+        PosePicNote.Text = !plugin ? "Copy the pose of the people in a picture: needs Pose control (Settings > Plugins)."
+            : !ready ? "Pose control needs its pose finder and pose model once."
+            : "Only the pose carries over: the prompt still decides who they are and how they look.";
+        fillingPose = true;
+        PosePicSlider.Value = settings.PoseStrength;
+        fillingPose = false;
+        PosePicValue.Text = settings.PoseStrength.ToString("0.00");
+    }
+
+    void SetPosePicture(BitmapSource img)
+    {
+        double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
+        if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
+        img.Freeze();
+        posePicture = new RefPicture { Png = PngOf(img), Thumb = img };
+        ShowPosePicture();
+    }
+
+    void PosePicAdd_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Choose a pose picture", Filter = "Images|*.png;*.jpg;*.jpeg;*.webp;*.bmp;*.gif;*.tif;*.tiff" };
+        if (dlg.ShowDialog(this) != true) return;
+        try { SetPosePicture(Oriented(dlg.FileName)); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); }
+    }
+
+    void PosePicPaste_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (ClipboardPicture() is { } p) SetPosePicture(p.Image);
+            else Note("Copy a picture first: Copy image in a browser, a screenshot, or a file in Explorer.", true);
+        }
+        catch (Exception ex) { Note("Couldn't paste that: " + ex.Message, true); }
+    }
+
+    void PosePic_Drop(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        if (!PoseReady || DroppedPictures(e).FirstOrDefault() is not string f) return;
+        try { SetPosePicture(Oriented(f)); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); }
+    }
+
+    void PosePicRemove_Click(object sender, RoutedEventArgs e) { posePicture = null; ShowPosePicture(); }
+
+    void PosePicSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (fillingPose || !IsLoaded) return;
+        settings.PoseStrength = Math.Round(e.NewValue, 2);
+        PosePicValue.Text = settings.PoseStrength.ToString("0.00");
+        settings.Save();
+    }
+
+    async void PosePicGet_Click(object sender, RoutedEventArgs e)
+    {
+        if (!nodeNames.Contains("DWPreprocessor") || StateOf(PosePlugin).Path is not string dir) { ChoosePlugins_Click(null, null); return; }
+        PosePicGetBtn.IsEnabled = false;
+        try { await GetPluginModels(PosePlugin, dir); Note("Pose control is ready."); }
+        catch (Exception ex) { Note("Couldn't get them: " + ex.Message, true); }
+        finally { PosePicGetBtn.IsEnabled = true; ShowPosePicture(); }
+    }
+
+    // DWPose finds the people's body, hands and face as a stick figure (drawn the way xinsir's pose model was trained), and the
+    // ControlNet holds the new picture to it; both the prompt and the negative get it
+    void UsePosePicture(JsonObject g, string uploaded)
+    {
+        var k = (JsonObject)g["3"]["inputs"];
+        g["pose_pic"] = Node("LoadImage", new() { ["image"] = uploaded });
+        g["pose_find"] = Node("DWPreprocessor", new()
+        {
+            ["image"] = Link("pose_pic", 0), ["detect_hand"] = "enable", ["detect_body"] = "enable", ["detect_face"] = "enable", ["resolution"] = 1024,
+            ["bbox_detector"] = "yolox_l.onnx", ["pose_estimator"] = "dw-ll_ucoco_384.onnx", ["scale_stick_for_xinsr_cn"] = "enable",
+        });
+        g["pose_model"] = Node("ControlNetLoader", new() { ["control_net_name"] = PoseModelFile });
+        g["pose"] = Node("ControlNetApplyAdvanced", new()
+        {
+            ["positive"] = k["positive"].DeepClone(), ["negative"] = k["negative"].DeepClone(), ["control_net"] = Link("pose_model", 0),
+            ["image"] = Link("pose_find", 0), ["strength"] = settings.PoseStrength, ["start_percent"] = 0.0, ["end_percent"] = 1.0,
+        });
+        k["positive"] = Link("pose", 0);
+        k["negative"] = Link("pose", 1);
+    }
+
     // "style transfer" puts the picture into the layers that carry look rather than content (PLUS: ViT-H image encoder)
     void UseStylePicture(JsonObject g, string uploaded)
     {

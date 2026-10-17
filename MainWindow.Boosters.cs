@@ -193,6 +193,7 @@ public partial class MainWindow
         fillingBoosters = false;
         ShowCouple();
         ShowStylePicture();
+        ShowPosePicture();
     }
 
     FrameworkElement BoosterRow(string title, (bool Can, bool On, string Why) state, Action<bool?> set,

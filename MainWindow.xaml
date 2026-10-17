@@ -424,6 +424,32 @@
                         Visibility="Collapsed" Click="StylePicGet_Click"/>
               </StackPanel>
 
+              <!-- create mode, SDXL models: the people in new pictures take the pose of the people in this picture (ControlNet, DWPose) -->
+              <StackPanel x:Name="PosePicSection" Visibility="Collapsed" AllowDrop="True" DragOver="Reference_DragOver" Drop="PosePic_Drop" Background="Transparent">
+                <TextBlock Text="Pose picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <Grid x:Name="PosePicThumb" Width="72" Height="72" HorizontalAlignment="Left" Margin="0,0,0,8" Visibility="Collapsed">
+                  <Border x:Name="PosePicImage" CornerRadius="8"/>
+                  <Button Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="9" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top"
+                          Margin="0,3,3,0" Background="{DynamicResource Surface}" Click="PosePicRemove_Click" ToolTip="Remove the pose picture" AutomationProperties.Name="Remove pose picture"/>
+                </Grid>
+                <DockPanel x:Name="PosePicAddRow">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Paste" Click="PosePicPaste_Click"
+                          ToolTip="Use a copied picture" AutomationProperties.Name="Paste pose picture"/>
+                  <Button Style="{StaticResource Ghost}" Height="36" Content="Add a pose picture…" Click="PosePicAdd_Click" AutomationProperties.Name="Add pose picture"/>
+                </DockPanel>
+                <StackPanel x:Name="PosePicStrength" Visibility="Collapsed">
+                  <DockPanel>
+                    <TextBlock x:Name="PosePicValue" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
+                    <TextBlock Style="{StaticResource Note}" Text="How closely new pictures follow the pose"/>
+                  </DockPanel>
+                  <Slider x:Name="PosePicSlider" Minimum="0.3" Maximum="1.2" TickFrequency="0.05" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"
+                          ValueChanged="PosePicSlider_Changed" AutomationProperties.Name="Pose strength"/>
+                </StackPanel>
+                <TextBlock x:Name="PosePicNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <Button x:Name="PosePicGetBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" HorizontalAlignment="Left" Margin="0,6,0,0"
+                        Visibility="Collapsed" Click="PosePicGet_Click"/>
+              </StackPanel>
+
               <DockPanel Margin="0,18,0,8">
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="24" Margin="0,0,-6,0" Content="&#xE721;" FontSize="12" Click="FindNegative_Click"
                         ToolTip="Find and replace (Ctrl+F)" AutomationProperties.Name="Find in negative prompt"/>

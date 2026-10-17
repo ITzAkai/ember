@@ -80,6 +80,7 @@ public class Settings
     public bool InpaintEdits { get; set; } = true;               // painted edits and expansions use the inpainting model, if installed
     public bool SharpPreviewAll { get; set; }                    // sharp live preview on every model (Qwen and Krea 2 always get it)
     public double StyleStrength { get; set; } = 0.4;             // how strongly a style picture's look carries over (IPAdapter weight)
+    public double PoseStrength { get; set; } = 0.8;              // how closely a pose picture's pose is followed (ControlNet strength)
     public string VideoCamera { get; set; } = "As the prompt says";       // the Camera choice for videos
     public double VideoMotion { get; set; } = 12;                         // MiniMax H3 Motion: its sampling shift (12 is its own)
     public string Theme { get; set; } = "dark";
