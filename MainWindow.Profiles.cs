@@ -46,7 +46,7 @@ public partial class MainWindow
     string profileModel;            // the model whose settings are on screen
     bool applyingProfile;
 
-    static T Clone<T>(T x) where T : class => x == null ? null : JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(x));
+    static T Clone<T>(T x) where T : class => x == null ? null : JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(x, Settings.JsonOptions), Settings.JsonOptions);
 
     ModelProfile ProfileOf(string model)
     {

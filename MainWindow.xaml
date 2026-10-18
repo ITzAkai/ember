@@ -596,6 +596,11 @@
                     </Border>
                     <TextBlock Text="What to do with it" Style="{StaticResource Heading}" Margin="0,14,0,8"/>
                     <ComboBox x:Name="SourceUseBox" AutomationProperties.Name="What to do with the video" SelectionChanged="SourceUse_Changed"/>
+                    <DockPanel x:Name="SourceStartRow" Margin="0,10,0,0">
+                      <TextBlock Text="Start at (seconds)" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                      <TextBox x:Name="SourceStartBox" Style="{StaticResource Input}" Height="30" Padding="8,0" VerticalContentAlignment="Center" Text="0"
+                               AutomationProperties.Name="Start at seconds" ToolTip="Where in the video to begin: 0 is the start; 65 or 1:05 is a minute and five seconds in"/>
+                    </DockPanel>
                     <!-- the new character (replace) or the pictures it may use (reference) -->
                     <StackPanel x:Name="CharacterArea" Visibility="Collapsed" AllowDrop="True" DragOver="Start_DragOver" Drop="Character_Drop">
                       <TextBlock Text="Character picture" Style="{StaticResource Heading}" Margin="0,14,0,8"/>

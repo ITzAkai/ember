@@ -18,7 +18,7 @@ namespace ImageForge;
 
 public partial class MainWindow
 {
-    record VideoInfo(int Width, int Height, double Fps, double Seconds, bool Sound);
+    record VideoInfo(int Width, int Height, double Fps, double Seconds, bool Sound, bool EmberMade);
     string sourceVideo;                 // the video chosen under From a video, on disk
     VideoInfo sourceInfo;
     byte[] characterPicture;            // the new character (replace) or a picture the prompt can name (reference)
@@ -60,20 +60,33 @@ public partial class MainWindow
         ChooseSourceBtn.Visibility = sourceVideo == null ? Visibility.Visible : Visibility.Collapsed;
         var use = SourceUses[Math.Max(0, SourceUseBox.SelectedIndex)].Key;
         CharacterArea.Visibility = use is "swap" or "reference" ? Visibility.Visible : Visibility.Collapsed;
+        SourceStartRow.Visibility = use == "extend" ? Visibility.Collapsed : Visibility.Visible;
         CharacterCard.Visibility = characterPicture != null ? Visibility.Visible : Visibility.Collapsed;
         ChooseCharacterBtn.Visibility = characterPicture == null ? Visibility.Visible : Visibility.Collapsed;
         SourceNote.Text = SourceMissing(use) ?? use switch
         {
             "extend" => "Adds the Length you pick to the end of the video, going on from its last moments with the prompt. The start picture is skipped.",
-            "swap" => "The person in the video becomes your character, with the same moves and sound. Say who in the prompt if there are several (\"the man on the left\"). Uses the first 10 seconds. Experimental: made for real footage of people; on drawn clips it may just show your picture and then the original.",
+            "swap" => "The person in the video becomes your character, with the same moves and sound. Say who in the prompt if there are several (\"the man on the left\"). Uses 10 seconds from Start at. Experimental: made for real footage of people; on drawn clips it may just show your picture and then the original.",
             "reference" => "The prompt can name the video as <Video 1> and the picture as <Picture 1>, for example: the woman from <Picture 1> dancing like in <Video 1>.",
-            "pose" => "A new video with the same body movement, looking the way the prompt says. Uses the first 10 seconds and keeps the sound.",
-            _ => "A new video with the same shapes and layout, looking the way the prompt says. Uses the first 10 seconds and keeps the sound.",
+            "pose" => "A new video with the same body movement, looking the way the prompt says. Uses 10 seconds from Start at and keeps the sound.",
+            _ => "A new video with the same shapes and layout, looking the way the prompt says. Uses 10 seconds from Start at and keeps the sound.",
         };
         LongNote.Visibility = VideoOn && H3 && int.TryParse(Picked(LengthGroup), out var f) && f > 161 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     void SourceUse_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (IsLoaded) ShowSourceOptions(); }
+
+    // where in the video the uses that follow it begin, in seconds ("1:05" works too); they take up to 10 s from there
+    double SourceStart
+    {
+        get
+        {
+            var t = SourceStartBox.Text.Trim().Replace(',', '.');
+            var mmss = Regex.Match(t, @"^(\d+):(\d{1,2}(?:\.\d+)?)$");
+            if (mmss.Success) return int.Parse(mmss.Groups[1].Value) * 60 + double.Parse(mmss.Groups[2].Value, CultureInfo.InvariantCulture);
+            return double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out var s) ? s : 0;
+        }
+    }
     void Length_Checked(object sender, RoutedEventArgs e) { if (IsLoaded) ShowSourceOptions(); }
 
     // ---------------- choosing the video ----------------
@@ -127,14 +140,17 @@ public partial class MainWindow
     // size, frame rate, length and sound, read with the PyAV that ComfyUI itself uses for video
     async Task<VideoInfo> ProbeVideo(string path)
     {
+        // the size as shown: a phone video filmed upright is stored on its side with a rotation, which ComfyUI applies to the frames
         const string script = "import av,sys\nc=av.open(sys.argv[1]);s=c.streams.video[0]\n" +
-            "d=c.duration/1e6 if c.duration else float(s.duration*s.time_base)\n" +
-            "print('VIDEO',s.codec_context.width,s.codec_context.height,float(s.average_rate or s.guessed_rate),d,int(len(c.streams.audio)>0))";
+            "d=c.duration/1e6 if c.duration else float(s.duration*s.time_base)\nw,h=s.codec_context.width,s.codec_context.height\n" +
+            "f=next(c.decode(s),None)\nif f is not None and int(round((f.rotation or 0)//90))%2: w,h=h,w\n" +
+            "print('VIDEO',w,h,float(s.average_rate or s.guessed_rate),d,int(len(c.streams.audio)>0)," +
+            "int(s.codec_context.name=='h264' and int(s.codec_context.color_trc or 0)==13))";      // ComfyUI's own encoding: H.264 tagged sRGB
         var (_, output) = await Run(Python, new[] { "-I", "-c", script, path });
-        var m = Regex.Match(output, @"VIDEO (\d+) (\d+) ([\d.]+) ([\d.]+) ([01])");
+        var m = Regex.Match(output, @"VIDEO (\d+) (\d+) ([\d.]+) ([\d.]+) ([01]) ([01])");
         if (!m.Success) throw new Exception(output.Trim().Split('\n').LastOrDefault() ?? "not a video");
         double D(int i) => double.Parse(m.Groups[i].Value, CultureInfo.InvariantCulture);
-        return new VideoInfo(int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value), D(3), D(4), m.Groups[5].Value == "1");
+        return new VideoInfo(int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value), D(3), D(4), m.Groups[5].Value == "1", m.Groups[6].Value == "1");
     }
 
     // the viewer's Extend: this clip, an H3 model, and the Video tab
@@ -223,13 +239,28 @@ public partial class MainWindow
         if (use != null && SourceMissing(use) is string missing) { Note(missing, true); return; }
         var (src, info) = (sourceVideo, sourceInfo);
         var size = Picked(VideoSizeGroup).Split('x').Select(v => (int.Parse(v) + 16) / 32 * 32).ToArray();     // H3 works in steps of 32 pixels
-        if (use == "extend") size = new[] { info.Width / 32 * 32, info.Height / 32 * 32 };
-        // extending a video of another size: its frames are redone at the size the new part can be (H3 needs steps of 32)
-        bool rescale = use == "extend" && (info.Width % 32 != 0 || info.Height % 32 != 0);
-        if (use == "extend" && size[0] * size[1] > 768 * 1344) { Note("That video is too big to extend: MiniMax H3 makes at most about 1344 × 768.", true); return; }
+        if (use == "extend")
+        {
+            // the new part at the video's shape and Ember's usual size (832 × 480's pixels, in steps of 32), then scaled up to the video's:
+            // at 1280 × 704 H3 came out blocky in tests, and each step took 2.5 min instead of 27 s
+            double fit = Math.Min(1, Math.Sqrt(832.0 * 480 / ((double)info.Width * info.Height)));
+            size = new[] { Math.Max(32, (int)(info.Width * fit) / 32 * 32), Math.Max(32, (int)(info.Height * fit) / 32 * 32) };
+        }
+        // a video H3 can't match exactly (1080p, or not in steps of 32): the new frames are scaled to its size, so the joined video
+        // keeps the original's size
+        bool rescale = use == "extend" && (size[0] != info.Width || size[1] != info.Height);
+        // the join needs every piece encoded alike: a clip ComfyUI encoded (Ember's) joins as it is, any other video is rebuilt
+        // from its frames, which ComfyUI holds in memory as floats (and copies once): keep that under about 6 GB
+        bool ours = info?.EmberMade == true;
+        if (use == "extend" && !ours && info.Seconds * 24 * info.Width * info.Height * 3 * 4 * 2 > 6e9)
+        {
+            Note($"That video is too long to extend at {info.Width} × {info.Height}: about {6e9 / (24.0 * info.Width * info.Height * 24):0} s is the most. Trim it first.", true);
+            return;
+        }
+        double from0 = use is "swap" or "reference" or "pose" or "outline" ? Math.Clamp(SourceStart, 0, Math.Max(0, info.Seconds - 1)) : 0;
         int frames = H3Frames(int.Parse(Picked(LengthGroup))), steps = Steps;
         // the uses that follow a video take its length, up to 10 s
-        if (use is "swap" or "pose" or "outline") { frames = Math.Max(22, Math.Min(PartFrames, (int)(info.Seconds * 24))); while (frames % 17 != 5) frames--; }
+        if (use is "swap" or "pose" or "outline") { frames = Math.Max(22, Math.Min(PartFrames, (int)((info.Seconds - from0) * 24))); while (frames % 17 != 5) frames--; }
         if (use == "reference") frames = Math.Min(frames, PartFrames);
         var parts = use is null or "extend" ? PartsFor(frames, use == "extend") : new List<int> { frames };
         var rawPrompt = CurrentStyle.Apply(PromptBox.Text.Trim());
@@ -283,11 +314,11 @@ public partial class MainWindow
                 g["50"] = Node("MiniMaxH3SigmaShift", new() { ["model"] = Link(m, 0), ["shift_video"] = motion, ["shift_audio"] = 3.0 });
                 m = "50";
             }
-            // the video the uses follow: its first part, up to this clip's length
+            // the video the uses follow: from the chosen second, up to this clip's length
             if (use is "swap" or "reference" or "pose" or "outline")
             {
                 g["90"] = Node("LoadVideo", new() { ["file"] = sourceName });
-                g["91"] = Node("Video Slice", new() { ["video"] = Link("90", 0), ["start_time"] = 0.0, ["duration"] = len / 24.0, ["strict_duration"] = false });
+                g["91"] = Node("Video Slice", new() { ["video"] = Link("90", 0), ["start_time"] = from0, ["duration"] = len / 24.0, ["strict_duration"] = false });
                 g["92"] = Node("GetVideoComponents", new() { ["video"] = Link("91", 0) });
             }
             if (use is "pose" or "outline")
@@ -334,11 +365,13 @@ public partial class MainWindow
             }
             var positive = Link("6", 0);
             // going on: the previous part's (or the extended video's) last 1.6 s, picture and sound, anchored at the start of this part
-            bool sound = k > 0 || info?.Sound != false;
+            bool sound = info?.Sound != false;            // extending a silent video: no sound anchored, and none added (the join needs all or none)
             if (goOn)
             {
                 g["70"] = Node("LoadVideo", new() { ["file"] = k == 0 ? sourceName : partFiles[k - 1] });
-                g["71"] = Node("GetVideoComponents", new() { ["video"] = Link("70", 0) });
+                // only its last 3 s is decoded: a whole long or big video would fill the memory
+                g["69"] = Node("Video Slice", new() { ["video"] = Link("70", 0), ["start_time"] = -3.0, ["duration"] = 0.0, ["strict_duration"] = false });
+                g["71"] = Node("GetVideoComponents", new() { ["video"] = Link("69", 0) });
                 g["72"] = Node("ImageFromBatch", new() { ["image"] = Link("71", 0), ["batch_index"] = -Overlap, ["length"] = Overlap });
                 g["79"] = Node("ImageFromBatch", new() { ["image"] = Link("71", 0), ["batch_index"] = -Overlap, ["length"] = 1 });
                 var guide = new JsonObject
@@ -370,7 +403,10 @@ public partial class MainWindow
             g["49"] = Node("VAEDecodeAudio", new() { ["samples"] = Link("3", 0), ["vae"] = Link("48", 0) });
             // following a video with sound: its own sound stays (H3's would only approximate it)
             var audio = use is "swap" or "pose" or "outline" && info.Sound ? Link("92", 1) : Link("49", 0);
-            g["40"] = Node("CreateVideo", new() { ["images"] = Link("8", 0), ["audio"] = audio, ["fps"] = 24.0 });   // H3 makes 24 frames a second
+            if (rescale) g["81"] = Node("ImageScale", new() { ["image"] = Link("8", 0), ["upscale_method"] = "lanczos", ["width"] = info.Width, ["height"] = info.Height, ["crop"] = "center" });
+            g["40"] = goOnFromSource && !info.Sound
+                ? Node("CreateVideo", new() { ["images"] = Link(rescale ? "81" : "8", 0), ["fps"] = 24.0 })
+                : Node("CreateVideo", new() { ["images"] = Link(rescale ? "81" : "8", 0), ["audio"] = audio, ["fps"] = 24.0 });   // H3 makes 24 frames a second
             if (!last)
             {
                 // a part on the way: kept apart (no poster, so not in the gallery) until the last one joins them
@@ -387,16 +423,16 @@ public partial class MainWindow
                 if (goOnFromSource)
                 {
                     g["75"] = Node("LoadVideo", new() { ["file"] = sourceName });
-                    if (rescale)
+                    if (ours) pieces.Add(Link("75", 0));
+                    else
                     {
+                        // another video's colour tags and encoding differ from the new parts': rebuilt from its frames, it joins
                         g["76"] = Node("GetVideoComponents", new() { ["video"] = Link("75", 0) });
-                        g["77"] = Node("ImageScale", new() { ["image"] = Link("76", 0), ["upscale_method"] = "lanczos", ["width"] = size[0], ["height"] = size[1], ["crop"] = "center" });
                         g["78"] = info.Sound
-                            ? Node("CreateVideo", new() { ["images"] = Link("77", 0), ["audio"] = Link("76", 1), ["fps"] = 24.0 })
-                            : Node("CreateVideo", new() { ["images"] = Link("77", 0), ["fps"] = 24.0 });
+                            ? Node("CreateVideo", new() { ["images"] = Link("76", 0), ["audio"] = Link("76", 1), ["fps"] = 24.0 })
+                            : Node("CreateVideo", new() { ["images"] = Link("76", 0), ["fps"] = 24.0 });
                         pieces.Add(Link("78", 0));
                     }
-                    else pieces.Add(Link("75", 0));
                 }
                 for (int i = 0; i < partFiles.Count; i++)
                 {

@@ -287,7 +287,9 @@ public partial class MainWindow
         if (clip) ViewerVideo.Play();
         foreach (var b in new UIElement[] { EditThisBtn, MoreLikeThisBtn, UpscaleBtn, CutoutBtn, ExpandViewedBtn, DescribeBtn, CopyBtn, MakeVideoBtn, SecretViewedBtn })
             b.Visibility = s.IsVideo ? Visibility.Collapsed : Visibility.Visible;
-        ExtendBtn.Visibility = clip ? Visibility.Visible : Visibility.Collapsed;
+        // extending is MiniMax H3's (24 frames a second): not on Wan clips (16); a clip whose model is gone may still be H3's
+        bool wanClip = s.Meta?.Model is string m && separate.TryGetValue(m, out var made) && made.Family != "minimax_h3";
+        ExtendBtn.Visibility = clip && !wanClip ? Visibility.Visible : Visibility.Collapsed;
     }
 
     void StopClip() { ViewerVideo.Stop(); ViewerVideo.Source = null; }     // also lets go of the file, so it can be deleted

@@ -111,15 +111,18 @@ public class Settings
     static readonly string File = Path.Combine(Environment.GetEnvironmentVariable("IMAGEFORGE_SETTINGS") is { Length: > 0 } dir ? dir
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ImageForge"), "settings.json");
     public static string FilePath => File;
+    // NaN and infinity allowed: one such number (a window that never had a normal size reports infinite bounds) used to make
+    // every save throw, silently, so nothing was remembered
+    public static readonly JsonSerializerOptions JsonOptions = new() { NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals };
     public static Settings Load()
     {
-        try { return JsonSerializer.Deserialize<Settings>(System.IO.File.ReadAllText(File)) ?? new Settings(); }
+        try { return JsonSerializer.Deserialize<Settings>(System.IO.File.ReadAllText(File), JsonOptions) ?? new Settings(); }
         catch { return new Settings(); }
     }
     public void Save()
     {
-        try { Directory.CreateDirectory(Path.GetDirectoryName(File)); System.IO.File.WriteAllText(File, JsonSerializer.Serialize(this)); }
-        catch { /* settings are a convenience */ }
+        try { Directory.CreateDirectory(Path.GetDirectoryName(File)); System.IO.File.WriteAllText(File, JsonSerializer.Serialize(this, JsonOptions)); }
+        catch (Exception e) { try { System.IO.File.WriteAllText(File + ".error.txt", $"{DateTime.Now}: {e}"); } catch { } }   // settings are a convenience, but a failure must be findable
     }
 }
 
@@ -338,7 +341,9 @@ public partial class MainWindow : Window
     void RememberWindow()
     {
         var b = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
-        (settings.WinLeft, settings.WinTop, settings.WinWidth, settings.WinHeight) = (b.Left, b.Top, b.Width, b.Height);
+        // never shown in its normal size (opened maximized): no bounds to remember, only Rect.Empty's infinities
+        if (!b.IsEmpty && double.IsFinite(b.Left) && double.IsFinite(b.Top) && double.IsFinite(b.Width) && double.IsFinite(b.Height))
+            (settings.WinLeft, settings.WinTop, settings.WinWidth, settings.WinHeight) = (b.Left, b.Top, b.Width, b.Height);
         settings.WinMax = WindowState == WindowState.Maximized;
     }
 
@@ -1267,6 +1272,19 @@ public partial class MainWindow : Window
     }
 
     // --selftest part: a batch picture's copy gets its own seed in every sampler that had the first one's, and nothing else changes
+    // --selftest part: settings holding an infinite or NaN number must still save and load (they once made every save fail silently)
+    static bool SelfTestSettings()
+    {
+        try
+        {
+            var s = new Settings { WinLeft = double.PositiveInfinity, WinWidth = double.NegativeInfinity, StyleStrength = double.NaN };
+            s.Profiles["m"] = new ModelProfile { Model = "m", Cfg = double.NaN, Boosters = new Boosters { HiResScale = double.PositiveInfinity } };
+            var back = JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(s, Settings.JsonOptions), Settings.JsonOptions);
+            return double.IsPositiveInfinity(back.WinLeft) && double.IsNaN(back.Profiles["m"].Cfg);
+        }
+        catch (Exception e) { Console.Error.WriteLine("settings: " + e.Message); return false; }
+    }
+
     static bool SelfTestReseed()
     {
         var body = JsonNode.Parse("""{"prompt":{"3":{"inputs":{"seed":7,"steps":7}},"refine":{"inputs":{"seed":7}},"52":{"inputs":{"noise_seed":7}},"9":{"inputs":{"seed":8}}}}""").AsObject();
@@ -1500,7 +1518,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512) | (SelfTestReseed() ? 0 : 1024);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512) | (SelfTestReseed() ? 0 : 1024) | (SelfTestSettings() ? 0 : 2048);
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }

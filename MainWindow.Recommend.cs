@@ -127,7 +127,21 @@ public partial class MainWindow
 
     string RecFamilyOf(string model) => model != null && separate.TryGetValue(model, out var s) ? s.Family : model?.Contains("flux", StringComparison.OrdinalIgnoreCase) == true ? "flux" : "sdxl";
 
-    Rec ModelRec => RecFor(ModelBox.SelectedItem as string);
+    Rec ModelRec => WithTurboLora(RecFor(ModelBox.SelectedItem as string));
+
+    // a MiniMax H3 turbo LoRA (minimax_h3_fl2v_turbo_4step…) changes what the model needs: few steps at CFG 1.
+    // Measured on a 5 s clip: 4 steps looked as good as 6 and took 184 s instead of 222 s.
+    Rec WithTurboLora(Rec r)
+    {
+        if (!H3 || CurrentLoras().FirstOrDefault(l => l.Name.Contains("turbo", StringComparison.OrdinalIgnoreCase)) is not { } t) return r;
+        bool four = Regex.IsMatch(t.Name, @"4[-_ ]?step", RegexOptions.IgnoreCase);
+        return r with
+        {
+            Label = r.Label + " + Turbo LoRA", Steps = four ? new[] { 4, 6, 8 } : new[] { 6, 8, 10 }, StepsRange = four ? new[] { 4, 8 } : new[] { 6, 12 },
+            Cfg = 1, CfgRange = new[] { 1.0, 1.0 }, Negative = false,
+            Why = $"With {t.Name} the model needs only a few steps at CFG 1: {(four ? "4" : "8")} is what it was made for, and more steps only cost time.",
+        };
+    }
 
     // the family's values, overridden by the first known model whose pattern matches the name
     Rec RecFor(string model)
