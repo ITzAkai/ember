@@ -402,8 +402,11 @@ public partial class MainWindow
         PosePicAddRow.Visibility = posePicture == null && ready ? Visibility.Visible : Visibility.Collapsed;
         PosePicGetBtn.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
         PosePicGetBtn.Content = plugin ? $"Get its files ({Size(PosePlugin.Models.Sum(m => m.Bytes))})" : "Install pose control…";
+        PoseMapImage.Visibility = posePicture != null && poseMap != null ? Visibility.Visible : Visibility.Collapsed;
+        if (poseMap != null) PoseMapImage.Background = new ImageBrush(poseMap) { Stretch = Stretch.Uniform };
         PosePicNote.Text = !plugin ? "Copy the pose of the people in a picture: needs Pose control (Settings > Plugins)."
             : !ready ? "Pose control needs its pose finder and pose model once."
+            : posePicture != null && poseFound != null ? poseFound
             : "Only the pose carries over: the prompt still decides who they are and how they look.";
         fillingPose = true;
         PosePicSlider.Value = settings.PoseStrength;
@@ -417,7 +420,75 @@ public partial class MainWindow
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         img.Freeze();
         posePicture = new RefPicture { Png = PngOf(img), Thumb = img };
+        (poseMap, poseFound) = (null, null);
         ShowPosePicture();
+        _ = FindPose(posePicture);
+    }
+
+    ImageSource poseMap;            // the stick figure the pose finder saw in posePicture, once found
+    string poseFound;               // what it says about it
+
+    // the pose finder on the picture alone, as soon as it's added: a misread pose shows before a picture is spent on it.
+    // Its own small prompt, outside the job queue (it waits its turn behind pictures being made); nothing reaches the gallery.
+    async Task FindPose(RefPicture pic)
+    {
+        if (!PoseReady || pic == null) return;
+        poseFound = "Finding the pose in it…";
+        ShowPosePicture();
+        string stored = null;
+        try
+        {
+            stored = await Upload(pic.Png, $"forge_pose_{Guid.NewGuid():N}.png");
+            var g = new JsonObject
+            {
+                ["1"] = Node("LoadImage", new() { ["image"] = stored }),
+                ["2"] = Node("DWPreprocessor", new()
+                {
+                    ["image"] = Link("1", 0), ["detect_hand"] = "enable", ["detect_body"] = "enable", ["detect_face"] = "enable", ["resolution"] = 512,
+                    ["bbox_detector"] = "yolox_l.onnx", ["pose_estimator"] = "dw-ll_ucoco_384.onnx", ["scale_stick_for_xinsr_cn"] = "enable",
+                }),
+                ["3"] = Node("PreviewImage", new() { ["images"] = Link("2", 0) }),
+            };
+            using var r = await http.PostAsync("/prompt", Json(new JsonObject { ["prompt"] = g, ["client_id"] = clientId }));
+            var id = JsonNode.Parse(await r.Content.ReadAsStringAsync())?["prompt_id"]?.GetValue<string>() ?? throw new Exception("ComfyUI didn't take it");
+            JsonNode found = null;
+            for (int i = 0; i < 600 && found == null; i++)
+            {
+                await Task.Delay(1000);
+                if (posePicture != pic) return;                       // changed or removed meanwhile
+                var h = JsonNode.Parse(await http.GetStringAsync($"/history/{id}"))?[id];
+                if (h == null) continue;                              // still waiting or running
+                if (h["status"]?["status_str"]?.GetValue<string>() == "error") throw new Exception("the pose finder failed");
+                found = h["outputs"]?["3"]?["images"]?[0] ?? throw new Exception("no result");
+            }
+            if (found == null) throw new Exception("it took too long");
+            var bytes = await http.GetByteArrayAsync($"/view?filename={Uri.EscapeDataString(found["filename"].GetValue<string>())}" +
+                $"&subfolder={Uri.EscapeDataString(found["subfolder"]?.GetValue<string>() ?? "")}&type={found["type"]?.GetValue<string>() ?? "temp"}");
+            var map = new BitmapImage();
+            map.BeginInit(); map.CacheOption = BitmapCacheOption.OnLoad; map.StreamSource = new MemoryStream(bytes); map.EndInit(); map.Freeze();
+            if (posePicture != pic) return;
+            bool nobody = AllDark(map);
+            poseMap = nobody ? null : map;
+            poseFound = nobody ? "No person found in this picture, so new pictures won't follow a pose. Try a clearer one where the whole body shows."
+                : "The found pose is on the right: new pictures copy that stick figure. If it doesn't match the picture, try a clearer, full-body one.";
+        }
+        catch (Exception ex) { if (posePicture == pic) (poseMap, poseFound) = (null, $"Couldn't show the pose ({ex.Message}); the picture is still used."); }
+        finally
+        {
+            if (stored != null) try { File.Delete(Path.Combine(Root, "ComfyUI", "input", stored.Replace('/', Path.DirectorySeparatorChar))); } catch { }
+            if (posePicture == pic) ShowPosePicture();
+        }
+    }
+
+    // the pose finder draws on black: nothing brighter means it found no one
+    static bool AllDark(BitmapSource b)
+    {
+        var c = new FormatConvertedBitmap(b, PixelFormats.Bgr32, null, 0);
+        var px = new byte[c.PixelWidth * c.PixelHeight * 4];
+        c.CopyPixels(px, c.PixelWidth * 4, 0);
+        for (int i = 0; i < px.Length; i += 4)          // blue, green, red; the 4th byte is unused (often 255)
+            if (px[i] > 40 || px[i + 1] > 40 || px[i + 2] > 40) return false;
+        return true;
     }
 
     void PosePicAdd_Click(object sender, RoutedEventArgs e)
@@ -444,7 +515,7 @@ public partial class MainWindow
         try { SetPosePicture(Oriented(f)); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); }
     }
 
-    void PosePicRemove_Click(object sender, RoutedEventArgs e) { posePicture = null; ShowPosePicture(); }
+    void PosePicRemove_Click(object sender, RoutedEventArgs e) { (posePicture, poseMap, poseFound) = (null, null, null); ShowPosePicture(); }
 
     // ComfyUI fits the pose map to the new picture by cutting out its middle, which loses arms and swords on a picture of another
     // shape; black bars to the new picture's shape keep the whole pose

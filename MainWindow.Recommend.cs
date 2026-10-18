@@ -7,7 +7,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using Ellipse = System.Windows.Shapes.Ellipse;
 using Shape = System.Windows.Shapes.Shape;
 

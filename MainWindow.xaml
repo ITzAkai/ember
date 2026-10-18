@@ -427,11 +427,16 @@
               <!-- create mode, SDXL models: the people in new pictures take the pose of the people in this picture (ControlNet, DWPose) -->
               <StackPanel x:Name="PosePicSection" Visibility="Collapsed" AllowDrop="True" DragOver="Reference_DragOver" Drop="PosePic_Drop" Background="Transparent">
                 <TextBlock Text="Pose picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
-                <Grid x:Name="PosePicThumb" Width="72" Height="72" HorizontalAlignment="Left" Margin="0,0,0,8" Visibility="Collapsed">
-                  <Border x:Name="PosePicImage" CornerRadius="8"/>
-                  <Button Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="9" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top"
-                          Margin="0,3,3,0" Background="{DynamicResource Surface}" Click="PosePicRemove_Click" ToolTip="Remove the pose picture" AutomationProperties.Name="Remove pose picture"/>
-                </Grid>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                  <Grid x:Name="PosePicThumb" Width="72" Height="72" HorizontalAlignment="Left" Visibility="Collapsed">
+                    <Border x:Name="PosePicImage" CornerRadius="8"/>
+                    <Button Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="9" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,3,3,0" Background="{DynamicResource Surface}" Click="PosePicRemove_Click" ToolTip="Remove the pose picture" AutomationProperties.Name="Remove pose picture"/>
+                  </Grid>
+                  <!-- the pose the pose finder sees in it: what will be copied -->
+                  <Border x:Name="PoseMapImage" Width="72" Height="72" CornerRadius="8" Margin="8,0,0,0" Background="Black" Visibility="Collapsed"
+                          ToolTip="The pose found in the picture: this stick figure is what new pictures copy" AutomationProperties.Name="Found pose"/>
+                </StackPanel>
                 <DockPanel x:Name="PosePicAddRow">
                   <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Paste" Click="PosePicPaste_Click"
                           ToolTip="Use a copied picture" AutomationProperties.Name="Paste pose picture"/>

@@ -7,7 +7,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -1285,6 +1284,19 @@ public partial class MainWindow : Window
         catch (Exception e) { Console.Error.WriteLine("settings: " + e.Message); return false; }
     }
 
+    // --selftest part: the pose preview's "no person found" (a black stick-figure picture) must tell black from a drawn pose
+    static bool SelfTestAllDark()
+    {
+        BitmapSource Pic(bool dot)
+        {
+            var px = new byte[8 * 8 * 4];
+            for (int i = 3; i < px.Length; i += 4) px[i] = 255;          // the 4th byte set, as decoders do
+            if (dot) px[4 * 9 + 2] = 255;                                 // one red pixel
+            return BitmapSource.Create(8, 8, 96, 96, PixelFormats.Bgr32, null, px, 8 * 4);
+        }
+        return AllDark(Pic(false)) && !AllDark(Pic(true));
+    }
+
     static bool SelfTestReseed()
     {
         var body = JsonNode.Parse("""{"prompt":{"3":{"inputs":{"seed":7,"steps":7}},"refine":{"inputs":{"seed":7}},"52":{"inputs":{"noise_seed":7}},"9":{"inputs":{"seed":8}}}}""").AsObject();
@@ -1518,7 +1530,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512) | (SelfTestReseed() ? 0 : 1024) | (SelfTestSettings() ? 0 : 2048);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512) | (SelfTestReseed() ? 0 : 1024) | (SelfTestSettings() ? 0 : 2048) | (SelfTestAllDark() ? 0 : 4096);
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }

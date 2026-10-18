@@ -66,7 +66,7 @@ public partial class MainWindow
         SourceNote.Text = SourceMissing(use) ?? use switch
         {
             "extend" => "Adds the Length you pick to the end of the video, going on from its last moments with the prompt. The start picture is skipped.",
-            "swap" => "The person in the video becomes your character, with the same moves and sound. Say who in the prompt if there are several (\"the man on the left\"). Uses 10 seconds from Start at. Experimental: made for real footage of people; on drawn clips it may just show your picture and then the original.",
+            "swap" => "The person in the video becomes your character, with the same moves and sound. Say who in the prompt if there are several (\"the man on the left\"). Uses 10 seconds from Start at. Works best on real footage of people; a character picture on a plain background keeps the video's own scene.",
             "reference" => "The prompt can name the video as <Video 1> and the picture as <Picture 1>, for example: the woman from <Picture 1> dancing like in <Video 1>.",
             "pose" => "A new video with the same body movement, looking the way the prompt says. Uses 10 seconds from Start at and keeps the sound.",
             _ => "A new video with the same shapes and layout, looking the way the prompt says. Uses 10 seconds from Start at and keeps the sound.",
