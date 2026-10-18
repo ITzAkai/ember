@@ -426,19 +426,32 @@ public partial class MainWindow : Window
     }
     static string Picked(Panel group) => (string)(group?.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true)?.Tag ?? "");
 
+    // whatever goes wrong reading the window, what was read is still saved, and the problem is written down where it can be found
+    // (an empty choice once threw here, before the save, so nothing was remembered and nothing said why)
     void SaveSettings()
+    {
+        try { ReadSettings(); }
+        catch (Exception e) { try { File.WriteAllText(Settings.FilePath + ".error.txt", $"{DateTime.Now}: reading the window: {e}"); } catch { } }
+        settings.Save();
+    }
+
+    // an option group with nothing picked keeps the value it had
+    static int PickedInt(Panel group, int now) => int.TryParse(Picked(group), out var v) ? v : now;
+
+    void ReadSettings()
     {
         if (profileModel != null && !loadingOptions && ModelBox.SelectedItem as string == profileModel) Capture(ProfileOf(profileModel));
         var size = Picked(SizeGroup).Split('x');      // (an open tab keeps what was saved in it: changes go in only with Save changes)
         settings.Prompt = PromptBox.Text; settings.Negative = NegativeBox.Text;
-        settings.Width = int.Parse(size[0]); settings.Height = int.Parse(size[1]);
-        settings.Count = int.Parse(Picked(CountGroup)); settings.Steps = int.Parse(Picked(QualityGroup)); settings.StepsValue = Steps;
+        if (size.Length == 2 && int.TryParse(size[0], out var sw) && int.TryParse(size[1], out var sh)) (settings.Width, settings.Height) = (sw, sh);
+        settings.Count = PickedInt(CountGroup, settings.Count); settings.Steps = PickedInt(QualityGroup, settings.Steps); settings.StepsValue = Steps;
         settings.CustomSize = CustomSizeBox.IsChecked == true;
         if (int.TryParse(CustomW.Text, out var cw)) settings.CustomWidth = cw;
         if (int.TryParse(CustomH.Text, out var ch)) settings.CustomHeight = ch;
         settings.Cfg = CfgSlider.Value;
         if (ModelBox.SelectedItem is string model) { if (showingVideoModels) settings.VideoModel = model; else settings.Model = model; }
-        settings.VideoSize = Picked(VideoSizeGroup); settings.VideoFrames = int.Parse(Picked(LengthGroup));
+        if (Picked(VideoSizeGroup) is { Length: > 0 } vs) settings.VideoSize = vs;
+        settings.VideoFrames = PickedInt(LengthGroup, settings.VideoFrames);
         settings.Sampler = SamplerBox.SelectedItem as string ?? settings.Sampler;
         settings.Scheduler = SchedulerBox.SelectedItem as string ?? settings.Scheduler;
         if (long.TryParse(SeedBox.Text, out var seed)) settings.Seed = seed;
@@ -459,8 +472,6 @@ public partial class MainWindow : Window
         var firstActive = settings.SavedLoras.FirstOrDefault();
         settings.Lora = firstActive?.Name ?? "";
         settings.LoraStrength = firstActive?.Strength ?? 0.8;
-
-        settings.Save();
     }
 
     // a picked LoRA changes every image, so it shows next to Generate with a one-click off
