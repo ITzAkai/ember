@@ -64,7 +64,7 @@ public partial class MainWindow
         catch { return false; }
     }
 
-    string FamilyLabelNow => Krea ? "Krea 2" : Qwen ? "Qwen-Image" : Anima ? "Anima" : Wan ? "Wan" : Flux ? "FLUX" : "this model";
+    string FamilyLabelNow => Krea ? "Krea 2" : Qwen ? "Qwen-Image" : Anima ? "Anima" : Moss ? "MOSS-Image" : Wan ? "Wan" : Flux ? "FLUX" : "this model";
 
     // what each booster does for the selected model: available, on, and the one-line why
     (bool Can, bool On, string Why) PagState()

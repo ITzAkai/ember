@@ -332,7 +332,7 @@ public partial class MainWindow
         var modelFolder = PartPaths("diffusion_models", model).Any(File.Exists) ? "diffusion_models" : "checkpoints";     // diffusion_models or unet
         needed.Add((modelFolder, model));
         foreach (var l in tab.Loras.Where(l => l.Name is { Length: > 0 } and not "None")) needed.Add(("loras", l.Name));
-        if (modelFolder == "diffusion_models" && FamilyOf(model) is string fam && fam is "krea2" or "qwen_image" or "anima" or "wan" or "wan_i2v" or "minimax_h3")
+        if (modelFolder == "diffusion_models" && FamilyOf(model) is string fam)
         {
             var family = fam == "wan_i2v" ? "wan" : fam;
             if ((tab.TextEncoder ?? TeFor(family, model)) is string te) needed.Add(("text_encoders", te));

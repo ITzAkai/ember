@@ -27,7 +27,7 @@ public partial class MainWindow
 {
     const string RecommendationsJson = """
     {
-      "version": 8,
+      "version": 9,
       "families": {
         "sdxl": { "maxMp": 1.2, "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.6, "badScheduler": null,
@@ -41,6 +41,9 @@ public partial class MainWindow
         "anima": { "maxMp": 1.2, "label": "Anima", "sampler": "euler", "scheduler": "simple", "steps": [24, 30, 34], "stepsRange": [24, 50], "cfg": 4, "cfgRange": [3.5, 5],
           "negative": true, "defaultNegative": "worst quality, low quality, score_1, score_2, score_3, blurry, jpeg artifacts, sepia", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Anima: 30 steps at CFG 4, as in ComfyUI's template; keep about 1 megapixel." },
+        "moss_image": { "maxMp": 2.1, "label": "MOSS-Image", "sampler": "er_sde", "scheduler": "simple", "steps": [20, 25, 40], "stepsRange": [18, 50], "cfg": 2.5, "cfgRange": [2, 3.5],
+          "negative": true, "defaultNegative": "worst quality, bad anatomy, watermark, jpeg artifact", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
+          "why": "MOSS-Image: 25 steps at CFG 2.5 with er_sde, as in ComfyUI's template (its makers use 50 steps at CFG 3: slower, a little closer to their results). 1 to 2 megapixels." },
         "wan": { "maxMp": 0.5, "label": "Wan 2.1", "sampler": "uni_pc", "scheduler": "simple", "steps": [20, 30, 50], "stepsRange": [20, 50], "cfg": 6, "cfgRange": [5, 7],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Wan 2.1: 30 steps at CFG 6 with uni_pc, as in ComfyUI's example." },

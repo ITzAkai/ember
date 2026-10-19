@@ -964,6 +964,7 @@ public partial class MainWindow : Window
                 var (te, vae, label) = family switch
                 {
                     "qwen_image" => (qwenTe, qwenVae, "Qwen-Image 2.1"), "krea2" => (kreaTe, kreaVae, "Krea 2"), "anima" => (animaTe, kreaVae, "Anima"),
+                    "moss_image" => (mossTe, mossVae, "MOSS-Image"),
                     "minimax_h3" => (h3Te, h3AudioVae == null ? null : h3Vae, "MiniMax H3"),        // and its audio VAE
                     _ => (wanTe, wanVae, "Wan 2.1"),
                 };
@@ -1008,12 +1009,13 @@ public partial class MainWindow : Window
     bool Named(string part) => ModelBox.SelectedItem is string m && m.Contains(part, StringComparison.OrdinalIgnoreCase);
     // models in separate files (diffusion model + text encoder + VAE): Qwen-Image 2.1, Krea 2 and their fine-tunes
     const string QwenName = "Qwen-Image 2.1";
-    string qwenTe, qwenVae, kreaTe, kreaVae, animaTe, setupNote;
+    string qwenTe, qwenVae, kreaTe, kreaVae, animaTe, mossTe, mossVae, setupNote;
     readonly Dictionary<string, (string Unet, string Family)> separate = new();
     string Family => ModelBox.SelectedItem is string m && separate.TryGetValue(m, out var s) ? s.Family : null;   // also its CLIPLoader type
     bool Qwen => Family == "qwen_image";
     bool Krea => Family == "krea2";
     bool Anima => Family == "anima";
+    bool Moss => Family == "moss_image";
     bool AnimeModel => Anima || Named("noct") || ModelRec.Label.Contains("Illustrious") || ModelRec.Label == "NoobAI";
     // Anima's own quality negative, from ComfyUI's template (its training used these score tags)
     const string AnimaNegative = "worst quality, low quality, score_1, score_2, score_3, blurry, jpeg artifacts, sepia";
@@ -1083,6 +1085,7 @@ public partial class MainWindow : Window
             }
             if (keys.Contains("video_patch_proj.weight") && keys.Contains("audio_patch_proj.weight")) return "minimax_h3";     // MiniMax H3: video and sound
             if (keys.Contains("llm_adapter.")) return "anima";           // Anima (Cosmos-based, a Qwen3 0.6B adapter)
+            if (keys.Contains("shared_block_modulation.weight") && keys.Contains("proj.ffn_up_gate.weight")) return "moss_image";   // as ComfyUI tells MOSS-Image
             if (Regex.IsMatch(keys, @"txtfusion\.projector\.weight(?![\w.])")) return "krea2";
             if (Regex.IsMatch(keys, @"txt_in\.text_norm\.weight(?![\w.])")) return "qwen_image";
             // Wan 2.1 text-to-video takes 16 latent channels in; picture-to-video (Fun InP) 36: the start picture's latent and mask too.
@@ -1114,6 +1117,7 @@ public partial class MainWindow : Window
         {
             return Family("txtfusion.projector.weight", "blocks.0.attn.qkv.weight") == "krea2"
                 && Family("blocks.0.attn.qkv.weight", "video_patch_proj.weight", "audio_patch_proj.weight") == "minimax_h3"
+                && Family("shared_block_modulation.weight", "layers.0.proj.ffn_up_gate.weight") == "moss_image"
                 && H3Frames(33) == 56 && H3Frames(49) == 73 && H3Frames(81) == 124;      // 2, 3 and 5 s on H3's 17k + 5 grid
         }
         finally { try { File.Delete(file); } catch { } }
@@ -1364,6 +1368,7 @@ public partial class MainWindow : Window
                     + (Named("noctq") ? " Start prompts with \"An anime illustration of…\"." : "")
                 : Krea ? "Krea 2: realistic photos and art; the negative prompt isn't used. Check the model's licence before commercial use."
                 : Anima ? "Anima: anime and illustration. Tags (1girl, masterpiece) or plain sentences both work; a quality negative prompt is added for you."
+                : Moss ? "MOSS-Image: photos and art from long, detailed prompts, with clear lettering (put words to show in quotes). Apache 2.0 licence."
                 : H3 ? "MiniMax H3: video with its own sound, 24 frames a second. Describe what happens, how the camera moves and what you hear. "
                     + "Slow on small graphics cards; check the MiniMax H3 licence for where it may be used."
                 : PictureVideo ? "Wan 2.1 picture-to-video: the clip starts on your picture. Describe what moves and how the camera moves."

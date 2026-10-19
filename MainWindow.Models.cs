@@ -108,7 +108,7 @@ public partial class MainWindow
 
     static string FamilyLabel(string family) => family switch
     {
-        "krea2" => "Krea 2", "qwen_image" => "Qwen-Image", "wan" => "Wan 2.1", "anima" => "Anima", "minimax_h3" => "MiniMax H3", "sdxl" => "SDXL", _ => null,
+        "krea2" => "Krea 2", "qwen_image" => "Qwen-Image", "wan" => "Wan 2.1", "anima" => "Anima", "minimax_h3" => "MiniMax H3", "moss_image" => "MOSS-Image", "sdxl" => "SDXL", _ => null,
     };
 
     Installed Inspect(string folder, string path)
@@ -131,6 +131,7 @@ public partial class MainWindow
                 "krea2" => ("Picture models", "krea2", "Realistic photos and art."),
                 "qwen_image" => ("Picture models", "qwen_image", "Lettering, logos, and edits by instruction."),
                 "anima" => ("Picture models", "anima", "Anime and illustration."),
+                "moss_image" => ("Picture models", "moss_image", "Photos and art, with clear lettering and long prompts."),
                 _ => ("Other files", null, null),
             },
             "text_encoders" or "vae" => ("Parts", PartFamily(folder, file), null),
@@ -150,7 +151,8 @@ public partial class MainWindow
     bool MissingParts(string family) => family switch
     {
         "qwen_image" => qwenTe == null || qwenVae == null, "krea2" => kreaTe == null || kreaVae == null, "wan" => wanTe == null || wanVae == null,
-        "anima" => animaTe == null || kreaVae == null, "minimax_h3" => h3Te == null || h3Vae == null || h3AudioVae == null, _ => false,
+        "anima" => animaTe == null || kreaVae == null, "minimax_h3" => h3Te == null || h3Vae == null || h3AudioVae == null,
+        "moss_image" => mossTe == null || mossVae == null, _ => false,
     };
 
     void BuildModels()

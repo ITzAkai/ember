@@ -19,7 +19,7 @@ public partial class MainWindow
 
     // "qwen3vl_8b" (Qwen-Image 2.1, the prompt helper), "qwen3vl_4b" (Krea 2), "qwen3_06b" (Anima), "umt5" (Wan),
     // "qwen3vl_32b" (MiniMax H3), "wan_vae" (the Wan 2.1-type VAE that Krea 2, Anima and Wan share), "qwen21_vae" (Qwen-Image 2.1's own),
-    // "h3_video_vae" and "h3_audio_vae" (MiniMax H3's two), or null
+    // "h3_video_vae" and "h3_audio_vae" (MiniMax H3's two), "qwen35_9b" and "flux2_vae" (MOSS-Image), or null
     static string PartKind(string folder, string name)
     {
         var file = new[] { folder, folder == "text_encoders" ? "clip" : folder }.Select(d => Path.Combine(ModelsDir, d, name)).FirstOrDefault(File.Exists);
@@ -52,6 +52,9 @@ public partial class MainWindow
                 if (keys.Contains("decoder.transformer_blocks.0.scale1")) kind = "h3_video_vae";
                 else if (keys.Contains("pre_block.attn.zero_k_bias")) kind = "h3_audio_vae";
                 else if (keys.Contains("shared.weight") || keys.Any(k => k.StartsWith("encoder.block."))) kind = "umt5";
+                // Qwen 3.5 (MOSS-Image's) mixes in linear-attention layers; Qwen3-VL has none, though both can be 4096 wide with a picture reader
+                else if (keys.Any(k => k.Contains(".linear_attn."))) kind = "qwen35_9b";
+                else if (Shape("bn.running_mean") is [128]) kind = "flux2_vae";     // the FLUX.2 VAE (MOSS-Image)
                 else if (keys.FirstOrDefault(k => k.EndsWith("embed_tokens.weight")) is string emb && Shape(emb) is [_, var hidden])
                 {
                     bool vision = keys.Any(k => k.Contains("visual."));
@@ -70,11 +73,11 @@ public partial class MainWindow
     {
         var n = PlainName(name);
         return n.Contains("qwen3vl8b") ? "qwen3vl_8b" : n.Contains("qwen3vl4b") ? "qwen3vl_4b" : n.Contains("qwen306b") || n.Contains("anima") && n.Contains("txt") ? "qwen3_06b"
-            : n.Contains("umt5") ? "umt5" : n.Contains("qwenimage21vae") ? "qwen21_vae" : n.Contains("qwenimagevae") || n.Contains("wan21vae") || n.Contains("wanvae") ? "wan_vae" : null;
+            : n.Contains("umt5") ? "umt5" : n.Contains("qwen359b") ? "qwen35_9b" : n.Contains("flux2vae") ? "flux2_vae" : n.Contains("qwenimage21vae") ? "qwen21_vae" : n.Contains("qwenimagevae") || n.Contains("wan21vae") || n.Contains("wanvae") ? "wan_vae" : null;
     }
 
-    static string TeKind(string family) => family switch { "qwen_image" => "qwen3vl_8b", "krea2" => "qwen3vl_4b", "anima" => "qwen3_06b", "minimax_h3" => "qwen3vl_32b", _ => "umt5" };
-    static string VaeKind(string family) => family switch { "qwen_image" => "qwen21_vae", "minimax_h3" => "h3_video_vae", _ => "wan_vae" };
+    static string TeKind(string family) => family switch { "qwen_image" => "qwen3vl_8b", "krea2" => "qwen3vl_4b", "anima" => "qwen3_06b", "minimax_h3" => "qwen3vl_32b", "moss_image" => "qwen35_9b", _ => "umt5" };
+    static string VaeKind(string family) => family switch { "qwen_image" => "qwen21_vae", "minimax_h3" => "h3_video_vae", "moss_image" => "flux2_vae", _ => "wan_vae" };
 
     // the first file of that kind, preferring a name that is a hint, then one that contains it
     string FindPart(List<string> files, string folder, string kind, params string[] prefer) =>
@@ -89,6 +92,8 @@ public partial class MainWindow
         kreaTe = FindPart(tes, "text_encoders", "qwen3vl_4b");
         kreaVae = FindPart(vaes, "vae", "wan_vae", "qwenimagevaesafetensors", "qwenimagevae");         // Krea 2 and Anima ship with Qwen-Image's copy of the Wan 2.1 VAE
         animaTe = FindPart(tes, "text_encoders", "qwen3_06b");
+        mossTe = FindPart(tes, "text_encoders", "qwen35_9b");
+        mossVae = FindPart(vaes, "vae", "flux2_vae", "small");      // the small decoder, as in ComfyUI's template
         wanTe = FindPart(tes, "text_encoders", "umt5");
         wanVae = FindPart(vaes, "vae", "wan_vae", "wan");
         h3Te = FindPart(tes, "text_encoders", "qwen3vl_32b", "minimaxh3");
@@ -96,8 +101,8 @@ public partial class MainWindow
         h3AudioVae = FindPart(vaes, "vae", "h3_audio_vae", "fp32");         // in fp16 or bf16 the sound comes out as a buzz
     }
 
-    string AutoTe(string family) => family switch { "qwen_image" => qwenTe, "krea2" => kreaTe, "anima" => animaTe, "minimax_h3" => h3Te, _ => wanTe };
-    string AutoVae(string family) => family switch { "qwen_image" => qwenVae, "krea2" or "anima" => kreaVae, "minimax_h3" => h3Vae, _ => wanVae };
+    string AutoTe(string family) => family switch { "qwen_image" => qwenTe, "krea2" => kreaTe, "anima" => animaTe, "minimax_h3" => h3Te, "moss_image" => mossTe, _ => wanTe };
+    string AutoVae(string family) => family switch { "qwen_image" => qwenVae, "krea2" or "anima" => kreaVae, "minimax_h3" => h3Vae, "moss_image" => mossVae, _ => wanVae };
 
     // this model's own choice when it's still installed and fits the family, else the automatic one
     string TeFor(string family, string model = null) =>
@@ -112,7 +117,7 @@ public partial class MainWindow
     static string PartFamily(string folder, string name) => PartKind(folder, name) switch
     {
         "qwen3vl_8b" or "qwen21_vae" => "qwen_image", "qwen3vl_4b" => "krea2", "qwen3_06b" => "anima", "umt5" => "wan",
-        "qwen3vl_32b" or "h3_video_vae" or "h3_audio_vae" => "minimax_h3",
+        "qwen3vl_32b" or "h3_video_vae" or "h3_audio_vae" => "minimax_h3", "qwen35_9b" or "flux2_vae" => "moss_image",
         "wan_vae" => PlainName(name).Contains("wan") ? "wan" : "krea2", _ => null,
     };
 
