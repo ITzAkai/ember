@@ -1,5 +1,5 @@
 // ComfyUI launch options for speed (docs/research/boosters-and-comfyui.md, section 6): int8 attention where the card supports it
-// (ComfyUI refuses to start otherwise), fp16 accumulation (fast on RTX 40, but linked to black pictures with some LoRAs), and how much
+// (ComfyUI refuses to start otherwise), fp16 accumulation (fast on RTX 30 and 40, but linked to black pictures with some LoRAs), and how much
 // graphics memory to keep free. Never a bare --fast, which turns on everything at once. Applied when ComfyUI next starts.
 using System.Diagnostics;
 using System.Globalization;

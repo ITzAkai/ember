@@ -97,6 +97,7 @@ public class Settings
     public double ReferenceStyle { get; set; } = 0.35;     // how much a non-Qwen model redraws a reference picture
     public bool CkAttention { get; set; }
     public bool Fp16Accumulation { get; set; }
+    public bool SpeedOptionsSet { get; set; }
     public double ReserveVram { get; set; }
     public int CacheRam { get; set; }                // "": Qwen3-VL in ComfyUI; "Ollama: <name>" for a local Ollama model
     public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // before per-model profiles: the starting point for models without one
@@ -115,8 +116,12 @@ public class Settings
     public static readonly JsonSerializerOptions JsonOptions = new() { NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals };
     public static Settings Load()
     {
-        try { return JsonSerializer.Deserialize<Settings>(System.IO.File.ReadAllText(File), JsonOptions) ?? new Settings(); }
-        catch { return new Settings(); }
+        Settings s;
+        try { s = JsonSerializer.Deserialize<Settings>(System.IO.File.ReadAllText(File), JsonOptions) ?? new Settings(); }
+        catch { s = new Settings(); }
+        // the two speed options, on once for everyone (together they halved every step of Krea 2 on an RTX 3060); switching them off sticks
+        if (!s.SpeedOptionsSet) { s.CkAttention = s.Fp16Accumulation = s.SpeedOptionsSet = true; }
+        return s;
     }
     public void Save()
     {

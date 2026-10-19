@@ -32,7 +32,7 @@ public partial class MainWindow
         "sdxl": { "maxMp": 1.2, "label": "SDXL", "sampler": "dpmpp_2m", "scheduler": "karras", "steps": [18, 25, 40], "stepsRange": [15, 50], "cfg": 7, "cfgRange": [5, 9],
           "negative": true, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.6, "badScheduler": null,
           "why": "SDXL: about 25 steps at CFG 7, as in ComfyUI's template." },
-        "krea2": { "maxMp": 4.2, "label": "Krea 2 Turbo", "sampler": "euler", "scheduler": "simple", "steps": [6, 8, 10], "stepsRange": [6, 10], "cfg": 1, "cfgRange": [1, 1.5],
+        "krea2": { "maxMp": 4.2, "label": "Krea 2 Turbo", "sampler": "euler", "scheduler": "simple", "steps": [6, 8, 10], "stepsRange": [6, 10], "cfg": 1, "cfgRange": [1, 1],
           "negative": false, "defaultNegative": "", "loraEach": 1.0, "loraTotal": 1.5, "badScheduler": null,
           "why": "Krea 2 Turbo is made for 8 steps at CFG 1. More steps or a higher CFG over-cook it, and CFG above 1 doubles the time." },
         "qwen_image": { "maxMp": 4.2, "label": "Qwen-Image 2.1", "sampler": "euler", "scheduler": "simple", "steps": [20, 25, 30], "stepsRange": [18, 50], "cfg": 1, "cfgRange": [1, 2],

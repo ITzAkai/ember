@@ -370,7 +370,7 @@ public partial class MainWindow
             g["hires"] = Node("KSampler", new()
             {
                 ["model"] = s["model"].DeepClone(), ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["latent_image"] = Link("hires_in", 0),
-                ["seed"] = s["seed"].DeepClone(), ["steps"] = Math.Max(4, (int)Math.Round(s["steps"].GetValue<int>() * 0.6)), ["cfg"] = s["cfg"].DeepClone(),
+                ["seed"] = s["seed"].DeepClone(), ["steps"] = TouchUpSteps(s), ["cfg"] = s["cfg"].DeepClone(),
                 ["sampler_name"] = s["sampler_name"].DeepClone(), ["scheduler"] = s["scheduler"].DeepClone(), ["denoise"] = b.HiResDenoise,
             });
             g["hires_out"] = Node("VAEDecode", new() { ["samples"] = Link("hires", 0), ["vae"] = vae.DeepClone() });
@@ -385,7 +385,7 @@ public partial class MainWindow
             {
                 ["image"] = save["images"].DeepClone(), ["model"] = s["model"].DeepClone(), ["clip"] = clip.DeepClone(), ["vae"] = vae.DeepClone(),
                 ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["bbox_detector"] = Link("facefinder", 0),
-                ["seed"] = s["seed"].DeepClone(), ["steps"] = s["steps"].DeepClone(), ["cfg"] = s["cfg"].DeepClone(),
+                ["seed"] = s["seed"].DeepClone(), ["steps"] = TouchUpSteps(s), ["cfg"] = s["cfg"].DeepClone(),
                 ["sampler_name"] = s["sampler_name"].DeepClone(), ["scheduler"] = s["scheduler"].DeepClone(), ["denoise"] = b.FaceDenoise,
                 ["guide_size"] = 768, ["guide_size_for"] = true, ["max_size"] = 1024, ["feather"] = 5, ["noise_mask"] = true, ["force_inpaint"] = true,
                 ["bbox_threshold"] = 0.5, ["bbox_dilation"] = 10, ["bbox_crop_factor"] = 3.0, ["sam_detection_hint"] = "center-1", ["sam_dilation"] = 0,
@@ -405,6 +405,14 @@ public partial class MainWindow
         }
     }
 
+    // steps for a light redraw (Hi-res fix, Fix faces): turbo models (12 steps or fewer) need only 4, measured on Krea 2 at the same quality
+    // as the full count and 3–4× faster; slower models keep 60% of theirs
+    static int TouchUpSteps(JsonObject s)
+    {
+        int steps = s["steps"].GetValue<int>();
+        return steps <= 12 ? Math.Min(steps, 4) : Math.Max(4, (int)Math.Round(steps * 0.6));
+    }
+
     // Qwen-Image and Anima: the Impact Pack's FaceDetailer fails on their conditioning, so only its face finder is used; the faces are cut out
     // with their surroundings, redrawn at 1024 by the same model and stitched back. One picture at a time (the finder looks at one), and a
     // picture without a face comes back unchanged. The result is node "faces".
@@ -418,7 +426,7 @@ public partial class MainWindow
         g["face_redraw"] = Node("KSampler", new()
         {
             ["model"] = s["model"].DeepClone(), ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["latent_image"] = Link("face_noise", 0),
-            ["seed"] = s["seed"].DeepClone(), ["steps"] = Math.Max(4, (int)Math.Round(s["steps"].GetValue<int>() * 0.6)), ["cfg"] = s["cfg"].DeepClone(),
+            ["seed"] = s["seed"].DeepClone(), ["steps"] = TouchUpSteps(s), ["cfg"] = s["cfg"].DeepClone(),
             ["sampler_name"] = s["sampler_name"].DeepClone(), ["scheduler"] = s["scheduler"].DeepClone(), ["denoise"] = denoise,
         });
         g["face_out"] = Node("VAEDecode", new() { ["samples"] = Link("face_redraw", 0), ["vae"] = vae.DeepClone() });

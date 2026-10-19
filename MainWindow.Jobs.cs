@@ -18,6 +18,7 @@ class Job
     public string Id;                               // ComfyUI's prompt id, once sent
     public string Verb = "Painting · step";         // progress wording: "Painting · step 3 of 8"
     public byte[] Before;                           // saved next to each result for before/after
+    public bool Black;                              // a result came out all black (fp16 accumulation with some LoRAs)
     public readonly List<Shot> Slots = new();       // placeholders still waiting for a result
     public readonly List<string> Uploads = new();   // its files in ComfyUI\input, removed when done
     public DateTime Started = DateTime.Now;
@@ -322,7 +323,8 @@ public partial class MainWindow
         if (job.Shared is { } shared && --shared.Users == 0) foreach (var f in shared.Files) try { File.Delete(f); } catch { }
         if (!quiet)
         {
-            if (error == null) { Note($"Finished in {(DateTime.Now - job.Started).TotalSeconds:0} s."); Flash(); }
+            if (error == null && job.Black) { Note("The picture came out black: fp16 accumulation can do that with some LoRAs. Switch it off under Settings > Performance.", true); Flash(); }
+            else if (error == null) { Note($"Finished in {(DateTime.Now - job.Started).TotalSeconds:0} s."); Flash(); }
             else if (error == "Cancelled.") Note(error);
             else { Note(error, true); Taskbar.ProgressState = TaskbarItemProgressState.Error; Taskbar.ProgressValue = 1; Flash(); }
         }
@@ -539,6 +541,16 @@ public partial class MainWindow
 
     void ShowNewest() { GalleryScroll.ScrollToTop(); StripScroll.ScrollToLeftEnd(); }
 
+    // every pixel near black, as a picture is when the maths overflowed
+    static bool IsBlack(BitmapSource img)
+    {
+        var px = new FormatConvertedBitmap(img, System.Windows.Media.PixelFormats.Bgr32, null, 0);
+        var buf = new byte[px.PixelWidth * px.PixelHeight * 4];
+        px.CopyPixels(buf, px.PixelWidth * 4, 0);
+        for (int i = 0; i < buf.Length; i++) if (i % 4 != 3 && buf[i] >= 8) return false;   // the 4th byte is padding
+        return true;
+    }
+
     // a finished image takes the place of its job's next placeholder
     void Arrive(string path, Job job)
     {
@@ -552,6 +564,7 @@ public partial class MainWindow
             catch { /* before/after is a nicety */ }
         var shot = MakeShot(path);
         if (shot == null) return;
+        if (settings.Fp16Accumulation && shot.Thumb is BitmapSource t && IsBlack(t)) job.Black = true;
         shot.Selecting = selectMode;
         if (job.Slots.Count > 0)
         {

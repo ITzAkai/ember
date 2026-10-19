@@ -165,6 +165,8 @@ public partial class MainWindow
             flags += " --disable-all-custom-nodes" + (keep.Count > 0 ? " --whitelist-custom-nodes " + string.Join(" ", keep.Select(k => k.Contains(' ') ? $"\"{k}\"" : k)) : "");
         }
         if (PipManager && !LegacyManager) flags += " --enable-manager";
+        // ComfyUI 0.40+ refuses to start when another ComfyUI holds its database, so a second Ember (tests) gets its own, like its log
+        if (Port != 8188) flags += $" --database-url \"sqlite:///{Path.Combine(Root, $"comfyui_{Port}.db").Replace('\\', '/')}\"";
         return flags + PerformanceFlags();
     }
 
