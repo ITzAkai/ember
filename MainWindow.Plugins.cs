@@ -63,6 +63,13 @@ public partial class MainWindow
                 "724f4ff2439ed61afb86fb8a1951ec39c6220682803b4a8bd4f598cd913b1843", 134_399_116, InPack: true),
             new PluginModel("https://huggingface.co/xinsir/controlnet-openpose-sdxl-1.0/resolve/main/diffusion_pytorch_model.safetensors", "controlnet",
                 "xinsir-openpose-sdxl.safetensors", "b8524e557a7df60d081f5d4a0eb109967d107df217943bf88c2d99b9ebcc06c5", 2_502_139_104)),
+        // Krea 2's pose: thedeoxen's pose LoRA, trained with ai-toolkit's edit mode, which these two nodes of ostris run
+        // (reviewed: torch and ComfyUI only, no packages, no downloads). The pose finder comes from Pose control above.
+        new("ComfyUI-Krea2-Ostris-Edit", "Krea 2 pose", "Optional", false, "ostris/comfyui-krea2-ostris-edit", "7756566160", "1.0.1",
+            "573a5e1569006f30d0edd5cd4a7732928449706811eb6c18dd014ed5883a4d80", 14_012, "Krea2OstrisEditModelPatch",
+            "Pose picture for Krea 2 models (Krea 2 Turbo and its fine-tunes): the people in new pictures take the pose of the people in a picture. Needs Pose control for its pose finder. Brings the Krea 2 pose LoRA (218 MB).",
+            new PluginModel("https://huggingface.co/thedeoxen/Krea-2-pose-controlnet/resolve/main/krea2_turbo_openpose_controlnet.safetensors", "loras",
+                "krea2_turbo_openpose_controlnet.safetensors", "0ddc3aafce4abdf7af3309b2f00c1bacdf15df1f2b4fb7adc9ff71795da90ecf", 228_587_504)),
         new("ComfyUI-GGUF", "GGUF loader (Krea 2, MiniMax H3)", "Optional", false, "leejet/ComfyUI-GGUF", "373048b840", "2.0.0",
             "51e9582593aea82fe3c847a51ebb87ceca2e32584b5f2b4ad843b056c83646b0", 122_247, "UnetLoaderGGUF",
             "Loads smaller GGUF files: Krea 2 for 6–8 GB graphics cards, and MiniMax H3 video and its text encoder. Experimental; Qwen-Image GGUF files don't work yet."),

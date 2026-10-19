@@ -71,6 +71,7 @@ Needs Windows 10/11 x64 and an NVIDIA GPU. If Windows can't unpack ComfyUI by it
 | Attention Couple | Two people, described apart |
 | IPAdapter Plus | Style picture (brings its own models, 3.4 GB) |
 | Pose control (ControlNet Aux) | Pose picture: new pictures take the pose of the people in a picture (brings its own models, 2.85 GB) |
+| Krea 2 pose | Pose picture for Krea 2 models, with Pose control's pose finder (brings its pose LoRA, 218 MB) |
 | Anima NAG | A working negative prompt at CFG 1 (the NAG booster) |
 | ComfyUI-GGUF | Smaller GGUF model files for 6–8 GB graphics cards |
 

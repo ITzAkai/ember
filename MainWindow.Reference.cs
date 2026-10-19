@@ -382,29 +382,36 @@ public partial class MainWindow
         finally { StylePicGetBtn.IsEnabled = true; ShowStylePicture(); }
     }
 
-    // ---------------- pose picture (ControlNet, SDXL): the people in new pictures take the pose of the people in this picture ----------------
+    // ---------------- pose picture: the people in new pictures take the pose of the people in this picture ----------------
+    // SDXL: xinsir's OpenPose ControlNet. Krea 2: thedeoxen's pose LoRA through ostris's edit nodes. Both from the same DWPose stick figure.
     RefPicture posePicture;
     bool fillingPose;
     static Plugin PosePlugin => Recommended.First(p => p.Folder == "comfyui_controlnet_aux");
+    static Plugin KreaPosePlugin => Recommended.First(p => p.Folder == "ComfyUI-Krea2-Ostris-Edit");
     string PoseModelFile => PosePlugin.Models.First(m => m.Folder == "controlnet").File;
-    bool PoseFilesThere => File.Exists(Path.Combine(ModelsDir, "controlnet", PoseModelFile))
-        && StateOf(PosePlugin).Path is string dir && PosePlugin.Models.Where(m => m.InPack).All(m => File.Exists(Path.Combine(dir, m.Folder, m.File)));
-    bool PoseReady => nodeNames.Contains("DWPreprocessor") && PoseFilesThere;
-    bool UsingPosePicture => posePicture != null && CreateMode.IsChecked == true && !VideoOn && Sdxl && PoseReady;
+    string KreaPoseLora => KreaPosePlugin.Models[0].File;
+    bool PoseFinderThere => StateOf(PosePlugin).Path is string dir && PosePlugin.Models.Where(m => m.InPack).All(m => File.Exists(Path.Combine(dir, m.Folder, m.File)));
+    bool PoseFamily => Sdxl || Krea;
+    // the plugin (nodes) each family needs, and whether its files are there
+    bool PosePluginsThere => nodeNames.Contains("DWPreprocessor") && (!Krea || nodeNames.Contains("Krea2OstrisEditModelPatch"));
+    bool PoseFilesThere => PoseFinderThere && (Krea ? File.Exists(Path.Combine(ModelsDir, "loras", KreaPoseLora)) : File.Exists(Path.Combine(ModelsDir, "controlnet", PoseModelFile)));
+    bool PoseReady => PoseFamily && PosePluginsThere && PoseFilesThere;
+    bool UsingPosePicture => posePicture != null && CreateMode.IsChecked == true && !VideoOn && PoseReady;
 
     void ShowPosePicture()
     {
         if (PosePicSection == null) return;
-        bool plugin = nodeNames.Contains("DWPreprocessor"), ready = plugin && PoseFilesThere;
-        PosePicSection.Visibility = Sdxl && CreateMode.IsChecked == true && !VideoOn ? Visibility.Visible : Visibility.Collapsed;
+        bool plugin = PosePluginsThere, ready = plugin && PoseFilesThere;
+        PosePicSection.Visibility = PoseFamily && CreateMode.IsChecked == true && !VideoOn ? Visibility.Visible : Visibility.Collapsed;
         PosePicThumb.Visibility = PosePicStrength.Visibility = posePicture != null ? Visibility.Visible : Visibility.Collapsed;
         if (posePicture != null) PosePicImage.Background = new ImageBrush(posePicture.Thumb) { Stretch = Stretch.UniformToFill };
         PosePicAddRow.Visibility = posePicture == null && ready ? Visibility.Visible : Visibility.Collapsed;
         PosePicGetBtn.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
-        PosePicGetBtn.Content = plugin ? $"Get its files ({Size(PosePlugin.Models.Sum(m => m.Bytes))})" : "Install pose control…";
+        PosePicGetBtn.Content = plugin ? $"Get its files ({Size(PoseFilesToGet.Sum(m => m.Model.Bytes))})" : Krea && nodeNames.Contains("DWPreprocessor") ? "Install Krea 2 pose…" : "Install pose control…";
         PoseMapImage.Visibility = posePicture != null && poseMap != null ? Visibility.Visible : Visibility.Collapsed;
         if (poseMap != null) PoseMapImage.Background = new ImageBrush(poseMap) { Stretch = Stretch.Uniform };
-        PosePicNote.Text = !plugin ? "Copy the pose of the people in a picture: needs Pose control (Settings > Plugins)."
+        PosePicNote.Text = !plugin ? (Krea ? "Copy the pose of the people in a picture: needs Pose control and Krea 2 pose (Settings > Plugins)."
+                : "Copy the pose of the people in a picture: needs Pose control (Settings > Plugins).")
             : !ready ? "Pose control needs its pose finder and pose model once."
             : posePicture != null && poseFound != null ? poseFound
             : "Only the pose carries over: the prompt still decides who they are and how they look.";
@@ -445,7 +452,8 @@ public partial class MainWindow
                 ["2"] = Node("DWPreprocessor", new()
                 {
                     ["image"] = Link("1", 0), ["detect_hand"] = "enable", ["detect_body"] = "enable", ["detect_face"] = "enable", ["resolution"] = 512,
-                    ["bbox_detector"] = "yolox_l.onnx", ["pose_estimator"] = "dw-ll_ucoco_384.onnx", ["scale_stick_for_xinsr_cn"] = "enable",
+                    // drawn the way the model will get it: thick sticks for SDXL's xinsir ControlNet, plain ones for Krea 2's pose LoRA
+                    ["bbox_detector"] = "yolox_l.onnx", ["pose_estimator"] = "dw-ll_ucoco_384.onnx", ["scale_stick_for_xinsr_cn"] = Krea ? "disable" : "enable",
                 }),
                 ["3"] = Node("PreviewImage", new() { ["images"] = Link("2", 0) }),
             };
@@ -546,11 +554,31 @@ public partial class MainWindow
         settings.Save();
     }
 
+    // the missing files this model's pose needs: the pose finder, and the SDXL pose model or the Krea 2 pose LoRA
+    List<(Plugin Plugin, PluginModel Model)> PoseFilesToGet
+    {
+        get
+        {
+            var want = new List<(Plugin, PluginModel)>();
+            var dir = StateOf(PosePlugin).Path;
+            foreach (var m in PosePlugin.Models.Where(m => m.InPack && (dir == null || !File.Exists(Path.Combine(dir, m.Folder, m.File))))) want.Add((PosePlugin, m));
+            var model = Krea ? (KreaPosePlugin, KreaPosePlugin.Models[0]) : (PosePlugin, PosePlugin.Models.First(m => m.Folder == "controlnet"));
+            if (!File.Exists(Path.Combine(ModelsDir, model.Item2.Folder, model.Item2.File))) want.Add(model);
+            return want;
+        }
+    }
+
     async void PosePicGet_Click(object sender, RoutedEventArgs e)
     {
-        if (!nodeNames.Contains("DWPreprocessor") || StateOf(PosePlugin).Path is not string dir) { ChoosePlugins_Click(null, null); return; }
+        if (!PosePluginsThere || StateOf(PosePlugin).Path is not string dir) { ChoosePlugins_Click(null, null); return; }
         PosePicGetBtn.IsEnabled = false;
-        try { await GetPluginModels(PosePlugin, dir); Note("Pose control is ready."); }
+        try
+        {
+            // each plugin fetches its own (it skips what's already there): the finder with Pose control, the LoRA with Krea 2 pose
+            foreach (var p in PoseFilesToGet.Select(f => f.Plugin).Distinct())
+                await GetPluginModels(p, p == PosePlugin ? dir : StateOf(p).Path);
+            Note("Pose control is ready.");
+        }
         catch (Exception ex) { Note("Couldn't get them: " + ex.Message, true); }
         finally { PosePicGetBtn.IsEnabled = true; ShowPosePicture(); }
     }
@@ -559,6 +587,7 @@ public partial class MainWindow
     // ControlNet holds the new picture to it; both the prompt and the negative get it
     void UsePosePicture(JsonObject g, string uploaded)
     {
+        if (Krea) { UseKreaPose(g, uploaded); return; }
         var k = (JsonObject)g["3"]["inputs"];
         g["pose_pic"] = Node("LoadImage", new() { ["image"] = uploaded });
         g["pose_find"] = Node("DWPreprocessor", new()
@@ -574,6 +603,40 @@ public partial class MainWindow
         });
         k["positive"] = Link("pose", 0);
         k["negative"] = Link("pose", 1);
+    }
+
+    // Krea 2, as in the pose LoRA's own workflow: the stick figure goes in as Picture 1 of ostris's edit text encoder (for the prompt and
+    // the negative, both as reference latents at index_timestep_zero), and the model gets the edit patch, then the pose LoRA.
+    // The Pose strength slider is the LoRA's strength (its author: 0.8–1.0; lower if the pose looks stiff).
+    void UseKreaPose(JsonObject g, string uploaded)
+    {
+        var k = (JsonObject)g["3"]["inputs"];
+        g["pose_pic"] = Node("LoadImage", new() { ["image"] = uploaded });
+        g["pose_find"] = Node("DWPreprocessor", new()
+        {
+            ["image"] = Link("pose_pic", 0), ["detect_hand"] = "enable", ["detect_body"] = "enable", ["detect_face"] = "enable", ["resolution"] = 512,
+            ["bbox_detector"] = "yolox_l.onnx", ["pose_estimator"] = "dw-ll_ucoco_384.onnx", ["scale_stick_for_xinsr_cn"] = "disable",
+        });
+        // the stick figure at exactly the new picture's size: the edit patch lays the reference on the same grid from 0, so a different
+        // size would shift the pose (PosePng already padded it to the picture's shape)
+        var (w, h) = PictureSize();
+        g["pose_scale"] = Node("ImageScale", new() { ["image"] = Link("pose_find", 0), ["upscale_method"] = "lanczos", ["width"] = w, ["height"] = h, ["crop"] = "disabled" });
+        // new encoders beside "6" and "7", which stay plain text: Hi-res fix and Fix faces redraw with the plain model, and the saved
+        // picture keeps its prompt (read from the first CLIPTextEncode)
+        foreach (var (src, enc, id) in new[] { ("6", "pose_enc_pos", "pose_pos"), ("7", "pose_enc_neg", "pose_neg") })
+        {
+            var t = (JsonObject)g[src]["inputs"];
+            g[enc] = Node("TextEncodeKrea2OstrisEdit", new()
+            {
+                ["clip"] = t["clip"].DeepClone(), ["prompt"] = t["text"].DeepClone(), ["vae"] = Link("45", 0), ["image1"] = Link("pose_scale", 0),
+            });
+            g[id] = Node("FluxKontextMultiReferenceLatentMethod", new() { ["conditioning"] = Link(enc, 0), ["reference_latents_method"] = "index_timestep_zero" });
+        }
+        g["pose_patch"] = Node("Krea2OstrisEditModelPatch", new() { ["model"] = k["model"].DeepClone(), ["kv_cache"] = true });
+        g["pose"] = Node("LoraLoaderModelOnly", new() { ["model"] = Link("pose_patch", 0), ["lora_name"] = KreaPoseLora, ["strength_model"] = settings.PoseStrength });
+        k["model"] = Link("pose", 0);
+        k["positive"] = Link("pose_pos", 0);
+        k["negative"] = Link("pose_neg", 0);
     }
 
     // "style transfer" puts the picture into the layers that carry look rather than content (PLUS: ViT-H image encoder)
