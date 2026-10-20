@@ -140,7 +140,7 @@ public partial class MainWindow
         var before = MaskedPng((byte[])px.Clone(), w, h, null);
         FillHoles(px, mask, w, h);                  // start from the surroundings' colours, not the object's
         long seed = Random.Shared.NextInt64(0, 1L << 48);
-        bool inpaint = inpaintModel != null && baseCheckpoint != null && settings.InpaintEdits;     // like painted edits: the picked model unless that's on
+        bool inpaint = UsingInpaintModel;           // like painted edits: the picked model unless that's on
         await Enqueue(1, async job =>
         {
             job.Before = before;
@@ -152,6 +152,9 @@ public partial class MainWindow
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };
         }, label: "Removing");
     }
+
+    // painted edits, Remove and Expand: the SDXL inpainting model when it's installed and the setting is on, otherwise the picked model
+    bool UsingInpaintModel => inpaintModel != null && baseCheckpoint != null && settings.InpaintEdits;
 
     // swap a masked edit over to the SDXL inpainting model: it sees the hole and its edges, so fills blend far better
     void UseInpaintModel(JsonObject g)

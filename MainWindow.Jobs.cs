@@ -176,7 +176,7 @@ public partial class MainWindow
                 image = await Upload(canvas, job);
                 // the inpainting model paints the new area from scratch; without it, Turbo at full strength
                 // can leave the sides black, so it keeps a little of the carried-out edge colours
-                (masked, denoise) = (true, inpaintModel != null && baseCheckpoint != null ? 1.0 : 0.9);
+                (masked, denoise) = (true, UsingInpaintModel ? 1.0 : 0.9);
             }
             else if (edit)
             {
@@ -200,8 +200,8 @@ public partial class MainWindow
             // picture n gets seed + n, so the seed saved with each one makes that same picture again
             var g = Graph(seed + job.Number, image, masked, denoise, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))),
                 prompt: prompt, negative: negative);
-            // expansions always use the inpainting model when installed (far better joins); painted edits if the setting is on
-            if (masked && inpaintModel != null && baseCheckpoint != null && (expand != null || settings.InpaintEdits)) UseInpaintModel(g);
+            // expansions and painted edits use the picked model, or the inpainting model when the setting is on
+            if (masked && UsingInpaintModel) UseInpaintModel(g);
             if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
             ApplyBoosters(g, newPicture);
             if (style != null) UseStylePicture(g, style);
