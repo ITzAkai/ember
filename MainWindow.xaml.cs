@@ -76,7 +76,8 @@ public class Settings
     public double LoraStrength { get; set; } = 0.8;
     public List<LoraItemSetting> SavedLoras { get; set; } = new();
     public Dictionary<string, List<LoraItemSetting>> LorasByFamily { get; set; } = new();   // "krea2", "qwen_image", "wan", "sdxl" -> its rows
-    public bool InpaintEdits { get; set; } = true;               // painted edits and expansions use the inpainting model, if installed
+    public bool InpaintEdits { get; set; }                       // painted edits use the inpainting model, if installed (expansions always do)
+    public bool OwnModelEditsSet { get; set; }
     public bool SharpPreviewAll { get; set; }                    // sharp live preview on every model (Qwen and Krea 2 always get it)
     public double StyleStrength { get; set; } = 0.4;             // how strongly a style picture's look carries over (IPAdapter weight)
     public double PoseStrength { get; set; } = 0.8;              // how closely a pose picture's pose is followed (ControlNet strength)
@@ -121,6 +122,8 @@ public class Settings
         catch { s = new Settings(); }
         // the two speed options, on once for everyone (together they halved every step of Krea 2 on an RTX 3060); switching them off sticks
         if (!s.SpeedOptionsSet) { s.CkAttention = s.Fp16Accumulation = s.SpeedOptionsSet = true; }
+        // painted edits with your own model, once for everyone: the SDXL inpainting model follows descriptions poorly; switching it back on sticks
+        if (!s.OwnModelEditsSet) { s.InpaintEdits = false; s.OwnModelEditsSet = true; }
         return s;
     }
     public void Save()

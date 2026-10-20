@@ -21,7 +21,7 @@ public partial class MainWindow
         quietSettings = false;
         InpaintSwitch.IsEnabled = inpaintModel != null;
         InpaintNote.Text = inpaintModel != null
-            ? "Cleaner blending where you painted or expanded (about 25 steps)."
+            ? "Off: painted edits use your picked model, which follows the description. On: the SDXL inpainting model, which blends cleanly but follows descriptions poorly. Expand always uses it."
             : "Needs the SDXL inpainting model (see Models).";
         ShowOutputFolder();
         HistoryNote.Text = settings.History.Count == 1 ? "1 recent prompt saved" : $"{settings.History.Count} recent prompts saved";
