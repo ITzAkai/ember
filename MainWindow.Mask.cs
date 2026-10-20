@@ -140,7 +140,7 @@ public partial class MainWindow
         var before = MaskedPng((byte[])px.Clone(), w, h, null);
         FillHoles(px, mask, w, h);                  // start from the surroundings' colours, not the object's
         long seed = Random.Shared.NextInt64(0, 1L << 48);
-        bool inpaint = inpaintModel != null && baseCheckpoint != null;
+        bool inpaint = inpaintModel != null && baseCheckpoint != null && settings.InpaintEdits;     // like painted edits: the picked model unless that's on
         await Enqueue(1, async job =>
         {
             job.Before = before;
