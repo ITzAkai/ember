@@ -76,7 +76,7 @@ public class Settings
     public double LoraStrength { get; set; } = 0.8;
     public List<LoraItemSetting> SavedLoras { get; set; } = new();
     public Dictionary<string, List<LoraItemSetting>> LorasByFamily { get; set; } = new();   // "krea2", "qwen_image", "wan", "sdxl" -> its rows
-    public bool InpaintEdits { get; set; }                       // painted edits, Remove and Expand use the inpainting model, if installed
+    public bool InpaintEdits { get; set; }                       // painted edits and Expand use the inpainting model, if installed (Remove always does)
     public bool OwnModelEditsSet { get; set; }
     public bool SharpPreviewAll { get; set; }                    // sharp live preview on every model (Qwen and Krea 2 always get it)
     public double StyleStrength { get; set; } = 0.4;             // how strongly a style picture's look carries over (IPAdapter weight)

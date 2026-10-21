@@ -174,9 +174,9 @@ public partial class MainWindow
             {
                 (var canvas, job.Before) = ExpandCanvas(aspect);
                 image = await Upload(canvas, job);
-                // the inpainting model paints the new area from scratch; without it, Turbo at full strength
-                // can leave the sides black, so it keeps a little of the carried-out edge colours
-                (masked, denoise) = (true, UsingInpaintModel ? 1.0 : 0.9);
+                // the new area is painted from scratch; with the soft join and Differential Diffusion (see Soften) Krea 2 at full
+                // strength continued the scene naturally, where 0.9 left blurry strips of the carried-out edge colours
+                (masked, denoise) = (true, 1.0);
             }
             else if (edit)
             {
@@ -198,12 +198,20 @@ public partial class MainWindow
             var pose = newPicture && UsingPosePicture ? await Upload(PosePng(), job) : null;
             bool couple = newPicture && UsingCouple;
             // picture n gets seed + n, so the seed saved with each one makes that same picture again
-            var g = Graph(seed + job.Number, image, masked, denoise, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))),
+            // painted edits and expansions go plain, without LoRAs and style: made for whole pictures, they take over a small redraw
+            // (tested on Krea 2 with a LoRA set: "a red door" came out as a face; without them, a red door)
+            var g = Graph(seed + job.Number, image, masked, denoise, plain: masked, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))),
                 prompt: prompt, negative: negative);
-            // expansions and painted edits use the picked model, or the inpainting model when the setting is on
-            if (masked && UsingInpaintModel) UseInpaintModel(g);
-            if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
-            ApplyBoosters(g, newPicture);
+            // painted edits: Qwen-Image 2.1 when installed (it follows the description); otherwise, and for expansions, the picked model,
+            // or the inpainting model when the setting is on. Expand's soft join reaches 48 px into the photo, so the join is painted too.
+            if (expand == null && edit && masked && !UsingInpaintModel && QwenEditModel is string qwenEdit) UseQwenEdit(g, qwenEdit, prompt);
+            else
+            {
+                if (masked && UsingInpaintModel) UseInpaintModel(g);
+                if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
+                else if (masked) Soften(g, expand != null ? 48 : 8, expand != null ? 10 : 6);
+            }
+            if (!g.ContainsKey("q_model")) ApplyBoosters(g, newPicture);     // the picked model's boosters don't fit Qwen-Image
             if (style != null) UseStylePicture(g, style);
             if (pose != null) UsePosePicture(g, pose);
             if (couple) UseCouple(g, left, right);

@@ -1483,7 +1483,7 @@
               <TextBlock Text="Opens instantly next time, but keeps using graphics-card memory until you restart Windows or close it from the Task Manager."
                          Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
               <CheckBox x:Name="InpaintSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,16,0,0"
-                        Content="Use the inpainting model for painted edits, Remove and Expand" Click="SettingSwitch_Click"/>
+                        Content="Use the inpainting model for painted edits and Expand" Click="SettingSwitch_Click"/>
               <TextBlock x:Name="InpaintNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
               <TextBlock Text="Performance" FontWeight="SemiBold" Margin="0,16,0,6"/>
               <CheckBox x:Name="CkAttentionSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"

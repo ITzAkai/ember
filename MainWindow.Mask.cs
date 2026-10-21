@@ -140,7 +140,9 @@ public partial class MainWindow
         var before = MaskedPng((byte[])px.Clone(), w, h, null);
         FillHoles(px, mask, w, h);                  // start from the surroundings' colours, not the object's
         long seed = Random.Shared.NextInt64(0, 1L << 48);
-        bool inpaint = UsingInpaintModel;           // like painted edits: the picked model unless that's on
+        // always the inpainting model when installed: at CFG 1 (Krea 2 and other turbo models) "no people" does nothing, and tested on
+        // Krea 2 the picked model painted a new person or a crowd into the gap, where the inpainting model left it clean
+        bool inpaint = inpaintModel != null && baseCheckpoint != null;
         await Enqueue(1, async job =>
         {
             job.Before = before;
@@ -149,12 +151,61 @@ public partial class MainWindow
             ((JsonObject)g["6"]["inputs"])["text"] = "empty background, seamless natural continuation of the surroundings, nothing there";
             ((JsonObject)g["7"]["inputs"])["text"] = "person, people, animal, object, text, watermark, frame, border, artifacts, blurry";
             if (inpaint) UseInpaintModel(g);
+            Soften(g, 12, 6);
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };
         }, label: "Removing");
     }
 
-    // painted edits, Remove and Expand: the SDXL inpainting model when it's installed and the setting is on, otherwise the picked model
+    // painted edits and Expand: the SDXL inpainting model when it's installed and the setting is on, otherwise the picked model
     bool UsingInpaintModel => inpaintModel != null && baseCheckpoint != null && settings.InpaintEdits;
+
+    // the marks grown and blurred, so a change fades in over their edge instead of stopping at a hard line, and Differential Diffusion,
+    // which changes the middle fully and the soft edge only a little, so the model paints the join itself. Tested on Remove and Expand:
+    // with hard marks the redrawn part showed as a patch. Not with Crop & Stitch, which blends its own crop.
+    void Soften(JsonObject g, int grow, double blur, bool diffuse = true)
+    {
+        g["grow"] = Node("GrowMask", new() { ["mask"] = Link("10", 1), ["expand"] = grow, ["tapered_corners"] = true });
+        g["mimg"] = Node("MaskToImage", new() { ["mask"] = Link("grow", 0) });
+        g["mblur"] = Node("ImageBlur", new() { ["image"] = Link("mimg", 0), ["blur_radius"] = 31, ["sigma"] = blur });
+        g["soft"] = Node("ImageToMask", new() { ["image"] = Link("mblur", 0), ["channel"] = "red" });
+        foreach (var id in new[] { "13", "15", "43" })
+            if (g[id]?["inputs"] is JsonObject i && i.ContainsKey("mask")) i["mask"] = Link("soft", 0);
+        if (!diffuse) return;
+        var k = (JsonObject)g["3"]["inputs"];
+        g["dd"] = Node("DifferentialDiffusion", new() { ["model"] = k["model"].DeepClone(), ["strength"] = 1.0 });
+        k["model"] = Link("dd", 0);
+    }
+
+    // a painted edit with a description, made by Qwen-Image 2.1 when it's installed: it reads the description as an instruction ("make the
+    // door red", "fix the hand") and redraws the whole picture from it, so the change fits the light; only the painted part is kept.
+    // Tested on Krea 2: asked for a red door, Krea 2 left it purple at any strength and redrew the window; Qwen-Image made it red and kept
+    // the rest. A Turbo copy is preferred (8 steps); Noct Q Anime would turn photos into anime.
+    string QwenEditModel => MissingParts("qwen_image") ? null : Qwen && !Named("noct") ? (string)ModelBox.SelectedItem
+        : separate.Where(kv => kv.Value.Family == "qwen_image" && !kv.Key.Contains("noct", StringComparison.OrdinalIgnoreCase)).Select(kv => kv.Key)
+            .OrderBy(m => m.Contains("turbo", StringComparison.OrdinalIgnoreCase) ? 0 : 1).FirstOrDefault();
+
+    void UseQwenEdit(JsonObject g, string model, string instruction)
+    {
+        var r = RecFor(model);
+        AllActiveLoras(instruction.Trim(), out instruction);       // <lora:…> tags out of the words, as in Qwen's own edits
+        g["q_model"] = UnetNode(separate[model].Unet);
+        g["q_clip"] = ClipNode(TeFor("qwen_image", model), "qwen_image");
+        g["q_vae"] = Node("VAELoader", new() { ["vae_name"] = VaeFor("qwen_image", model) });
+        g["q_enc"] = Node("TextEncodeQwenImage21", new()
+        {
+            ["clip"] = Link("q_clip", 0), ["prompt"] = instruction + " Keep everything else exactly the same.", ["negative_prompt"] = "",
+            ["vae"] = Link("q_vae", 0), ["resolution"] = 1024, ["images.image_1"] = Link("10", 0),
+        });
+        ((JsonObject)g["12"]["inputs"])["samples"] = Link("q_enc", 2);
+        var k = (JsonObject)g["3"]["inputs"];
+        k["model"] = Link("q_model", 0); k["positive"] = Link("q_enc", 0); k["negative"] = Link("q_enc", 1); k["denoise"] = 1.0;
+        k["steps"] = r.Steps[1]; k["cfg"] = r.Cfg; k["sampler_name"] = r.Sampler; k["scheduler"] = r.Scheduler;
+        ((JsonObject)g["8"]["inputs"])["vae"] = Link("q_vae", 0);
+        ((JsonObject)g["15"]["inputs"])["resize_source"] = true;            // Qwen picks its own size near 1 megapixel, same shape
+        foreach (var id in g.Where(kv => kv.Value?["class_type"]?.ToString() == "LoraLoader").Select(kv => kv.Key).ToList()) g.Remove(id);
+        foreach (var unused in new[] { "4", "44", "45", "6", "7", "11", "13" }) g.Remove(unused);
+        Soften(g, 8, 6, diffuse: false);
+    }
 
     // swap a masked edit over to the SDXL inpainting model: it sees the hole and its edges, so fills blend far better
     void UseInpaintModel(JsonObject g)

@@ -21,7 +21,7 @@ public partial class MainWindow
         quietSettings = false;
         InpaintSwitch.IsEnabled = inpaintModel != null;
         InpaintNote.Text = inpaintModel != null
-            ? "Off: painted edits, Remove, Expand and Fix detail use your picked model. On: painted edits, Remove and Expand use the SDXL inpainting model, which blends cleanly but follows descriptions poorly."
+            ? "Off: painted edits use Qwen-Image 2.1 when you have it (it follows the description best), otherwise your picked model; Expand and Fix detail use your picked model, without its LoRAs. On: painted edits and Expand use the SDXL inpainting model, which follows descriptions poorly. Remove always uses it: it fills gaps without painting new things in."
             : "Needs the SDXL inpainting model (see Models).";
         ShowOutputFolder();
         HistoryNote.Text = settings.History.Count == 1 ? "1 recent prompt saved" : $"{settings.History.Count} recent prompts saved";
