@@ -194,7 +194,10 @@ public partial class MainWindow
     bool FiboPose => poseMapPng != null && FiboEditing;
 
     // refs (reference pictures: characters) and pose (a pose picture) go in as more pictures, which the instruction names <image_2>, ...
-    void UseFiboEdit(JsonObject g, string instruction, int width, int height, string[] refs = null, string pose = null)
+    // whole: keep Fibo's whole picture instead of pasting back only the marked part. Tested: when a person changes (a character, a pose,
+    // a large marked area) the body takes a new shape, and pasting back left ghost arms where the old ones reached past the marks;
+    // Fibo's own picture was clean. Small fixes keep the paste-back, so the rest stays the original, at full sharpness.
+    void UseFiboEdit(JsonObject g, string instruction, int width, int height, string[] refs = null, string pose = null, bool whole = false)
     {
         AllActiveLoras(instruction.Trim(), out instruction);
         var extra = new JsonObject();
@@ -232,7 +235,13 @@ public partial class MainWindow
         ((JsonObject)g["15"]["inputs"])["resize_source"] = true;            // back to the picture's own size
         foreach (var id in g.Where(kv => kv.Value?["class_type"]?.ToString() == "LoraLoader").Select(kv => kv.Key).ToList()) g.Remove(id);
         foreach (var unused in new[] { "4", "44", "45", "6", "7", "11", "13" }) g.Remove(unused);
-        Soften(g, 8, 6, diffuse: false);
+        if (whole)
+        {
+            g["q_back"] = Node("ImageScale", new() { ["image"] = Link("8", 0), ["upscale_method"] = "lanczos", ["width"] = width, ["height"] = height, ["crop"] = "disabled" });
+            ((JsonObject)g["9"]["inputs"])["images"] = Link("q_back", 0);
+            foreach (var id in new[] { "14", "15" }) g.Remove(id);
+        }
+        else Soften(g, 8, 6, diffuse: false);
     }
 
     void UseQwenEdit(JsonObject g, string model, string instruction)

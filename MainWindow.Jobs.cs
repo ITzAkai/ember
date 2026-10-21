@@ -210,7 +210,7 @@ public partial class MainWindow
             // painted edits: Fibo 2.0 Edit Turbo when installed (made for it, 4 steps), then Qwen-Image 2.1 (both follow the description);
             // otherwise, and for expansions, the picked model, or the inpainting model when the setting is on. Expand's soft join reaches
             // 48 px into the photo, so the join is painted too.
-            if (fibo) UseFiboEdit(g, prompt, photo.PixelWidth, photo.PixelHeight, refs, pose);
+            if (fibo) UseFiboEdit(g, prompt, photo.PixelWidth, photo.PixelHeight, refs, pose, whole: refs is { Length: > 0 } || pose != null || !small);
             else if (expand == null && edit && masked && !UsingInpaintModel && QwenEditModel is string qwenEdit) UseQwenEdit(g, qwenEdit, prompt);
             else
             {
