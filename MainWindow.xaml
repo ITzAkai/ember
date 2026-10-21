@@ -401,16 +401,19 @@
               <!-- create mode: run a ComfyUI workflow (API format, or a picture made by ComfyUI) with the prompt boxes and a new seed -->
               <StackPanel x:Name="WorkflowSection" AllowDrop="True" DragOver="Workflow_DragOver" Drop="Workflow_Drop" Background="Transparent">
                 <TextBlock Text="Workflow" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
-                <DockPanel x:Name="WorkflowRow" Visibility="Collapsed" Margin="0,0,0,2">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="9" Width="26" Height="26" Click="WorkflowRemove_Click"
-                          ToolTip="Stop using this workflow" AutomationProperties.Name="Remove workflow"/>
-                  <TextBlock x:Name="WorkflowName" FontSize="13" Foreground="{DynamicResource Ink}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <ComboBox x:Name="WorkflowBox" SelectionChanged="WorkflowBox_SelectionChanged" AutomationProperties.Name="Workflow"
+                          ToolTip="None: Ember's own models. Otherwise Generate runs this workflow, with your prompt and a new seed."/>
+                <DockPanel Margin="0,8,0,0">
+                  <Button x:Name="WorkflowGetBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Get" Click="WorkflowGet_Click"
+                          ToolTip="Download the workflow at this link into your workflows" AutomationProperties.Name="Get workflow"/>
+                  <TextBox x:Name="WorkflowLinkBox" Style="{StaticResource Input}" Height="36" Tag="Paste a workflow link (Civitai, Hugging Face, GitHub…)"
+                           AutomationProperties.Name="Workflow link"/>
                 </DockPanel>
-                <DockPanel x:Name="WorkflowAddRow">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Paste" Click="WorkflowPaste_Click"
-                          ToolTip="Use a copied workflow file or picture, or copied workflow text" AutomationProperties.Name="Paste workflow"/>
-                  <Button x:Name="WorkflowAddBtn" Style="{StaticResource Ghost}" Height="36" Content="Use a workflow…" Click="WorkflowAdd_Click"
-                          ToolTip="A workflow saved in ComfyUI with Workflow > Export (API), or a picture made by ComfyUI. You can also drop it here." AutomationProperties.Name="Use a workflow"/>
+                <DockPanel Margin="0,6,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="30" Padding="10,0" Margin="6,0,0,0" FontSize="12" Content="Paste" Click="WorkflowPaste_Click"
+                          ToolTip="Add a copied workflow file or picture, or copied workflow text" AutomationProperties.Name="Paste workflow"/>
+                  <Button Style="{StaticResource Ghost}" Height="30" FontSize="12" Content="Add a file…" Click="WorkflowAdd_Click"
+                          ToolTip="A workflow (.json) or a picture made by ComfyUI. You can also drop it here." AutomationProperties.Name="Add workflow file"/>
                 </DockPanel>
                 <TextBlock x:Name="WorkflowNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
               </StackPanel>
@@ -1660,5 +1663,7 @@
         <Border x:Name="ExpertHost"/>
       </DockPanel>
     </Grid>
+    <!-- a hidden copy of ComfyUI's editor that turns editor-format workflows into ones Ember can run (see MainWindow.Workflow.cs) -->
+    <Border x:Name="ConverterHost" Width="2" Height="2" HorizontalAlignment="Left" VerticalAlignment="Top" Visibility="Hidden"/>
   </Grid>
 </Window>

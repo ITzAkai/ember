@@ -931,6 +931,7 @@ public partial class MainWindow : Window
         ShowPluginBanner();
         ShowBoosters();
         ShowEditExtras();
+        FillWorkflows();
         if (!listening) { listening = true; _ = Listen(); }
         ready = true;
         GenerateBtn.IsEnabled = ModelBox.Items.Count > 0;
