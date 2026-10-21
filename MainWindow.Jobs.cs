@@ -214,7 +214,10 @@ public partial class MainWindow
             else if (expand == null && edit && masked && !UsingInpaintModel && QwenEditModel is string qwenEdit) UseQwenEdit(g, qwenEdit, prompt);
             else
             {
-                if (masked && UsingInpaintModel) UseInpaintModel(g);
+                // expanding with an SDXL model: always its family's inpainting model when installed. Tested on a photo: an Illustrious
+                // merge painted a forest of its own around it (in one run, the photo showed as a glowing box); the inpainting model
+                // continued the park itself. Krea 2 continued it well, so other families keep the picked model.
+                if (masked && (UsingInpaintModel || expand != null && Sdxl && inpaintModel != null && baseCheckpoint != null)) UseInpaintModel(g);
                 if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
                 else if (masked) Soften(g, expand != null ? 48 : 8, expand != null ? 10 : 6);
             }
