@@ -1266,6 +1266,7 @@ public partial class MainWindow : Window
             var json = JsonNode.Parse(head).AsObject();
             var meta = json["__metadata__"];
             var label = $"{meta?["modelspec.architecture"]} {meta?["ss_base_model_version"]}".ToLowerInvariant();
+            if (label.Contains("moss")) return "moss_image";
             if (label.Contains("krea")) return "krea2";
             if (label.Contains("qwen")) return "qwen_image";
             if (label.Contains("anima")) return "anima";
@@ -1276,6 +1277,8 @@ public partial class MainWindow : Window
             // H3's own layers (not Hunyuan's individual_token_refiner), or its blocks' attn.qkv_proj and mlp.fc1/fc2 for LoRAs that train only those
             if (Regex.IsMatch(keys, @"(?<![\w])token_refiner\.") || keys.Contains("audio_patch_proj")
                 || Regex.IsMatch(keys, @"blocks[._]\d+[._]attn[._]qkv_proj") && Regex.IsMatch(keys, @"mlp[._]fc[12]")) return "minimax_h3";
+            // MOSS-Image's blocks: proj.qkv / proj.o and a fused proj.ffn_up_gate (written with dots or, in kohya files, underscores)
+            if (Regex.IsMatch(keys, @"layers[._]\d+[._]proj[._](ffn_up_gate|ffn_down|qkv|[qkvo])[._]")) return "moss_image";
             if (keys.Contains(".attn.wk.") || keys.Contains(".attn.gate.") || keys.Contains("txtfusion") || keys.Contains("text_fusion")) return "krea2";
             if (keys.Contains("img_mlp") || keys.Contains("txt_mlp") || keys.Contains("img_mod")) return "qwen_image";
             if (keys.Contains("llm_adapter") || keys.Contains("adaln_modulation")) return "anima";
@@ -1356,7 +1359,9 @@ public partial class MainWindow : Window
                 && Family("lora_unet_blocks_0_self_attn_q_proj.lora_down.weight", "lora_unet_blocks_0_mlp_layer1.lora_up.weight") == "anima"
                 && Family("diffusion_model.blocks.0.self_attn.q.lora_A.weight", "diffusion_model.blocks.0.cross_attn.k.lora_A.weight", "diffusion_model.blocks.0.ffn.0.lora_A.weight") == "wan"
                 && Family("lora_unet_input_blocks_4_1_transformer_blocks_0_attn1_to_q.lora_down.weight") == "sdxl"
-                && Family("lora_unet_blocks_0_attn_qkv_proj.lora_down.weight", "lora_unet_blocks_0_mlp_fc1.lora_down.weight") == "minimax_h3";
+                && Family("lora_unet_blocks_0_attn_qkv_proj.lora_down.weight", "lora_unet_blocks_0_mlp_fc1.lora_down.weight") == "minimax_h3"
+                && Family("diffusion_model.layers.0.proj.ffn_up_gate.lora_A.weight") == "moss_image"
+                && Family("lora_unet_layers_0_proj_ffn_down.lora_down.weight") == "moss_image";
         }
         finally { try { File.Delete(file); } catch { } }
     }
