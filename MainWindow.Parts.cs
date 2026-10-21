@@ -76,8 +76,8 @@ public partial class MainWindow
             : n.Contains("umt5") ? "umt5" : n.Contains("qwen359b") ? "qwen35_9b" : n.Contains("flux2vae") ? "flux2_vae" : n.Contains("qwenimage21vae") ? "qwen21_vae" : n.Contains("qwenimagevae") || n.Contains("wan21vae") || n.Contains("wanvae") ? "wan_vae" : null;
     }
 
-    static string TeKind(string family) => family switch { "qwen_image" => "qwen3vl_8b", "krea2" => "qwen3vl_4b", "anima" => "qwen3_06b", "minimax_h3" => "qwen3vl_32b", "moss_image" => "qwen35_9b", _ => "umt5" };
-    static string VaeKind(string family) => family switch { "qwen_image" => "qwen21_vae", "minimax_h3" => "h3_video_vae", "moss_image" => "flux2_vae", _ => "wan_vae" };
+    static string TeKind(string family) => family switch { "qwen_image" => "qwen3vl_8b", "krea2" => "qwen3vl_4b", "anima" => "qwen3_06b", "minimax_h3" => "qwen3vl_32b", "moss_image" => "qwen35_9b", "fibo2" => "qwen3vl_4b", _ => "umt5" };
+    static string VaeKind(string family) => family switch { "qwen_image" => "qwen21_vae", "minimax_h3" => "h3_video_vae", "moss_image" or "fibo2" => "flux2_vae", _ => "wan_vae" };
 
     // the first file of that kind, preferring a name that is a hint, then one that contains it
     string FindPart(List<string> files, string folder, string kind, params string[] prefer) =>
@@ -94,6 +94,8 @@ public partial class MainWindow
         animaTe = FindPart(tes, "text_encoders", "qwen3_06b");
         mossTe = FindPart(tes, "text_encoders", "qwen35_9b");
         mossVae = FindPart(vaes, "vae", "flux2_vae", "small");      // the small decoder, as in ComfyUI's template
+        fiboVae = FindPart(vaes, "vae", "flux2_vae", "flux2vaesafetensors");      // the full FLUX.2 VAE, as in ComfyUI's Fibo 2.0 files
+        fiboTe = FindPart(tes, "text_encoders", "qwen3vl_4b", "qwen3vl4bint8", "qwen3vl4bfp8scaled", "qwen3vl4bbf16");   // a stock copy: Fibo reads the pictures with it
         wanTe = FindPart(tes, "text_encoders", "umt5");
         wanVae = FindPart(vaes, "vae", "wan_vae", "wan");
         h3Te = FindPart(tes, "text_encoders", "qwen3vl_32b", "minimaxh3");
@@ -101,8 +103,8 @@ public partial class MainWindow
         h3AudioVae = FindPart(vaes, "vae", "h3_audio_vae", "fp32");         // in fp16 or bf16 the sound comes out as a buzz
     }
 
-    string AutoTe(string family) => family switch { "qwen_image" => qwenTe, "krea2" => kreaTe, "anima" => animaTe, "minimax_h3" => h3Te, "moss_image" => mossTe, _ => wanTe };
-    string AutoVae(string family) => family switch { "qwen_image" => qwenVae, "krea2" or "anima" => kreaVae, "minimax_h3" => h3Vae, "moss_image" => mossVae, _ => wanVae };
+    string AutoTe(string family) => family switch { "qwen_image" => qwenTe, "krea2" => kreaTe, "anima" => animaTe, "minimax_h3" => h3Te, "moss_image" => mossTe, "fibo2" => fiboTe ?? kreaTe, _ => wanTe };
+    string AutoVae(string family) => family switch { "qwen_image" => qwenVae, "krea2" or "anima" => kreaVae, "minimax_h3" => h3Vae, "moss_image" => mossVae, "fibo2" => fiboVae, _ => wanVae };
 
     // this model's own choice when it's still installed and fits the family, else the automatic one
     string TeFor(string family, string model = null) =>

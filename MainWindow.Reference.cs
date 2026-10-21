@@ -402,7 +402,7 @@ public partial class MainWindow
     {
         if (PosePicSection == null) return;
         bool plugin = PosePluginsThere, ready = plugin && PoseFilesThere;
-        PosePicSection.Visibility = PoseFamily && CreateMode.IsChecked == true && !VideoOn ? Visibility.Visible : Visibility.Collapsed;
+        PosePicSection.Visibility = PoseFamily && CreateMode.IsChecked == true && !VideoOn || FiboEditing ? Visibility.Visible : Visibility.Collapsed;
         PosePicThumb.Visibility = PosePicStrength.Visibility = posePicture != null ? Visibility.Visible : Visibility.Collapsed;
         if (posePicture != null) PosePicImage.Background = new ImageBrush(posePicture.Thumb) { Stretch = Stretch.UniformToFill };
         PosePicAddRow.Visibility = posePicture == null && ready ? Visibility.Visible : Visibility.Collapsed;

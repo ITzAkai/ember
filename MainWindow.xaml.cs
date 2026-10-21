@@ -930,6 +930,7 @@ public partial class MainWindow : Window
         await LoadNodeNames();
         ShowPluginBanner();
         ShowBoosters();
+        ShowEditExtras();
         if (!listening) { listening = true; _ = Listen(); }
         ready = true;
         GenerateBtn.IsEnabled = ModelBox.Items.Count > 0;
@@ -959,11 +960,13 @@ public partial class MainWindow : Window
             var ckpts = ComboOptions(ck["CheckpointLoaderSimple"]["input"]["required"]["ckpt_name"]).ToList();
             // plain SDXL base stays installed for the inpainting model, but every other model makes better pictures
             var models = ckpts.Where(c => !c.StartsWith("sd_xl_base", StringComparison.OrdinalIgnoreCase) && IsFullCheckpoint(c)).ToList();
-            separate.Clear(); setupNote = null;
+            separate.Clear(); setupNote = null; fiboEdit = null;
             foreach (var u in unets)
             {
                 var family = FamilyOf(u);
                 if (family == null) continue;
+                // Fibo 2.0 Edit Turbo only edits: it makes painted edits (see UseFiboEdit) and stays out of the model list
+                if (family == "fibo2") { if (u.Contains("edit", StringComparison.OrdinalIgnoreCase)) fiboEdit = u; continue; }
                 var (te, vae, label) = family switch
                 {
                     "qwen_image" => (qwenTe, qwenVae, "Qwen-Image 2.1"), "krea2" => (kreaTe, kreaVae, "Krea 2"), "anima" => (animaTe, kreaVae, "Anima"),
@@ -1000,6 +1003,7 @@ public partial class MainWindow : Window
                 ?? ckpts.FirstOrDefault(c => !c.Contains("flux", StringComparison.OrdinalIgnoreCase));
             RefreshStyleTiles();
             UpdateLoraChip();
+            ShowEditExtras();
         }
         catch (Exception e) { Note("Couldn't read ComfyUI's models: " + e.Message, true); }
         loadingOptions = false;
@@ -1012,7 +1016,7 @@ public partial class MainWindow : Window
     bool Named(string part) => ModelBox.SelectedItem is string m && m.Contains(part, StringComparison.OrdinalIgnoreCase);
     // models in separate files (diffusion model + text encoder + VAE): Qwen-Image 2.1, Krea 2 and their fine-tunes
     const string QwenName = "Qwen-Image 2.1";
-    string qwenTe, qwenVae, kreaTe, kreaVae, animaTe, mossTe, mossVae, setupNote;
+    string qwenTe, qwenVae, kreaTe, kreaVae, animaTe, mossTe, mossVae, fiboEdit, fiboTe, fiboVae, setupNote;
     readonly Dictionary<string, (string Unet, string Family)> separate = new();
     string Family => ModelBox.SelectedItem is string m && separate.TryGetValue(m, out var s) ? s.Family : null;   // also its CLIPLoader type
     bool Qwen => Family == "qwen_image";
@@ -1089,6 +1093,7 @@ public partial class MainWindow : Window
             if (keys.Contains("video_patch_proj.weight") && keys.Contains("audio_patch_proj.weight")) return "minimax_h3";     // MiniMax H3: video and sound
             if (keys.Contains("llm_adapter.")) return "anima";           // Anima (Cosmos-based, a Qwen3 0.6B adapter)
             if (keys.Contains("shared_block_modulation.weight") && keys.Contains("proj.ffn_up_gate.weight")) return "moss_image";   // as ComfyUI tells MOSS-Image
+            if (keys.Contains("perceiver.latent_queries") && keys.Contains("final_layer.linear.weight")) return "fibo2";            // Fibo 2.0
             if (Regex.IsMatch(keys, @"txtfusion\.projector\.weight(?![\w.])")) return "krea2";
             if (Regex.IsMatch(keys, @"txt_in\.text_norm\.weight(?![\w.])")) return "qwen_image";
             // Wan 2.1 text-to-video takes 16 latent channels in; picture-to-video (Fun InP) 36: the start picture's latent and mask too.
@@ -1737,7 +1742,8 @@ public partial class MainWindow : Window
     {
         bool edit = EditMode.IsChecked == true, video = VideoMode.IsChecked == true;
         GalleryPanel.Visibility = edit ? Visibility.Collapsed : Visibility.Visible;
-        SizeSection.Visibility = ReferenceSection.Visibility = CoupleSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
+        SizeSection.Visibility = CoupleSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
+        ShowEditExtras();
         VideoSection.Visibility = video ? Visibility.Visible : Visibility.Collapsed;
         ShowVideoOptions();
         CountSection.Visibility = video ? Visibility.Collapsed : Visibility.Visible;
@@ -1751,6 +1757,13 @@ public partial class MainWindow : Window
             : video ? "Turn a short idea into a detailed video prompt, with movement and camera" : "Turn a short idea into a detailed prompt, written by the local Qwen model";
         if (ready && video != showingVideoModels) FillModels();
         ShowBoosters();
+    }
+
+    // characters and the pose picture in edits too, when Fibo 2.0 makes them (known once ComfyUI's models are read)
+    void ShowEditExtras()
+    {
+        ReferenceSection.Visibility = VideoMode.IsChecked == true || EditMode.IsChecked == true && !FiboEditing ? Visibility.Collapsed : Visibility.Visible;
+        ShowPosePicture();
     }
 
     void ChoosePhoto_Click(object sender, RoutedEventArgs e)

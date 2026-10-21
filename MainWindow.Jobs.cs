@@ -155,6 +155,9 @@ public partial class MainWindow
         if (edit && CropLayer.Visibility == Visibility.Visible) { Note("Apply or cancel the crop first.", true); return; }
         // a reference or style picture may show a real person, so it never goes into a nude or sexual picture
         if (UsingReferences && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
+        // the same for painted edits made by Fibo 2.0, which takes the characters and the pose picture as they are (no pose finder in between)
+        if (FiboRefs && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
+        if (FiboPose && SexualWords.IsMatch(words)) { Note("Pose pictures can't be used in nude or sexual edits: they may show a real person.", true); return; }
         if (!edit && UsingStylePicture && SexualWords.IsMatch(words)) { Note("Style pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
         if (!edit && UsingCouple && (CoupleLeftBox.Text.Trim() == "" || CoupleRightBox.Text.Trim() == ""))
         { Note("Describe both people, or turn off Two people.", true); return; }
@@ -186,25 +189,30 @@ public partial class MainWindow
                 masked = mask != null;
                 small = masked && MaskBoxShare(mask, photo.PixelWidth, photo.PixelHeight) < 0.5;
             }
+            // a painted edit made by Fibo 2.0, which also takes the characters and the pose picture as pictures of their own
+            bool fibo = expand == null && edit && masked && FiboEditing;
             string[] refs = null, looks = [];
-            if (expand == null && UsingReferences)
+            if (expand == null && (UsingReferences || fibo && FiboRefs))
             {
                 refs = new string[references.Count];
                 for (int i = 0; i < refs.Length; i++) refs[i] = await Upload(references[i].Png, job);
-                if (!Qwen) { var l = new List<string>(); foreach (var r in references) l.Add(await LooksOf(r)); looks = l.ToArray(); }   // one at a time (see AddReference)
+                if (!Qwen && !fibo) { var l = new List<string>(); foreach (var r in references) l.Add(await LooksOf(r)); looks = l.ToArray(); }   // one at a time (see AddReference)
             }
             bool newPicture = !edit && expand == null;
             var style = newPicture && UsingStylePicture ? await Upload(stylePicture.Png, job) : null;
-            var pose = newPicture && UsingPosePicture ? await Upload(PosePng(), job) : null;
+            var pose = newPicture && UsingPosePicture ? await Upload(PosePng(), job)
+                : fibo && FiboPose ? await Upload(posePicture.Png, job) : null;        // Fibo sizes the pose picture itself
             bool couple = newPicture && UsingCouple;
             // picture n gets seed + n, so the seed saved with each one makes that same picture again
             // painted edits and expansions go plain, without LoRAs and style: made for whole pictures, they take over a small redraw
             // (tested on Krea 2 with a LoRA set: "a red door" came out as a face; without them, a red door)
             var g = Graph(seed + job.Number, image, masked, denoise, plain: masked, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))),
                 prompt: prompt, negative: negative);
-            // painted edits: Qwen-Image 2.1 when installed (it follows the description); otherwise, and for expansions, the picked model,
-            // or the inpainting model when the setting is on. Expand's soft join reaches 48 px into the photo, so the join is painted too.
-            if (expand == null && edit && masked && !UsingInpaintModel && QwenEditModel is string qwenEdit) UseQwenEdit(g, qwenEdit, prompt);
+            // painted edits: Fibo 2.0 Edit Turbo when installed (made for it, 4 steps), then Qwen-Image 2.1 (both follow the description);
+            // otherwise, and for expansions, the picked model, or the inpainting model when the setting is on. Expand's soft join reaches
+            // 48 px into the photo, so the join is painted too.
+            if (fibo) UseFiboEdit(g, prompt, photo.PixelWidth, photo.PixelHeight, refs, pose);
+            else if (expand == null && edit && masked && !UsingInpaintModel && QwenEditModel is string qwenEdit) UseQwenEdit(g, qwenEdit, prompt);
             else
             {
                 if (masked && UsingInpaintModel) UseInpaintModel(g);
@@ -213,7 +221,7 @@ public partial class MainWindow
             }
             if (!g.ContainsKey("q_model")) ApplyBoosters(g, newPicture);     // the picked model's boosters don't fit Qwen-Image
             if (style != null) UseStylePicture(g, style);
-            if (pose != null) UsePosePicture(g, pose);
+            if (pose != null && newPicture) UsePosePicture(g, pose);
             if (couple) UseCouple(g, left, right);
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };
         }, vary: (body, from, to) => Reseed(body, seed + from.Number, seed + to.Number));

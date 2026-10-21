@@ -184,6 +184,57 @@ public partial class MainWindow
         : separate.Where(kv => kv.Value.Family == "qwen_image" && !kv.Key.Contains("noct", StringComparison.OrdinalIgnoreCase)).Select(kv => kv.Key)
             .OrderBy(m => m.Contains("turbo", StringComparison.OrdinalIgnoreCase) ? 0 : 1).FirstOrDefault();
 
+    // Fibo 2.0 Edit Turbo, made for edits by instruction: 4 steps at CFG 1 (ComfyUI's settings), so it's much quicker than Qwen-Image.
+    // It works at about 1 megapixel and centre-crops the picture to the size it's given, so it gets the picture's own shape: the edit
+    // then lines up pixel for pixel when it's fitted back. Its text encoder is Krea 2's (Qwen3-VL-4B), its VAE the full FLUX.2 one.
+    bool FiboReady => fiboEdit != null && (fiboTe ?? kreaTe) != null && fiboVae != null && nodeNames.Contains("TextEncodeFibo2");
+    // in Edit mode Fibo also takes the characters and the pose picture (as they are: it reads them itself, no pose finder)
+    bool FiboEditing => EditMode.IsChecked == true && !VideoOn && FiboReady && !UsingInpaintModel;
+    bool FiboRefs => references.Count > 0 && FiboEditing;
+    bool FiboPose => posePicture != null && FiboEditing;
+
+    // refs (reference pictures: characters) and pose (a pose picture) go in as more pictures, which the instruction names <image_2>, ...
+    void UseFiboEdit(JsonObject g, string instruction, int width, int height, string[] refs = null, string pose = null)
+    {
+        AllActiveLoras(instruction.Trim(), out instruction);
+        var extra = new JsonObject();
+        int n = 2;
+        var looks = new List<string>();
+        foreach (var r in refs ?? [])
+        {
+            g[$"q_ref{n}"] = Node("LoadImage", new() { ["image"] = r });
+            extra[$"images.image_{n}"] = Link($"q_ref{n}", 0); looks.Add($"<image_{n}>"); n++;
+        }
+        if (looks.Count > 0) instruction = instruction.TrimEnd('.') + $". The person looks exactly like the one in {string.Join(" and ", looks)}: same face, hair and build.";
+        if (pose != null)
+        {
+            g["q_pose"] = Node("LoadImage", new() { ["image"] = pose });
+            extra[$"images.image_{n}"] = Link("q_pose", 0);
+            instruction = instruction.TrimEnd('.') + $". The person takes exactly the pose of the person in <image_{n}>.";
+        }
+        double k = Math.Sqrt(1024.0 * 1024 / (width * height));
+        int w = Math.Max(256, (int)Math.Round(width * k / 16) * 16), h = Math.Max(256, (int)Math.Round(height * k / 16) * 16);
+        g["q_model"] = UnetNode(fiboEdit);
+        g["q_clip"] = ClipNode(TeFor("fibo2", fiboEdit), "fibo2");
+        g["q_vae"] = Node("VAELoader", new() { ["vae_name"] = VaeFor("fibo2", fiboEdit) });
+        g["q_scale"] = Node("ImageScale", new() { ["image"] = Link("10", 0), ["upscale_method"] = "lanczos", ["width"] = w, ["height"] = h, ["crop"] = "disabled" });
+        g["q_enc"] = Node("TextEncodeFibo2", new()
+        {
+            ["clip"] = Link("q_clip", 0), ["prompt"] = instruction, ["negative_prompt"] = "", ["vae"] = Link("q_vae", 0),
+            ["images.image_1"] = Link("q_scale", 0), ["width"] = w, ["height"] = h, ["batch_size"] = 1,
+        });
+        foreach (var (key, value) in extra.ToList()) { extra.Remove(key); ((JsonObject)g["q_enc"]["inputs"])[key] = value; }
+        ((JsonObject)g["12"]["inputs"])["samples"] = Link("q_enc", 2);
+        var s = (JsonObject)g["3"]["inputs"];
+        s["model"] = Link("q_model", 0); s["positive"] = Link("q_enc", 0); s["negative"] = Link("q_enc", 1); s["denoise"] = 1.0;
+        s["steps"] = 4; s["cfg"] = 1.0; s["sampler_name"] = "euler"; s["scheduler"] = "simple";
+        ((JsonObject)g["8"]["inputs"])["vae"] = Link("q_vae", 0);
+        ((JsonObject)g["15"]["inputs"])["resize_source"] = true;            // back to the picture's own size
+        foreach (var id in g.Where(kv => kv.Value?["class_type"]?.ToString() == "LoraLoader").Select(kv => kv.Key).ToList()) g.Remove(id);
+        foreach (var unused in new[] { "4", "44", "45", "6", "7", "11", "13" }) g.Remove(unused);
+        Soften(g, 8, 6, diffuse: false);
+    }
+
     void UseQwenEdit(JsonObject g, string model, string instruction)
     {
         var r = RecFor(model);
