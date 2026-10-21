@@ -155,9 +155,8 @@ public partial class MainWindow
         if (edit && CropLayer.Visibility == Visibility.Visible) { Note("Apply or cancel the crop first.", true); return; }
         // a reference or style picture may show a real person, so it never goes into a nude or sexual picture
         if (UsingReferences && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
-        // the same for painted edits made by Fibo 2.0, which takes the characters and the pose picture as they are (no pose finder in between)
+        // the same for painted edits made by Fibo 2.0, which takes the characters as they are (the pose goes in as a stick figure only)
         if (FiboRefs && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
-        if (FiboPose && SexualWords.IsMatch(words)) { Note("Pose pictures can't be used in nude or sexual edits: they may show a real person.", true); return; }
         if (!edit && UsingStylePicture && SexualWords.IsMatch(words)) { Note("Style pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
         if (!edit && UsingCouple && (CoupleLeftBox.Text.Trim() == "" || CoupleRightBox.Text.Trim() == ""))
         { Note("Describe both people, or turn off Two people.", true); return; }
@@ -201,7 +200,7 @@ public partial class MainWindow
             bool newPicture = !edit && expand == null;
             var style = newPicture && UsingStylePicture ? await Upload(stylePicture.Png, job) : null;
             var pose = newPicture && UsingPosePicture ? await Upload(PosePng(), job)
-                : fibo && FiboPose ? await Upload(posePicture.Png, job) : null;        // Fibo sizes the pose picture itself
+                : fibo && FiboPose ? await Upload(poseMapPng, job) : null;        // only the stick figure: no one's likeness goes in
             bool couple = newPicture && UsingCouple;
             // picture n gets seed + n, so the seed saved with each one makes that same picture again
             // painted edits and expansions go plain, without LoRAs and style: made for whole pictures, they take over a small redraw

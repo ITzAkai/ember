@@ -427,12 +427,13 @@ public partial class MainWindow
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         img.Freeze();
         posePicture = new RefPicture { Png = PngOf(img), Thumb = img };
-        (poseMap, poseFound) = (null, null);
+        (poseMap, poseMapPng, poseFound) = (null, null, null);
         ShowPosePicture();
         _ = FindPose(posePicture);
     }
 
     ImageSource poseMap;            // the stick figure the pose finder saw in posePicture, once found
+    byte[] poseMapPng;              // the same as a PNG: what Fibo 2.0 edits get, so no one's face or body goes in, only the pose
     string poseFound;               // what it says about it
 
     // the pose finder on the picture alone, as soon as it's added: a misread pose shows before a picture is spent on it.
@@ -477,10 +478,11 @@ public partial class MainWindow
             if (posePicture != pic) return;
             bool nobody = AllDark(map);
             poseMap = nobody ? null : map;
+            poseMapPng = nobody ? null : bytes;
             poseFound = nobody ? "No person found in this picture, so new pictures won't follow a pose. Try a clearer one where the whole body shows."
                 : "The found pose is on the right: new pictures copy that stick figure. If it doesn't match the picture, try a clearer, full-body one.";
         }
-        catch (Exception ex) { if (posePicture == pic) (poseMap, poseFound) = (null, $"Couldn't show the pose ({ex.Message}); the picture is still used."); }
+        catch (Exception ex) { if (posePicture == pic) (poseMap, poseMapPng, poseFound) = (null, null, $"Couldn't show the pose ({ex.Message}); the picture is still used."); }
         finally
         {
             if (stored != null) try { File.Delete(Path.Combine(Root, "ComfyUI", "input", stored.Replace('/', Path.DirectorySeparatorChar))); } catch { }
@@ -523,7 +525,7 @@ public partial class MainWindow
         try { SetPosePicture(Oriented(f)); } catch (Exception ex) { Note("Couldn't open that picture: " + ex.Message, true); }
     }
 
-    void PosePicRemove_Click(object sender, RoutedEventArgs e) { (posePicture, poseMap, poseFound) = (null, null, null); ShowPosePicture(); }
+    void PosePicRemove_Click(object sender, RoutedEventArgs e) { (posePicture, poseMap, poseMapPng, poseFound) = (null, null, null, null); ShowPosePicture(); }
 
     // ComfyUI fits the pose map to the new picture by cutting out its middle, which loses arms and swords on a picture of another
     // shape; black bars to the new picture's shape keep the whole pose

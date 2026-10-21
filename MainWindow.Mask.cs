@@ -188,10 +188,10 @@ public partial class MainWindow
     // It works at about 1 megapixel and centre-crops the picture to the size it's given, so it gets the picture's own shape: the edit
     // then lines up pixel for pixel when it's fitted back. Its text encoder is Krea 2's (Qwen3-VL-4B), its VAE the full FLUX.2 one.
     bool FiboReady => fiboEdit != null && (fiboTe ?? kreaTe) != null && fiboVae != null && nodeNames.Contains("TextEncodeFibo2");
-    // in Edit mode Fibo also takes the characters and the pose picture (as they are: it reads them itself, no pose finder)
+    // in Edit mode Fibo also takes the characters, and the pose as the pose finder's stick figure (never the pose photo itself)
     bool FiboEditing => EditMode.IsChecked == true && !VideoOn && FiboReady && !UsingInpaintModel;
     bool FiboRefs => references.Count > 0 && FiboEditing;
-    bool FiboPose => posePicture != null && FiboEditing;
+    bool FiboPose => poseMapPng != null && FiboEditing;
 
     // refs (reference pictures: characters) and pose (a pose picture) go in as more pictures, which the instruction names <image_2>, ...
     void UseFiboEdit(JsonObject g, string instruction, int width, int height, string[] refs = null, string pose = null)
@@ -210,7 +210,7 @@ public partial class MainWindow
         {
             g["q_pose"] = Node("LoadImage", new() { ["image"] = pose });
             extra[$"images.image_{n}"] = Link("q_pose", 0);
-            instruction = instruction.TrimEnd('.') + $". The person takes exactly the pose of the person in <image_{n}>.";
+            instruction = instruction.TrimEnd('.') + $". The person takes exactly the pose of the stick figure in <image_{n}>.";
         }
         double k = Math.Sqrt(1024.0 * 1024 / (width * height));
         int w = Math.Max(256, (int)Math.Round(width * k / 16) * 16), h = Math.Max(256, (int)Math.Round(height * k / 16) * 16);
