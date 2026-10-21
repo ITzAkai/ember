@@ -158,6 +158,12 @@ public partial class MainWindow
         // the same for painted edits made by Fibo 2.0, which takes the characters as they are (the pose goes in as a stick figure only)
         if (FiboRefs && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
         if (!edit && UsingStylePicture && SexualWords.IsMatch(words)) { Note("Style pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
+        // a workflow: the same blocks for every word in it, and it must be able to run here
+        if (!edit && expand == null && UsingWorkflow)
+        {
+            if (WorkflowBlocked(PromptBox.Text, NegativeBox.Text) is string why) { Note(why, true); return; }
+            if (WorkflowProblem() is string problem) { Note(problem, true); return; }
+        }
         if (!edit && UsingCouple && (CoupleLeftBox.Text.Trim() == "" || CoupleRightBox.Text.Trim() == ""))
         { Note("Describe both people, or turn off Two people.", true); return; }
         long seed = newSeed || RandomSeed.IsChecked == true || !long.TryParse(SeedBox.Text, out var typed) ? Random.Shared.NextInt64(0, 1L << 48) : typed;
@@ -167,8 +173,10 @@ public partial class MainWindow
         int count = expand != null || one ? 1 : int.Parse(Picked(CountGroup));      // an expansion is one picture, not variations
         // the words as checked above go into every picture, even if the boxes are edited while the later ones wait their turn
         string prompt = PromptBox.Text, negative = NegativeBox.Text, left = CoupleLeftBox.Text.Trim(), right = CoupleRightBox.Text.Trim();
+        bool runWorkflow = !edit && expand == null && UsingWorkflow;
         await Enqueue(count, async job =>
         {
+            if (runWorkflow) return new JsonObject { ["prompt"] = WorkflowGraph(seed + job.Number, prompt, negative), ["client_id"] = clientId };
             string image = null;
             bool masked = false, small = false;
             double? denoise = null;

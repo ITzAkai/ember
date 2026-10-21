@@ -398,6 +398,23 @@
                 </StackPanel>
               </StackPanel>
 
+              <!-- create mode: run a ComfyUI workflow (API format, or a picture made by ComfyUI) with the prompt boxes and a new seed -->
+              <StackPanel x:Name="WorkflowSection" AllowDrop="True" DragOver="Workflow_DragOver" Drop="Workflow_Drop" Background="Transparent">
+                <TextBlock Text="Workflow" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <DockPanel x:Name="WorkflowRow" Visibility="Collapsed" Margin="0,0,0,2">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="9" Width="26" Height="26" Click="WorkflowRemove_Click"
+                          ToolTip="Stop using this workflow" AutomationProperties.Name="Remove workflow"/>
+                  <TextBlock x:Name="WorkflowName" FontSize="13" Foreground="{DynamicResource Ink}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                </DockPanel>
+                <DockPanel x:Name="WorkflowAddRow">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Paste" Click="WorkflowPaste_Click"
+                          ToolTip="Use a copied workflow file or picture, or copied workflow text" AutomationProperties.Name="Paste workflow"/>
+                  <Button x:Name="WorkflowAddBtn" Style="{StaticResource Ghost}" Height="36" Content="Use a workflow…" Click="WorkflowAdd_Click"
+                          ToolTip="A workflow saved in ComfyUI with Workflow > Export (API), or a picture made by ComfyUI. You can also drop it here." AutomationProperties.Name="Use a workflow"/>
+                </DockPanel>
+                <TextBlock x:Name="WorkflowNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+              </StackPanel>
+
               <!-- create mode, SDXL models: a picture whose look (colours, brushwork, light) new pictures take on (IPAdapter Plus) -->
               <StackPanel x:Name="StylePicSection" Visibility="Collapsed" AllowDrop="True" DragOver="Reference_DragOver" Drop="StylePic_Drop" Background="Transparent">
                 <TextBlock Text="Style picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>

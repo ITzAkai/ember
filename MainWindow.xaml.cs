@@ -1565,7 +1565,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512) | (SelfTestReseed() ? 0 : 1024) | (SelfTestSettings() ? 0 : 2048) | (SelfTestAllDark() ? 0 : 4096);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512) | (SelfTestReseed() ? 0 : 1024) | (SelfTestSettings() ? 0 : 2048) | (SelfTestAllDark() ? 0 : 4096) | (SelfTestWorkflow() ? 0 : 8192);
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }
@@ -1747,7 +1747,8 @@ public partial class MainWindow : Window
     {
         bool edit = EditMode.IsChecked == true, video = VideoMode.IsChecked == true;
         GalleryPanel.Visibility = edit ? Visibility.Collapsed : Visibility.Visible;
-        SizeSection.Visibility = CoupleSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
+        SizeSection.Visibility = CoupleSection.Visibility = WorkflowSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
+        ShowWorkflow();
         ShowEditExtras();
         VideoSection.Visibility = video ? Visibility.Visible : Visibility.Collapsed;
         ShowVideoOptions();
