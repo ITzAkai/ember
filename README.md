@@ -22,12 +22,18 @@ Type an idea, pick a style, and Ember does the rest: it runs [ComfyUI](https://g
 - **Reference pictures**: drop or paste a character or a place, and new pictures keep the same face, hair and clothes, in any model's style
 - **Saved characters**: keep them under a name and bring them back in one click
 - **Style picture**: new pictures take on the colours, brushwork and light of a picture you love
-- **Pose picture**: the people in new pictures take the pose of the people in a picture you choose
+- **Pose picture**: the people in new pictures take the pose of the people in a picture you choose (only the pose is used, as a stick figure)
 
 ### Edit
-- **Paint to change**: brush over part of a picture and describe what goes there, or remove things
-- **Expand** a picture past its edges, **cut out the background**, and **upscale** 2× or 4×
+- **Paint to change**: brush over part of a picture and describe the change ("make the door red", "fix the hand"). With an instruction-following edit model installed, the edit follows your words, and the change blends into the picture
+- **Characters and poses in edits**: paint over a person and they can take on a saved character's looks or a picture's pose
+- **Remove**, **Expand** a picture past its edges, **cut out the background**, and **upscale** 2× or 4×
 - **More like this**: fresh variations close to a picture you love
+
+### Workflows
+- **Any ComfyUI workflow**: paste a link (Civitai, Hugging Face, GitHub) and press Get, or add a file, then pick it from a list like a LoRA
+- **Generate runs it** with your prompt and a new seed, and its pictures land in your gallery. Workflows saved in ComfyUI's editor work too: Ember converts them with ComfyUI's own code
+- Ember says what a workflow is missing (plugins, input pictures) before it runs
 
 ### Watch and steer
 - **Live view**: click a picture while it's being made and watch it take shape
@@ -36,6 +42,7 @@ Type an idea, pick a style, and Ember does the rest: it runs [ComfyUI](https://g
 
 ### Better pictures, without the guesswork
 - **Settings that fit each model**: Ember knows good steps, sampler and size for each model, warns when something is off, and fixes it in one click
+- **Fast by default**: ComfyUI's speed options are on, and quick models get short touch-up passes, so pictures come out several times faster on mid-range graphics cards
 - **Quality boosters**: fix faces, hi-res fix, refine with a second model, sharper structure and a colour finish, one switch each
 - **LoRA add-ons**: mix several at once and search them by name or by what they do; each one shows what it does, its trigger words and the kind of model it was made for, and the ones that fit your model come first
 - **Your setups, saved**: every model remembers its own settings; save favourite setups as tabs and share them
