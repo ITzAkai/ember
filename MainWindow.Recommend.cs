@@ -133,8 +133,24 @@ public partial class MainWindow
 
     // a MiniMax H3 turbo LoRA (minimax_h3_fl2v_turbo_4step…) changes what the model needs: few steps at CFG 1.
     // Measured on a 5 s clip: 4 steps looked as good as 6 and took 184 s instead of 222 s.
+    // a speed-up LoRA (turbo, 4-step, 8-step, DMD distillations): it sets how many steps the model needs, not the look
+    static bool IsSpeedLora(string name) => Regex.IsMatch(name, @"turbo|(?<![a-z\d])\d+[-_ ]?steps?(?![a-z\d])|dmd", RegexOptions.IgnoreCase);
+
     Rec WithTurboLora(Rec r)
     {
+        // MOSS-Image's turbo LoRAs (sft_4step, 8_steps_dmd…): 4 or 8 steps at CFG 1 with euler, as their makers say
+        if (Moss && CurrentLoras().FirstOrDefault(l => IsSpeedLora(l.Name)) is { } m)
+        {
+            bool fourStep = Regex.IsMatch(m.Name, @"(?<!\d)4[-_ ]?steps?", RegexOptions.IgnoreCase);
+            return r with
+            {
+                Label = r.Label + " + Turbo LoRA", Sampler = "euler", Scheduler = "simple",
+                Steps = fourStep ? new[] { 4, 4, 6 } : new[] { 6, 8, 10 }, StepsRange = fourStep ? new[] { 4, 8 } : new[] { 4, 10 },
+                Cfg = 1, CfgRange = new[] { 1.0, 1.0 }, Negative = false,
+                Why = $"With {System.IO.Path.GetFileNameWithoutExtension(m.Name)} MOSS-Image needs only {(fourStep ? "4" : "8")} steps at CFG 1 with euler, as its maker says" +
+                      (fourStep ? " (6 steps for about 1536 px wide, 8 at 2048×2048)." : "."),
+            };
+        }
         if (!H3 || CurrentLoras().FirstOrDefault(l => l.Name.Contains("turbo", StringComparison.OrdinalIgnoreCase)) is not { } t) return r;
         bool four = Regex.IsMatch(t.Name, @"4[-_ ]?step", RegexOptions.IgnoreCase);
         return r with
@@ -225,11 +241,13 @@ public partial class MainWindow
             issues.Add(new(LoraDot, l.Strength > r.LoraEach * 2 ? 2 : 1,
                 $"{System.IO.Path.GetFileNameWithoutExtension(l.Name)} at {l.Strength:0.##} is strong for one LoRA (up to {r.LoraEach:0.#} is usual): faces and hands can warp.",
                 () => SetLoraStrength(l.Name, r.LoraEach * 0.8)));
-        double total = active.Sum(l => l.Strength);
-        if (active.Count > 1 && total > r.LoraTotal)
+        // MOSS-Image's speed-up LoRAs run at full strength by design and don't change the look, so they aren't counted with the others
+        var looks = Moss ? active.Where(l => !IsSpeedLora(l.Name)).ToList() : active;
+        double total = looks.Sum(l => l.Strength);
+        if (looks.Count > 1 && total > r.LoraTotal)
             issues.Add(new(LoraDot, total > r.LoraTotal * 1.6 ? 2 : 1,
                 $"Your LoRAs add up to {total:0.##}; above about {r.LoraTotal:0.#} together they fight each other and over-cook the picture.",
-                () => { foreach (var l in active) SetLoraStrength(l.Name, l.Strength * r.LoraTotal / total); }));
+                () => { foreach (var l in looks) SetLoraStrength(l.Name, l.Strength * r.LoraTotal / total); }));
         var realism = active.Where(l => Regex.IsMatch(l.Name + " " + loraInfo.GetValueOrDefault(l.Name)?.Name, "realis|real |photo|skin", RegexOptions.IgnoreCase) && l.Strength >= 0.8).ToList();
         if (realism.Count > 1)
             issues.Add(new(LoraDot, 1, "Two realism LoRAs at full strength stack the same effect: skin goes plastic or over-sharp. About 0.5–0.6 each, or keep one.",
