@@ -154,10 +154,6 @@ public partial class MainWindow
         if (edit && photo == null) { Note("Choose a photo to edit first.", true); return; }
         if (edit && CropLayer.Visibility == Visibility.Visible) { Note("Apply or cancel the crop first.", true); return; }
 
-
-        // the same for painted edits made by Fibo 2.0, which takes the characters as they are (the pose goes in as a stick figure only)
-
-
         // a workflow: the same blocks for every word in it, and it must be able to run here
         if (!edit && expand == null && UsingWorkflow)
         {

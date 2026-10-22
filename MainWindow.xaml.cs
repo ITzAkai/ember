@@ -2323,23 +2323,6 @@ public partial class MainWindow : Window
         "requested change, and write the prompt for the picture as it should look afterwards: keep the photo's subject, pose, composition, setting and style, " +
         "and apply the change. " + KeepAsked + "Write one paragraph of 40 to 80 words. Reply with the prompt only.";
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     async void Enhance_Click(object sender, RoutedEventArgs e)
     {
         var idea = PromptBox.Text.Trim();

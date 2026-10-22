@@ -287,22 +287,6 @@ public partial class MainWindow
     static string TextKey(JsonObject inputs) =>
         new[] { "text", "prompt", "text_g", "value" }.FirstOrDefault(k => inputs[k] is JsonValue v && v.TryGetValue<string>(out _));
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     JsonObject WorkflowGraph(long seed, string prompt, string negative)
     {
         var g = (JsonObject)workflow.DeepClone();
