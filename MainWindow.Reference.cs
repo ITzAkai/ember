@@ -22,7 +22,7 @@ public partial class MainWindow
         "No pose, lighting or art style. Reply with 10 to 30 short comma-separated tags only.";
 
     // the picture in words, for models other than Qwen-Image: their redraw gets them too, so hair, eyes and clothes hold at higher strengths.
-    // Written once per picture, in the background. "" when the words would make the prompt sexual (a reference may show a real person).
+    // the picture in words, for models other than Qwen-Image: their redraw gets them too, so hair, eyes and clothes hold at higher strengths.
     Task<string> LooksOf(RefPicture r)
     {
         if (r.Looks is { IsCompleted: true, Result: null }) r.Looks = null;      // the text model was busy or failed: try again
@@ -33,7 +33,7 @@ public partial class MainWindow
     {
         var text = await AskTextModel("List what this looks like.", LooksSystem, r.Png, "Noting what the reference looks like…", maxTokens: 120);
         if (text == null) return null;
-        if (SexualWords.IsMatch(text)) return "";
+
         r.Seen = text;
         ShowReferences();           // its tooltip shows the words
         return text;
