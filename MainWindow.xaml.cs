@@ -2401,6 +2401,10 @@ public partial class MainWindow : Window
     }
 
     bool writing;       // one request to the text model at a time
+    bool plainHelper;   // Qwen3-VL even when a local build would swap it
+
+    // lets a local build swap the helper's text encoder and instructions; does nothing otherwise
+    partial void LocalHelper(string prompt, byte[] png, ref string te, ref string teType, ref string system, ref int maxTokens);
 
     // ComfyUI's TextGenerate with Qwen3-VL 8B, looking at a picture too when given one.
     // Returns the checked answer, or null after saying why not.
@@ -2422,7 +2426,10 @@ public partial class MainWindow : Window
             catch (Exception ex) { Note("Ollama couldn't write it (" + ex.Message + "). Is Ollama still running?", true); return null; }
             finally { writing = false; EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = DescribePasteBtn.IsEnabled = true; }
         }
-        if (!ready || qwenTe == null) { Note("This needs ComfyUI running and the Qwen-Image 2.1 text encoder.", true); return null; }
+        string te = qwenTe, teType = "qwen_image", plainSystem = system;
+        int plainMax = maxTokens;
+        if (!plainHelper) LocalHelper(prompt, png, ref te, ref teType, ref system, ref maxTokens);
+        if (!ready || te == null) { Note("This needs ComfyUI running and the Qwen-Image 2.1 text encoder.", true); return null; }
         if (writing) return null;
         writing = true;
         EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = DescribePasteBtn.IsEnabled = false;
@@ -2438,7 +2445,7 @@ public partial class MainWindow : Window
             };
             var g = new JsonObject
             {
-                ["1"] = Node("CLIPLoader", new() { ["clip_name"] = qwenTe, ["type"] = "qwen_image" }),
+                ["1"] = Node("CLIPLoader", new() { ["clip_name"] = te, ["type"] = teType }),
                 ["2"] = Node("TextGenerate", gen),
                 ["3"] = Node("PreviewAny", new() { ["source"] = Link("2", 0) }),
             };
@@ -2467,7 +2474,7 @@ public partial class MainWindow : Window
             }
             if (text == "") throw new Exception("the model gave an empty answer");
             if (SexualWithMinor(text)) { Note(MinorNote, true); return null; }
-            return text;
+            if (te == qwenTe || !Declined.IsMatch(text)) return text;
         }
         catch (Exception ex) { Note("Couldn't write it: " + ex.Message, true); return null; }
         finally
@@ -2476,6 +2483,10 @@ public partial class MainWindow : Window
             writing = false;
             EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = DescribePasteBtn.IsEnabled = true;
         }
+        // a swapped-in text encoder refused: ask the usual helper instead
+        plainHelper = true;
+        try { return await AskTextModel(prompt, plainSystem, png, waiting, plainMax); }
+        finally { plainHelper = false; }
     }
 
     static byte[] PngOf(BitmapSource b)
