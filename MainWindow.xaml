@@ -1479,113 +1479,137 @@
             <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="CloseOverlays_Click" ToolTip="Close (Esc)" AutomationProperties.Name="Close settings"/>
             <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
           </DockPanel>
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="0,0,6,0">
-              <TextBlock Text="Appearance" Style="{StaticResource Heading}" Margin="0,14,0,10" Foreground="{DynamicResource Accent}"/>
-              <DockPanel>
-                <Border DockPanel.Dock="Right" Style="{StaticResource SegmentHost}" Padding="2" VerticalAlignment="Center">
-                  <StackPanel Orientation="Horizontal">
-                    <RadioButton x:Name="ThemeDark" Style="{StaticResource Segment}" GroupName="theme" Height="30" Width="70" Content="Dark" Checked="Theme_Checked"/>
-                    <RadioButton x:Name="ThemeLight" Style="{StaticResource Segment}" GroupName="theme" Height="30" Width="70" Content="Light" Checked="Theme_Checked"/>
-                  </StackPanel>
-                </Border>
-                <StackPanel VerticalAlignment="Center">
-                  <TextBlock Text="Theme" FontWeight="SemiBold"/>
-                  <TextBlock x:Name="ThemeNote" Text="Takes effect when Ember opens." Style="{StaticResource Note}" Margin="0,2,0,0"/>
-                </StackPanel>
-              </DockPanel>
-              <Button x:Name="RestartAppBtn" Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="Collapsed"
-                      Content="Restart Ember now" Click="RestartApp_Click"/>
-
-              <TextBlock Text="ComfyUI" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
-              <CheckBox x:Name="KeepComfySwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
-                        Content="Keep ComfyUI running after closing Ember" Click="SettingSwitch_Click"/>
-              <TextBlock Text="Opens instantly next time, but keeps using graphics-card memory until you restart Windows or close it from the Task Manager."
-                         Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-              <CheckBox x:Name="InpaintSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,16,0,0"
-                        Content="Use the inpainting model for painted edits and Expand" Click="SettingSwitch_Click"/>
-              <TextBlock x:Name="InpaintNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-              <TextBlock Text="Performance" FontWeight="SemiBold" Margin="0,16,0,6"/>
-              <CheckBox x:Name="CkAttentionSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
-                        Content="Faster attention (int8: slightly less exact)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
-              <CheckBox x:Name="Fp16AccSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,8,0,0"
-                        Content="fp16 accumulation (faster on RTX 40; some LoRAs then give black pictures)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
-              <CheckBox x:Name="SharpPreviewSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,8,0,0"
-                        Content="Sharp live preview on every model (anime about 6% slower, SDXL about 19%; Qwen and Krea 2 always sharp)" Click="SettingSwitch_Click"/>
-              <DockPanel x:Name="PreviewFilesRow" Margin="0,8,0,0" Visibility="Collapsed">
-                <Button x:Name="PreviewFilesBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Margin="8,0,0,0"
-                        Content="Get them (76 MB)" Click="GetPreviewFiles_Click"/>
-                <TextBlock x:Name="PreviewFilesNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"
-                           Text="Sharp previews need two small preview files for Krea 2, Anima, Wan and Qwen-Image. Without them the preview stays blurry."/>
-              </DockPanel>
-              <DockPanel Margin="0,8,0,0">
-                <TextBox x:Name="ReserveVramBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" LostFocus="Perf_Changed"
-                         Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" CaretBrush="{DynamicResource Accent}"
-                         AutomationProperties.Name="Graphics memory to keep free"/>
-                <TextBlock Text="Graphics memory to keep free for other programs (GB)" VerticalAlignment="Center"/>
-              </DockPanel>
-              <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <Button Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Content="Recommended for RTX 40 laptops" Click="PerfPreset_Click"/>
-                <Button Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Margin="8,0,0,0" Content="ComfyUI's defaults" Click="PerfDefault_Click"/>
-              </StackPanel>
-              <TextBlock x:Name="PerfNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
-
-              <TextBlock x:Name="PluginsHeading" Text="Plugins" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
-              <CheckBox x:Name="FastStartSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
-                        Content="Fast start: load only the plugins Ember uses" Click="FastStart_Click"/>
-              <TextBlock Text="Plugins run their own code inside ComfyUI. Ember only installs the versions listed here, checked against their published fingerprints."
-                         Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
-              <StackPanel x:Name="PluginsList" Margin="0,4,0,0"/>
-              <DockPanel Margin="0,4,0,0">
-                <Button DockPanel.Dock="Right" Style="{StaticResource Primary}" Height="32" Padding="14,0" Content="Install selected" Click="InstallSelected_Click"/>
-                <TextBlock x:Name="PluginsNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0"/>
-              </DockPanel>
-
-              <TextBlock Text="Prompt helper" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
-              <ComboBox x:Name="HelperBox" SelectionChanged="Helper_SelectionChanged" AutomationProperties.Name="Prompt helper model"
-                        ToolTip="Which model writes prompts for Improve prompt"/>
-              <TextBlock x:Name="HelperNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
-
-              <TextBlock Text="Images folder" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
-              <Border Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,9">
-                <TextBlock x:Name="OutputPathText" TextTrimming="CharacterEllipsis"/>
-              </Border>
-              <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <Button Style="{StaticResource Ghost}" Height="32" Content="Change…" Click="ChangeOutput_Click"/>
-                <Button x:Name="DefaultOutputBtn" Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Use ComfyUI's folder" Click="DefaultOutput_Click"/>
-                <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Open" Click="Folder_Click"/>
-              </StackPanel>
-              <TextBlock Text="New images go to a forge folder inside it. ComfyUI restarts to switch." Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
-
-              <TextBlock Text="Downloads" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
-              <TextBlock Text="Civitai API key" FontWeight="SemiBold"/>
-              <DockPanel Margin="0,8,0,0">
-                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="34" Margin="8,0,0,0" Content="Save" Click="SaveKey_Click"/>
-                <TextBox x:Name="CivitaiKeyBox" Style="{StaticResource Input}" Height="34" VerticalContentAlignment="Center"
-                         Tag="Paste your key to save it" AutomationProperties.Name="Civitai API key"/>
-              </DockPanel>
-              <DockPanel Margin="0,6,0,0">
-                <Button x:Name="RemoveKeyBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="28" Margin="8,0,0,0" Content="Remove key" Click="RemoveKey_Click"/>
-                <TextBlock x:Name="CivitaiKeyNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"/>
-              </DockPanel>
-
-              <TextBlock Text="Shortcuts" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
-              <StackPanel Orientation="Horizontal">
-                <Button Style="{StaticResource Ghost}" Height="32" Content="Add to Start menu" Click="StartMenu_Click"/>
-                <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Desktop shortcut" Click="DesktopShortcut_Click"/>
-              </StackPanel>
-              <TextBlock x:Name="ShortcutNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
-
-              <TextBlock Text="Prompt history" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
-              <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Content="Clear history" Click="ClearHistory_Click"/>
-                <TextBlock x:Name="HistoryNote" Style="{StaticResource Note}" VerticalAlignment="Center"/>
-              </DockPanel>
-
-              <TextBlock Text="About" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
-              <TextBlock x:Name="AboutText" Style="{StaticResource Note}" TextWrapping="Wrap" LineHeight="19"/>
-              <Button Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Left" Margin="0,10,0,0" Content="Open ComfyUI log" Click="OpenLog_Click"/>
+          <Border DockPanel.Dock="Top" Style="{StaticResource SegmentHost}" Padding="2" Margin="0,8,0,6" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal">
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="General" Tag="SettingsGeneral" IsChecked="True" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="Creating" Tag="SettingsCreating" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="Performance" Tag="SettingsPerformance" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" x:Name="SettingsPluginsTab" Content="Plugins" Tag="SettingsPlugins" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="Account" Tag="SettingsAccount" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="About" Tag="SettingsAbout" Checked="SettingsTab_Checked"/>
             </StackPanel>
+          </Border>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <Grid Margin="0,0,6,0">
+              <StackPanel x:Name="SettingsGeneral">
+                <TextBlock Text="Appearance" Style="{StaticResource Heading}" Margin="0,6,0,10" Foreground="{DynamicResource Accent}"/>
+                <DockPanel>
+                  <Border DockPanel.Dock="Right" Style="{StaticResource SegmentHost}" Padding="2" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                      <RadioButton x:Name="ThemeDark" Style="{StaticResource Segment}" GroupName="theme" Height="30" Width="70" Content="Dark" Checked="Theme_Checked"/>
+                      <RadioButton x:Name="ThemeLight" Style="{StaticResource Segment}" GroupName="theme" Height="30" Width="70" Content="Light" Checked="Theme_Checked"/>
+                    </StackPanel>
+                  </Border>
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Theme" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="ThemeNote" Text="Takes effect when Ember opens." Style="{StaticResource Note}" Margin="0,2,0,0"/>
+                  </StackPanel>
+                </DockPanel>
+                <Button x:Name="RestartAppBtn" Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="Collapsed"
+                        Content="Restart Ember now" Click="RestartApp_Click"/>
+
+                <TextBlock Text="Images folder" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+                <Border Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                  <TextBlock x:Name="OutputPathText" TextTrimming="CharacterEllipsis"/>
+                </Border>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <Button Style="{StaticResource Ghost}" Height="32" Content="Change…" Click="ChangeOutput_Click"/>
+                  <Button x:Name="DefaultOutputBtn" Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Use ComfyUI's folder" Click="DefaultOutput_Click"/>
+                  <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Open" Click="Folder_Click"/>
+                </StackPanel>
+                <TextBlock Text="New images go to a forge folder inside it. ComfyUI restarts to switch." Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+                <TextBlock Text="Shortcuts" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+                <StackPanel Orientation="Horizontal">
+                  <Button Style="{StaticResource Ghost}" Height="32" Content="Add to Start menu" Click="StartMenu_Click"/>
+                  <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Content="Desktop shortcut" Click="DesktopShortcut_Click"/>
+                </StackPanel>
+                <TextBlock x:Name="ShortcutNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+                <TextBlock Text="Prompt history" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="32" Content="Clear history" Click="ClearHistory_Click"/>
+                  <TextBlock x:Name="HistoryNote" Style="{StaticResource Note}" VerticalAlignment="Center"/>
+                </DockPanel>
+
+              </StackPanel>
+              <StackPanel x:Name="SettingsCreating" Visibility="Collapsed">
+                <TextBlock Text="Prompt helper" Style="{StaticResource Heading}" Margin="0,6,0,10" Foreground="{DynamicResource Accent}"/>
+                <ComboBox x:Name="HelperBox" SelectionChanged="Helper_SelectionChanged" AutomationProperties.Name="Prompt helper model"
+                          ToolTip="Which model writes prompts for Improve prompt"/>
+                <TextBlock x:Name="HelperNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+                <TextBlock Text="Painted edits" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+                <CheckBox x:Name="InpaintSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0"
+                          Content="Use the inpainting model for painted edits and Expand" Click="SettingSwitch_Click"/>
+                <TextBlock x:Name="InpaintNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock Text="Live preview" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+                <CheckBox x:Name="SharpPreviewSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0"
+                          Content="Sharp live preview on every model (anime about 6% slower, SDXL about 19%; Qwen and Krea 2 always sharp)" Click="SettingSwitch_Click"/>
+                <DockPanel x:Name="PreviewFilesRow" Margin="0,8,0,0" Visibility="Collapsed">
+                  <Button x:Name="PreviewFilesBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Margin="8,0,0,0"
+                          Content="Get them (76 MB)" Click="GetPreviewFiles_Click"/>
+                  <TextBlock x:Name="PreviewFilesNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"
+                             Text="Sharp previews need two small preview files for Krea 2, Anima, Wan and Qwen-Image. Without them the preview stays blurry."/>
+                </DockPanel>
+              </StackPanel>
+              <StackPanel x:Name="SettingsPerformance" Visibility="Collapsed">
+                <TextBlock Text="Speed" Style="{StaticResource Heading}" Margin="0,6,0,10" Foreground="{DynamicResource Accent}"/>
+                <CheckBox x:Name="CkAttentionSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
+                          Content="Faster attention (int8: slightly less exact)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
+                <CheckBox x:Name="Fp16AccSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,8,0,0"
+                          Content="fp16 accumulation (faster on RTX 40; some LoRAs then give black pictures)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
+                <DockPanel Margin="0,8,0,0">
+                  <TextBox x:Name="ReserveVramBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" LostFocus="Perf_Changed"
+                           Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" CaretBrush="{DynamicResource Accent}"
+                           AutomationProperties.Name="Graphics memory to keep free"/>
+                  <TextBlock Text="Graphics memory to keep free for other programs (GB)" VerticalAlignment="Center"/>
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <Button Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Content="Recommended for RTX 40 laptops" Click="PerfPreset_Click"/>
+                  <Button Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" Margin="8,0,0,0" Content="ComfyUI's defaults" Click="PerfDefault_Click"/>
+                </StackPanel>
+                <TextBlock x:Name="PerfNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+                <TextBlock Text="ComfyUI" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+                <CheckBox x:Name="KeepComfySwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
+                          Content="Keep ComfyUI running after closing Ember" Click="SettingSwitch_Click"/>
+                <TextBlock Text="Opens instantly next time, but keeps using graphics-card memory until you restart Windows or close it from the Task Manager."
+                           Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+              </StackPanel>
+              <StackPanel x:Name="SettingsPlugins" Visibility="Collapsed">
+                <TextBlock x:Name="PluginsHeading" Text="Plugins" Style="{StaticResource Heading}" Margin="0,6,0,10" Foreground="{DynamicResource Accent}"/>
+                <CheckBox x:Name="FastStartSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
+                          Content="Fast start: load only the plugins Ember uses" Click="FastStart_Click"/>
+                <TextBlock Text="Plugins run their own code inside ComfyUI. Ember only installs the versions listed here, checked against their published fingerprints."
+                           Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <StackPanel x:Name="PluginsList" Margin="0,4,0,0"/>
+                <DockPanel Margin="0,4,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Primary}" Height="32" Padding="14,0" Content="Install selected" Click="InstallSelected_Click"/>
+                  <TextBlock x:Name="PluginsNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                </DockPanel>
+
+              </StackPanel>
+              <StackPanel x:Name="SettingsAccount" Visibility="Collapsed">
+                <TextBlock Text="Civitai" Style="{StaticResource Heading}" Margin="0,6,0,10" Foreground="{DynamicResource Accent}"/>
+                <TextBlock Text="Civitai API key" FontWeight="SemiBold"/>
+                <DockPanel Margin="0,8,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="34" Margin="8,0,0,0" Content="Save" Click="SaveKey_Click"/>
+                  <TextBox x:Name="CivitaiKeyBox" Style="{StaticResource Input}" Height="34" VerticalContentAlignment="Center"
+                           Tag="Paste your key to save it" AutomationProperties.Name="Civitai API key"/>
+                </DockPanel>
+                <DockPanel Margin="0,6,0,0">
+                  <Button x:Name="RemoveKeyBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="28" Margin="8,0,0,0" Content="Remove key" Click="RemoveKey_Click"/>
+                  <TextBlock x:Name="CivitaiKeyNote" Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </DockPanel>
+
+              </StackPanel>
+              <StackPanel x:Name="SettingsAbout" Visibility="Collapsed">
+                <TextBlock Text="About" Style="{StaticResource Heading}" Margin="0,6,0,10" Foreground="{DynamicResource Accent}"/>
+                <TextBlock x:Name="AboutText" Style="{StaticResource Note}" TextWrapping="Wrap" LineHeight="19"/>
+                <Button Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Left" Margin="0,10,0,0" Content="Open ComfyUI log" Click="OpenLog_Click"/>
+              </StackPanel>
+            </Grid>
           </ScrollViewer>
         </DockPanel>
       </Border>

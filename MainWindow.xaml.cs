@@ -94,13 +94,13 @@ public class Settings
     public bool FastStart { get; set; } = true;                  // ComfyUI loads only the recommended plugins Ember uses
     public bool HidePluginBanner { get; set; }
     public double PromptTextSize { get; set; } = 14.5;
-    public string HelperModel { get; set; } = "";
+    public string HelperModel { get; set; } = "";             // "": Qwen3-VL in ComfyUI; "Ollama: <name>" for a local Ollama model
     public double ReferenceStyle { get; set; } = 0.35;     // how much a non-Qwen model redraws a reference picture
     public bool CkAttention { get; set; }
     public bool Fp16Accumulation { get; set; }
     public bool SpeedOptionsSet { get; set; }
     public double ReserveVram { get; set; }
-    public int CacheRam { get; set; }                // "": Qwen3-VL in ComfyUI; "Ollama: <name>" for a local Ollama model
+    public int CacheRam { get; set; }                            // ComfyUI --cache-ram in GB (0: off)
     public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // before per-model profiles: the starting point for models without one
     public Dictionary<string, ModelProfile> Profiles { get; set; } = new();        // each model's own settings
     public List<ModelProfile> Tabs { get; set; } = new();

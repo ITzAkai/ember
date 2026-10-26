@@ -190,7 +190,7 @@ public partial class MainWindow
     }
 
     async void InstallPluginsBanner_Click(object sender, RoutedEventArgs e) => await InstallPlugins(MissingDefaults(), ManagerMissing);
-    void ChoosePlugins_Click(object sender, RoutedEventArgs e) { Settings_Click(sender, e); PluginsHeading.BringIntoView(); }
+    void ChoosePlugins_Click(object sender, RoutedEventArgs e) { Settings_Click(sender, e); SettingsPluginsTab.IsChecked = true; }
     void HidePluginBanner_Click(object sender, RoutedEventArgs e) { settings.HidePluginBanner = true; settings.Save(); ShowPluginBanner(); }
 
     readonly Dictionary<Plugin, CheckBox> pluginChecks = new();

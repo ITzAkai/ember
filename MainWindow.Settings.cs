@@ -1,4 +1,4 @@
-// The Settings page: theme, ComfyUI behaviour, images folder, shortcuts, history. Saved straight away.
+// The Settings page, in tabs: General (theme, images folder, shortcuts, history), Creating, Performance, Plugins, Account, About. Saved straight away.
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
@@ -35,6 +35,14 @@ public partial class MainWindow
     }
 
     bool quietSettings;     // filling the page shouldn't count as changing it
+
+    // the tabs along the top: each one's Tag names the page it shows
+    void SettingsTab_Checked(object sender, RoutedEventArgs e)
+    {
+        if (SettingsGeneral == null) return;        // still loading the window
+        foreach (var page in new FrameworkElement[] { SettingsGeneral, SettingsCreating, SettingsPerformance, SettingsPlugins, SettingsAccount, SettingsAbout })
+            page.Visibility = page.Name == (string)((FrameworkElement)sender).Tag ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     // the Civitai API key: only Windows can decrypt it, and only for this user
     string CivitaiKey
