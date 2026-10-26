@@ -1559,6 +1559,10 @@
                           Content="Faster attention (int8: slightly less exact)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
                 <CheckBox x:Name="Fp16AccSwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left" Margin="0,8,0,0"
                           Content="fp16 accumulation (faster on RTX 40; some LoRAs then give black pictures)" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
+                <TextBlock Text="Memory" Style="{StaticResource Heading}" Margin="0,24,0,10" Foreground="{DynamicResource Accent}"/>
+                <CheckBox x:Name="LowMemorySwitch" Style="{StaticResource Switch}" Foreground="{DynamicResource Ink}" FontSize="13" HorizontalAlignment="Left"
+                          Content="Low-memory mode" Checked="Perf_Changed" Unchecked="Perf_Changed"/>
+                <TextBlock x:Name="LowMemoryNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                 <DockPanel Margin="0,8,0,0">
                   <TextBox x:Name="ReserveVramBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" LostFocus="Perf_Changed"
                            Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" CaretBrush="{DynamicResource Accent}"

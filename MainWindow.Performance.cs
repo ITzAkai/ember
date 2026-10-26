@@ -34,8 +34,24 @@ public partial class MainWindow
         if (settings.CkAttention && CkAttentionPossible) flags += " --use-ck-attention";
         if (settings.Fp16Accumulation) flags += " --fast fp16_accumulation";
         if (settings.ReserveVram > 0) flags += " --reserve-vram " + settings.ReserveVram.ToString("0.#", CultureInfo.InvariantCulture);
-        if (settings.CacheRam > 0) flags += " --cache-ram " + settings.CacheRam;
+        if (settings.CacheRam > 0 && !settings.LowMemory) flags += " --cache-ram " + settings.CacheRam;
+        // low memory: keep no results between runs and don't lock RAM for transfers (graphics memory is already loaded piece by piece)
+        if (settings.LowMemory) flags += " --cache-none --disable-pinned-memory";
         return flags;
+    }
+
+    // a PC that would run out: under 24 GB of RAM, or a graphics card under 10 GB
+    static bool SmallPc()
+    {
+        if (GC.GetGCMemoryInfo().TotalAvailableMemoryBytes < 24L << 30) return true;
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo("nvidia-smi", "--query-gpu=memory.total --format=csv,noheader,nounits") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true });
+            var mb = double.Parse(p.StandardOutput.ReadLine().Trim(), CultureInfo.InvariantCulture);
+            p.WaitForExit();
+            return mb < 10 * 1024;
+        }
+        catch { return false; }
     }
 
     bool fillingPerf;
@@ -47,7 +63,10 @@ public partial class MainWindow
         CkAttentionSwitch.IsEnabled = CkAttentionPossible;
         Fp16AccSwitch.IsChecked = settings.Fp16Accumulation;
         ReserveVramBox.Text = settings.ReserveVram.ToString("0.#", CultureInfo.InvariantCulture);
+        LowMemorySwitch.IsChecked = settings.LowMemory;
         fillingPerf = false;
+        LowMemoryNote.Text = "Uses less memory, so big models don't run out; each picture may take a little longer." +
+            (!settings.LowMemory && SmallPc() ? " Recommended for this PC: it has under 24 GB of memory or a graphics card under 10 GB." : "");
         double cc = ComputeCap();
         PerfNote.Text = (cc == 0 ? "No NVIDIA card found." : $"Your graphics card has compute level {cc:0.0}. ") +
             (cc >= 10 ? "It runs nvfp4 and mxfp8 model files fast." : cc >= 8.9 ? "nvfp4 and mxfp8 files need an RTX 50 card to be fast; fp8 and int8 files are the quick ones here."
@@ -60,6 +79,7 @@ public partial class MainWindow
         if (fillingPerf) return;
         settings.CkAttention = CkAttentionSwitch.IsChecked == true;
         settings.Fp16Accumulation = Fp16AccSwitch.IsChecked == true;
+        settings.LowMemory = LowMemorySwitch.IsChecked == true;
         if (double.TryParse(ReserveVramBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var gb)) settings.ReserveVram = Math.Clamp(gb, 0, 8);
         settings.Save();
         ShowPerformance();
@@ -79,7 +99,7 @@ public partial class MainWindow
 
     void PerfDefault_Click(object sender, RoutedEventArgs e)
     {
-        settings.CkAttention = settings.Fp16Accumulation = false;
+        settings.CkAttention = settings.Fp16Accumulation = settings.LowMemory = false;
         settings.ReserveVram = 0;
         settings.CacheRam = 0;
         settings.Save();
