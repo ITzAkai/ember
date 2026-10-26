@@ -9,7 +9,7 @@ public partial class MainWindow
 {
     Dictionary<ToggleButton, bool> openBeforeSearch;
 
-    (DockPanel Header, ToggleButton Toggle, StackPanel Body)[] AdvancedSections =>
+    (FrameworkElement Header, ToggleButton Toggle, StackPanel Body)[] AdvancedSections =>
     [
         (ModelSectionHeader, ModelSectionToggle, ModelSectionBody), (LoraGroupHeader, LoraGroupToggle, LoraGroupBody),
         (VideoSectionHeader, VideoSectionToggle, VideoSectionBody), (SamplingSectionHeader, SamplingSectionToggle, SamplingSectionBody), (BoostersSectionHeader, BoostersSectionToggle, BoostersSectionBody),
