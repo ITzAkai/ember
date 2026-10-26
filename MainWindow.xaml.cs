@@ -771,10 +771,7 @@ public partial class MainWindow : Window
     }
 
     bool writing;       // one request to the text model at a time
-    bool plainHelper;   // Qwen3-VL even when a local build would swap it
-
-    // lets a local build swap the helper's text encoder and instructions; does nothing otherwise
-    partial void LocalHelper(string prompt, byte[] png, ref string te, ref string teType, ref string system, ref int maxTokens);
+    bool plainHelper;   // Qwen3-VL even when MossHelper would swap it
 
     // ComfyUI's TextGenerate with Qwen3-VL 8B, looking at a picture too when given one.
     // Returns the checked answer, or null after saying why not.
@@ -798,7 +795,7 @@ public partial class MainWindow : Window
         }
         string te = qwenTe, teType = "qwen_image", plainSystem = system;
         int plainMax = maxTokens;
-        if (!plainHelper) LocalHelper(prompt, png, ref te, ref teType, ref system, ref maxTokens);
+        if (!plainHelper) MossHelper(prompt, png, ref te, ref teType, ref system, ref maxTokens);
         if (!ready || te == null) { Note("This needs ComfyUI running and the Qwen-Image 2.1 text encoder.", true); return null; }
         if (writing) return null;
         writing = true;
