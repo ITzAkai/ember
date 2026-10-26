@@ -31,6 +31,8 @@ public partial class App : Application
         // no window for a self-test: after Shutdown, StartupUri would still open one (loading and saving settings, starting ComfyUI)
         if (e.Args.Contains("--selftest")) Environment.Exit(ImageForge.MainWindow.SelfTest());
         ErrorReport.Watch(this);
+        // tests on a hidden desktop: drawn in software, so PrintWindow can take pictures of the window
+        if (Environment.GetEnvironmentVariable("IMAGEFORGE_SOFTWARE_RENDER") == "1") System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         if (Settings.Load().Theme == "light")
             foreach (var (key, hex) in new[] {
                 ("Bg", "#F4F5F7"), ("Surface", "#FFFFFF"), ("Raised", "#F0F1F4"), ("Raised2", "#E3E6EB"), ("Field", "#FFFFFF"),

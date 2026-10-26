@@ -1481,12 +1481,12 @@
           </DockPanel>
           <Border DockPanel.Dock="Top" Style="{StaticResource SegmentHost}" Padding="2" Margin="0,8,0,6" HorizontalAlignment="Left">
             <StackPanel Orientation="Horizontal">
-              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="General" Tag="SettingsGeneral" IsChecked="True" Checked="SettingsTab_Checked"/>
-              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="Creating" Tag="SettingsCreating" Checked="SettingsTab_Checked"/>
-              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="Performance" Tag="SettingsPerformance" Checked="SettingsTab_Checked"/>
-              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" x:Name="SettingsPluginsTab" Content="Plugins" Tag="SettingsPlugins" Checked="SettingsTab_Checked"/>
-              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="Account" Tag="SettingsAccount" Checked="SettingsTab_Checked"/>
-              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Padding="12,0" Content="About" Tag="SettingsAbout" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Width="86" Content="General" Tag="SettingsGeneral" IsChecked="True" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Width="86" Content="Creating" Tag="SettingsCreating" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Width="86" Content="Performance" Tag="SettingsPerformance" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Width="86" x:Name="SettingsPluginsTab" Content="Plugins" Tag="SettingsPlugins" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Width="86" Content="Account" Tag="SettingsAccount" Checked="SettingsTab_Checked"/>
+              <RadioButton Style="{StaticResource Segment}" GroupName="settingsTab" Height="30" Width="86" Content="About" Tag="SettingsAbout" Checked="SettingsTab_Checked"/>
             </StackPanel>
           </Border>
           <ScrollViewer VerticalScrollBarVisibility="Auto">
