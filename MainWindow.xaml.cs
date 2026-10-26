@@ -30,6 +30,7 @@ public partial class App : Application
     {
         // no window for a self-test: after Shutdown, StartupUri would still open one (loading and saving settings, starting ComfyUI)
         if (e.Args.Contains("--selftest")) Environment.Exit(ImageForge.MainWindow.SelfTest());
+        ErrorReport.Watch(this);
         if (Settings.Load().Theme == "light")
             foreach (var (key, hex) in new[] {
                 ("Bg", "#F4F5F7"), ("Surface", "#FFFFFF"), ("Raised", "#F0F1F4"), ("Raised2", "#E3E6EB"), ("Field", "#FFFFFF"),
@@ -884,6 +885,14 @@ public partial class MainWindow : Window
         if (File.Exists(log)) Process.Start(new ProcessStartInfo(log) { UseShellExecute = true });
     }
 
+    // Settings > About: a report of this PC and ComfyUI's recent log, for when something failed without crashing
+    void MakeReport_Click(object sender, RoutedEventArgs e)
+    {
+        var file = ErrorReport.Write("Made from Settings", null, ServerLog);
+        if (file == null) { Note("Couldn't write the report.", true); return; }
+        Process.Start("explorer.exe", $"/select,\"{file}\"");
+    }
+
     bool startingServer;        // while ComfyUI (re)starts, a quiet websocket isn't "Offline"
 
     async Task StartUp()
@@ -1566,7 +1575,7 @@ public partial class MainWindow : Window
             var first = First(LoadImage(file, 0));
             Save(file, Colors.Blue);
             var second = First(LoadImage(file, 0));
-            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512) | (SelfTestReseed() ? 0 : 1024) | (SelfTestSettings() ? 0 : 2048) | (SelfTestAllDark() ? 0 : 4096) | (SelfTestWorkflow() ? 0 : 8192) | (SelfTestUpdateKey() ? 0 : 16384);
+            return (first == Colors.Red && second == Colors.Blue ? 0 : 1) | (SelfTestLoraConvert() ? 0 : 4) | (SelfTestStrength() ? 0 : 8) | (SelfTestGguf() ? 0 : 16) | (SelfTestSecret(file) ? 0 : 32) | (SelfTestMinorBlock() ? 0 : 64) | (SelfTestLoraFamily() ? 0 : 128) | (SelfTestStyles() ? 0 : 256) | (SelfTestLineage() ? 0 : 512) | (SelfTestReseed() ? 0 : 1024) | (SelfTestSettings() ? 0 : 2048) | (SelfTestAllDark() ? 0 : 4096) | (SelfTestWorkflow() ? 0 : 8192) | (SelfTestUpdateKey() ? 0 : 16384) | (ErrorReport.SelfTest() ? 0 : 32768);
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 2; }      // seen when run with stderr redirected (a build script)
         finally { try { File.Delete(file); } catch { } }

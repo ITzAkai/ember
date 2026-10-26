@@ -1608,6 +1608,8 @@
                 <TextBlock Text="About" Style="{StaticResource Heading}" Margin="0,6,0,10" Foreground="{DynamicResource Accent}"/>
                 <TextBlock x:Name="AboutText" Style="{StaticResource Note}" TextWrapping="Wrap" LineHeight="19"/>
                 <Button Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Left" Margin="0,10,0,0" Content="Open ComfyUI log" Click="OpenLog_Click"/>
+                <Button Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Left" Margin="0,8,0,0" Content="Make an error report" Click="MakeReport_Click"/>
+                <TextBlock Text="Saves a text file about this PC and what ComfyUI did recently, to send when asking for help. It stays on this PC: nothing is sent. It may name your files and models, so read it first." Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
               </StackPanel>
             </Grid>
           </ScrollViewer>
