@@ -598,7 +598,7 @@ public partial class MainWindow
             var name = (dev?["name"]?.GetValue<string>() ?? "").Split(" : ")[0];   // "cuda:0 NVIDIA GeForce RTX 3060 : cudaMallocAsync"
             if (name.StartsWith("cuda:")) name = name[(name.IndexOf(' ') + 1)..];
             double gb = (dev?["vram_total"]?.GetValue<double>() ?? 0) / (1L << 30);
-            GpuText.Text = gb > 0 ? $"{name}  ·  {gb:0} GB" : name;
+            Pill.ToolTip = gb > 0 ? $"{name}  ·  {gb:0} GB" : name;
         }
         catch { }
     }

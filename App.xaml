@@ -312,6 +312,38 @@
     </Style>
 
     <!-- "Advanced settings" header with a chevron -->
+    <!-- a group of controls in the left panel -->
+    <Style x:Key="PanelCard" TargetType="Border">
+      <Setter Property="Background" Value="{DynamicResource Surface}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="Padding" Value="14,12,14,14"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <!-- a fold inside a card: its heading opens and closes it -->
+    <Style x:Key="Fold" TargetType="ToggleButton">
+      <Setter Property="Foreground" Value="{DynamicResource Soft}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToggleButton">
+            <DockPanel Background="Transparent">
+              <TextBlock x:Name="Chevron" DockPanel.Dock="Right" Text="&#xE70D;" FontFamily="{StaticResource Icons}" FontSize="10"
+                         Foreground="{DynamicResource Muted}" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+              <ContentPresenter VerticalAlignment="Center" TextElement.FontWeight="SemiBold"/>
+            </DockPanel>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Chevron" Property="RenderTransform"><Setter.Value><RotateTransform Angle="180"/></Setter.Value></Setter>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
     <Style x:Key="Disclosure" TargetType="ToggleButton">
       <Setter Property="Foreground" Value="{DynamicResource Soft}"/>
       <Setter Property="Cursor" Value="Hand"/>

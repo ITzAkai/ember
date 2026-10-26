@@ -47,7 +47,6 @@ public partial class MainWindow
 
     // ---------------- Find / Replace ----------------
     void FindPrompt_Click(object sender, RoutedEventArgs e) => OpenFind(PromptBox);
-    void FindNegative_Click(object sender, RoutedEventArgs e) => OpenFind(NegativeBox);
 
     void OpenFind(TextBox target)
     {

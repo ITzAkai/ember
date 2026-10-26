@@ -46,6 +46,25 @@ public partial class MainWindow
         ShowBoosters();
     }
 
+    // the "Pictures, two people, workflow" fold: shown while one of its sections is, and opened when one of them is in use
+    void WatchExtras()
+    {
+        FrameworkElement[] sections = [ReferenceSection, CoupleSection, WorkflowSection, StylePicSection, PosePicSection],
+            used = [ReferenceList, CoupleBoxes, StylePicThumb, PosePicThumb];
+        void Update(object s, EventArgs e)
+        {
+            ExtrasCard.Visibility = sections.Any(x => x.Visibility == Visibility.Visible) ? Visibility.Visible : Visibility.Collapsed;
+            if (used.Any(x => x.Visibility == Visibility.Visible) || WorkflowBox.SelectedIndex > 0) ExtrasToggle.IsChecked = true;
+        }
+        var visibility = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(VisibilityProperty, typeof(UIElement));
+        foreach (var x in sections.Concat(used)) visibility.AddValueChanged(x, Update);
+        WorkflowBox.SelectionChanged += (_, _) => Update(null, null);
+        Update(null, null);
+    }
+
+    // a picture dropped on the closed fold becomes a reference picture
+    void ExtrasDrop(object sender, DragEventArgs e) { ExtrasToggle.IsChecked = true; Reference_Drop(sender, e); }
+
     // characters and the pose picture in edits too, when Fibo 2.0 makes them (known once ComfyUI's models are read)
     void ShowEditExtras()
     {

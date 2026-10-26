@@ -85,6 +85,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        WatchExtras();
         if (!IsComfy(Root) && FindComfy(settings.ComfyDir) is string comfy) Root = comfy;
         galleryView = new ListCollectionView(shots) { Filter = o => InView((Shot)o), CustomSort = Comparer<Shot>.Create((a, b) => b.Date.CompareTo(a.Date)) };
         galleryView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(Shot.Day)));

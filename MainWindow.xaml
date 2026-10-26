@@ -170,14 +170,6 @@
               <TextBlock x:Name="UpdateBtnText" Text="Update" VerticalAlignment="Center"/>
             </StackPanel>
           </Button>
-          <TextBlock x:Name="GpuText" Style="{StaticResource Note}" Margin="0,0,16,0"/>
-          <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Expert_Click" AutomationProperties.Name="ComfyUI"
-                  ToolTip="ComfyUI's own node editor, inside Ember. The most advanced option.">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="&#xE943;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
-              <TextBlock Text="ComfyUI" VerticalAlignment="Center"/>
-            </StackPanel>
-          </Button>
           <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Bundles_Click" ToolTip="Ready-made setups: a model, its LoRAs and settings, in one click" AutomationProperties.Name="Bundles">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -190,6 +182,8 @@
               <TextBlock Text="Models" VerticalAlignment="Center"/>
             </StackPanel>
           </Button>
+          <Button Style="{StaticResource IconBtn}" Content="&#xE943;" FontSize="15" Margin="0,0,2,0" Click="Expert_Click" AutomationProperties.Name="ComfyUI"
+                  ToolTip="ComfyUI's own node editor, inside Ember. The most advanced option."/>
           <Button Style="{StaticResource IconBtn}" Content="&#xE713;" FontSize="15" Margin="0,0,12,0" Click="Settings_Click" ToolTip="Settings" AutomationProperties.Name="Settings"/>
           <Border x:Name="Pill" CornerRadius="13" Padding="11,5" BorderThickness="1">
             <StackPanel Orientation="Horizontal">
@@ -199,10 +193,7 @@
           </Border>
         </StackPanel>
         <Image Source="logo.png" Width="36" Height="36" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
-        <StackPanel VerticalAlignment="Center" Margin="12,0,0,0">
-          <TextBlock Text="Ember" FontSize="15" FontWeight="SemiBold"/>
-          <TextBlock Text="Local image generation with ComfyUI" FontSize="11.5" Foreground="{DynamicResource Muted}"/>
-        </StackPanel>
+        <TextBlock Text="Ember" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0"/>
       </DockPanel>
     </Border>
 
@@ -229,7 +220,7 @@
       </Grid.ColumnDefinitions>
 
       <!-- controls -->
-      <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+      <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition/>
@@ -261,7 +252,7 @@
                   </Grid>
                 </StackPanel>
               </Border>
-              <Border Style="{StaticResource SegmentHost}" Margin="0,0,0,22">
+              <Border Style="{StaticResource SegmentHost}" Margin="0,0,0,12">
                 <UniformGrid Rows="1">
                   <RadioButton x:Name="CreateMode" AutomationProperties.Name="Create" Style="{StaticResource Segment}" GroupName="mode" Checked="Mode_Checked">
                     <StackPanel Orientation="Horizontal">
@@ -284,6 +275,8 @@
                 </UniformGrid>
               </Border>
 
+              <Border Style="{StaticResource PanelCard}">
+                <StackPanel>
               <!-- edit mode: the photo being edited -->
               <StackPanel x:Name="PhotoSection" Visibility="Collapsed" Margin="0,0,0,18">
                 <TextBlock Text="Photo" Style="{StaticResource Heading}"/>
@@ -317,14 +310,13 @@
                         ToolTip="Bigger prompt text (Ctrl + mouse wheel, Ctrl + =)" AutomationProperties.Name="Bigger prompt text"/>
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="28" Content="A−" FontSize="11" FontFamily="Segoe UI" Click="SmallerText_Click"
                         ToolTip="Smaller prompt text (Ctrl + mouse wheel, Ctrl + −)" AutomationProperties.Name="Smaller prompt text"/>
-                <TextBlock DockPanel.Dock="Right" Text="Ctrl + Enter to generate" Style="{StaticResource Note}" Foreground="{DynamicResource Faint}"/>
                 <TextBlock x:Name="PromptHeading" Text="Prompt" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
               </DockPanel>
               <TextBox x:Name="PromptBox" Style="{StaticResource Input}" Height="140" AcceptsReturn="True" TextWrapping="Wrap" AllowDrop="True"
                        PreviewDragOver="Prompt_PreviewDragOver" PreviewDrop="Prompt_PreviewDrop"
                        PreviewKeyDown="PromptBoxes_PreviewKeyDown" PreviewMouseWheel="PromptBoxes_PreviewMouseWheel"
                        VerticalScrollBarVisibility="Auto" Tag="Describe the image: subject, style, lighting, mood…"/>
-              <WrapPanel HorizontalAlignment="Right" Margin="0,6,0,-12">
+              <WrapPanel HorizontalAlignment="Right" Margin="0,8,0,-4">
                 <Button x:Name="DescribeFileBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,6,4" Click="DescribeFile_Click"
                         ToolTip="Pick a picture and get a prompt that recreates it. You can also drop a picture on the prompt box." AutomationProperties.Name="Describe image">
                   <StackPanel Orientation="Horizontal">
@@ -347,10 +339,16 @@
                   </StackPanel>
                 </Button>
               </WrapPanel>
+                </StackPanel>
+              </Border>
 
+              <Border Style="{StaticResource PanelCard}" x:Name="ExtrasCard">
+                <StackPanel>
+                  <ToggleButton x:Name="ExtrasToggle" Style="{StaticResource Fold}" Content="Pictures, two people, workflow" AllowDrop="True" DragOver="Reference_DragOver" Drop="ExtrasDrop" ToolTip="Reference, style and pose pictures, two people described apart, and ComfyUI workflows. Opens by itself when one is in use."/>
+                  <StackPanel Visibility="{Binding IsChecked, ElementName=ExtrasToggle, Converter={StaticResource BoolVis}}">
               <!-- create mode: a character or a place that new pictures keep exactly as it is -->
               <StackPanel x:Name="ReferenceSection" AllowDrop="True" DragOver="Reference_DragOver" Drop="Reference_Drop" Background="Transparent">
-                <TextBlock Text="Reference pictures" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <TextBlock Text="Reference pictures" Style="{StaticResource Heading}" Margin="0,12,0,8"/>
                 <WrapPanel x:Name="ReferenceList" Visibility="Collapsed"/>
                 <DockPanel x:Name="AddReferenceRow">
                   <Button x:Name="PasteReferenceBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="44" Padding="14,0" Margin="6,0,0,0" Click="PasteReference_Click"
@@ -474,12 +472,14 @@
                 <Button x:Name="PosePicGetBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" HorizontalAlignment="Left" Margin="0,6,0,0"
                         Visibility="Collapsed" Click="PosePicGet_Click"/>
               </StackPanel>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
 
-              <DockPanel Margin="0,18,0,8">
-                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="24" Margin="0,0,-6,0" Content="&#xE721;" FontSize="12" Click="FindNegative_Click"
-                        ToolTip="Find and replace (Ctrl+F)" AutomationProperties.Name="Find in negative prompt"/>
-                <TextBlock Text="Negative prompt" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
-              </DockPanel>
+              <Border Style="{StaticResource PanelCard}">
+                <StackPanel>
+                  <ToggleButton x:Name="NegativeToggle" Style="{StaticResource Fold}" Content="Negative prompt" ToolTip="What to keep out of the image. Ctrl+F in the box finds and replaces."/>
+                  <StackPanel Visibility="{Binding IsChecked, ElementName=NegativeToggle, Converter={StaticResource BoolVis}}">
               <TextBox x:Name="NegativeBox" Style="{StaticResource Input}" Height="66" AcceptsReturn="True" TextWrapping="Wrap"
                        PreviewKeyDown="PromptBoxes_PreviewKeyDown" PreviewMouseWheel="PromptBoxes_PreviewMouseWheel"
                        VerticalScrollBarVisibility="Auto" Tag="What to keep out of the image"/>
@@ -490,6 +490,9 @@
               </DockPanel>
               <TextBlock x:Name="NegativeWarn" Style="{StaticResource Note}" Foreground="{DynamicResource Accent}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"
                          Text="Negative prompt has no effect at CFG 1. Raise CFG to use it (slower, and it may over-cook turbo models)."/>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
               <!-- Find / Replace for whichever prompt box it was opened on -->
               <Popup x:Name="FindPopup" Placement="Top" StaysOpen="True" AllowsTransparency="True" VerticalOffset="-4">
                 <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="8" Padding="8">
@@ -512,7 +515,9 @@
                 </Border>
               </Popup>
 
-              <DockPanel Margin="0,22,0,5">
+              <Border Style="{StaticResource PanelCard}">
+                <StackPanel>
+              <DockPanel Margin="0,0,0,5">
                 <TextBlock x:Name="StyleText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
                 <TextBlock Text="Style" Style="{StaticResource Heading}" Margin="0"/>
               </DockPanel>
@@ -810,6 +815,8 @@
                   </RadioButton>
                 </UniformGrid>
               </Border>
+                </StackPanel>
+              </Border>
 
               <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Disclosure}" Margin="0,24,0,0" Content="Advanced settings"/>
               <StackPanel Visibility="{Binding IsChecked, ElementName=AdvancedToggle, Converter={StaticResource BoolVis}}">
@@ -983,7 +990,7 @@
                   <ColumnDefinition/>
                   <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Button x:Name="GenerateBtn" Style="{StaticResource Primary}" Height="46" IsEnabled="False" Click="Generate_Click">
+                <Button x:Name="GenerateBtn" Style="{StaticResource Primary}" Height="46" IsEnabled="False" Click="Generate_Click" ToolTip="Ctrl + Enter in the prompt box does the same">
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" FontSize="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBlock x:Name="GenerateText" Text="Generate" VerticalAlignment="Center"/>
