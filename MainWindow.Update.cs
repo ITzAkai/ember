@@ -1,4 +1,5 @@
-// Updates from the GitHub releases: a newer release's exe downloads in the background and must match the SHA-256 GitHub publishes.
+// Updates from the GitHub releases: a newer release's exe downloads in the background and must match the SHA-256 GitHub publishes
+// and carry Ember.exe.sig, the release key's signature of that hash, so a release pushed without the key never installs.
 // It replaces this exe when the app closes (a running exe can be renamed, not overwritten), or right away with "Update to …".
 using System.IO;
 using System.Net.Http;
@@ -17,6 +18,27 @@ public partial class MainWindow
     static string OldExe => Environment.ProcessPath + ".old";
     bool updateReady;
     static string rejectedDigest;          // a release whose exe turned out older than this one: not downloaded again
+    // the public half of the release key (ECDSA P-256); the private half stays on the release PC
+    const string UpdateKey = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPGm71y1DS8RPdgU6S/wHVWb2x01AefadMx3aLbf/4HGu047ehypmgbckjld2mJyZ6Pqwi34WuVlX71IArq8paQ==";
+
+    static bool SignedByUs(string sha, string signature)
+    {
+        try
+        {
+            using var key = ECDsa.Create();
+            key.ImportSubjectPublicKeyInfo(Convert.FromBase64String(UpdateKey), out _);
+            return key.VerifyHash(Convert.FromHexString(sha), Convert.FromBase64String(signature.Trim()), DSASignatureFormat.Rfc3279DerSequence);
+        }
+        catch { return false; }
+    }
+
+    // --selftest part: the release key's signature of SHA-256("ember self-test") passes, and the same signature on another hash doesn't
+    static bool SelfTestUpdateKey()
+    {
+        const string sig = "MEUCIGqnE/A8VEELjjOSTSv7gAYp6q6uK+AczzUm2ORHeDgfAiEAnwFcn0w+19fcmNbbZ2IYQ+RrzP7kMEW3+PsmpcRPT9s=";
+        return SignedByUs("8855CDDFBDC56592CEA578ED8AC9A97F13339E1699D2FE6F4ED15C8C3C605BD5", sig)
+            && !SignedByUs("8855CDDFBDC56592CEA578ED8AC9A97F13339E1699D2FE6F4ED15C8C3C605BD6", sig);
+    }
 
     async Task CheckForUpdate()
     {
@@ -45,6 +67,9 @@ public partial class MainWindow
             if (exe?["browser_download_url"]?.ToString() is not string url || exe["digest"]?.ToString() is not string digest) return true;
             if (digest == rejectedDigest) return true;
             var sha = digest.Replace("sha256:", "");
+            var sig = (release["assets"] as JsonArray)?.FirstOrDefault(a => a?["name"]?.ToString().Equals("Ember.exe.sig", StringComparison.OrdinalIgnoreCase) == true);
+            if (sig?["browser_download_url"]?.ToString() is not string sigUrl || !SignedByUs(sha, await web.GetStringAsync(sigUrl)))
+            { rejectedDigest = digest; return true; }
             if (!File.Exists(NewExe) || !Sha256Is(NewExe, sha))
             {
                 await DownloadFile(url, NewExe);
