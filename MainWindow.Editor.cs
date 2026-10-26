@@ -39,7 +39,7 @@ public partial class MainWindow
         TabsBar.Visibility = edit ? Visibility.Collapsed : Visibility.Visible;     // video models have tabs too (MiniMax H3 bundles open as one)
         PromptBox.Tag = edit ? "e.g. the same scene in winter, snow on the roofs, golden hour"
             : video ? "e.g. a fox running through snowy woods, the camera following it" : "Describe the image: subject, style, lighting, mood…";
-        GenerateText.Text = edit ? "Apply edit" : video ? "Make video" : "Generate";
+        ShowGenerateText();
         EnhanceBtn.ToolTip = edit ? "Looks at your photo and turns a short change into a clear, detailed one"
             : video ? "Turn a short idea into a detailed video prompt, with movement and camera" : "Turn a short idea into a detailed prompt, written by the local Qwen model";
         if (ready && video != showingVideoModels) FillModels();
@@ -60,6 +60,42 @@ public partial class MainWindow
         foreach (var x in sections.Concat(used)) visibility.AddValueChanged(x, Update);
         WorkflowBox.SelectionChanged += (_, _) => Update(null, null);
         Update(null, null);
+    }
+
+    string TimeKey => $"{ModelBox.SelectedItem}|{(CustomSizeBox.IsChecked == true ? $"{CustomW.Text}x{CustomH.Text}" : Picked(SizeGroup))}|{Steps}";
+
+    // "Generate 4 · about 40 s": the number, and the time the last picture with the same model, size and steps took
+    void ShowGenerateText()
+    {
+        if (GenerateText == null) return;
+        if (EditMode.IsChecked == true || VideoMode.IsChecked == true) { GenerateText.Text = EditMode.IsChecked == true ? "Apply edit" : "Make video"; return; }
+        int n = PickedInt(CountGroup, 1);
+        var text = n > 1 ? $"Generate {n}" : "Generate";
+        if (!UsingWorkflow && settings.Took.TryGetValue(TimeKey, out var s))
+            text += s * n < 90 ? $" · about {Math.Max(5, Math.Round(s * n / 5) * 5):0} s" : $" · about {Math.Round(s * n / 60):0} min";
+        GenerateText.Text = text;
+    }
+
+    void WatchGenerateText()
+    {
+        RoutedEventHandler update = (_, _) => ShowGenerateText();
+        foreach (var g in new Panel[] { CountGroup, SizeGroup, QualityGroup }) g.AddHandler(System.Windows.Controls.Primitives.ToggleButton.CheckedEvent, update);
+        StepsSlider.ValueChanged += (_, _) => ShowGenerateText();
+        ModelBox.SelectionChanged += (_, _) => ShowGenerateText();
+        WorkflowBox.SelectionChanged += (_, _) => ShowGenerateText();
+        CustomSizeBox.Checked += update; CustomSizeBox.Unchecked += update; CustomW.LostFocus += update; CustomH.LostFocus += update;
+    }
+
+    // the Model row picks in the full model list in Advanced; only a choice made here is passed on
+    void QuickModel_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (QuickModelBox.IsKeyboardFocusWithin && QuickModelBox.SelectedItem is string m && !Equals(ModelBox.SelectedItem, m)) ModelBox.SelectedItem = m;
+    }
+
+    void LoraRow_Click(object sender, RoutedEventArgs e)
+    {
+        AdvancedToggle.IsChecked = LoraGroupToggle.IsChecked = true;
+        Dispatcher.BeginInvoke(() => LoraGroupHeader.BringIntoView(), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     // a picture dropped on the closed fold becomes a reference picture

@@ -521,7 +521,7 @@
                 <TextBlock x:Name="StyleText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
                 <TextBlock Text="Style" Style="{StaticResource Heading}" Margin="0"/>
               </DockPanel>
-              <UniformGrid x:Name="StyleGroup" Columns="4" Margin="-3,0"/>
+              <WrapPanel x:Name="StyleGroup" Margin="0,2,0,0"/>
 
               <!-- edit mode: how far to move away from the photo -->
               <StackPanel x:Name="StrengthSection" Visibility="Collapsed">
@@ -543,37 +543,37 @@
                   <TextBlock x:Name="SizeText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
                   <TextBlock Text="Aspect ratio" Style="{StaticResource Heading}" Margin="0"/>
                 </DockPanel>
-                <Border Style="{StaticResource SegmentHost}">
+                <Border Style="{StaticResource PillHost}">
                   <!-- about one megapixel each: the size every installed family was trained around -->
                   <UniformGrid x:Name="SizeGroup" Rows="1">
-                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="1024x1024" AutomationProperties.Name="Square 1:1" Checked="Size_Checked" ToolTip="Square">
+                    <RadioButton Style="{StaticResource Pill}" GroupName="size" Tag="1024x1024" AutomationProperties.Name="Square 1:1" Checked="Size_Checked" ToolTip="Square">
                       <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource Shape}" Width="12" Height="12"/>
-                        <TextBlock Text="1:1" Margin="6,0,0,0"/>
+                        <TextBlock Text="1:1" Margin="4,0,0,0"/>
                       </StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="832x1216" AutomationProperties.Name="Portrait 2:3" Checked="Size_Checked" ToolTip="Portrait">
+                    <RadioButton Style="{StaticResource Pill}" GroupName="size" Tag="832x1216" AutomationProperties.Name="Portrait 2:3" Checked="Size_Checked" ToolTip="Portrait">
                       <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource Shape}" Width="10" Height="14"/>
-                        <TextBlock Text="2:3" Margin="6,0,0,0"/>
+                        <TextBlock Text="2:3" Margin="4,0,0,0"/>
                       </StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="768x1344" AutomationProperties.Name="Tall 9:16" Checked="Size_Checked" ToolTip="Tall (phone wallpaper)">
+                    <RadioButton Style="{StaticResource Pill}" GroupName="size" Tag="768x1344" AutomationProperties.Name="Tall 9:16" Checked="Size_Checked" ToolTip="Tall (phone wallpaper)">
                       <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource Shape}" Width="8" Height="14"/>
-                        <TextBlock Text="9:16" Margin="6,0,0,0"/>
+                        <TextBlock Text="9:16" Margin="4,0,0,0"/>
                       </StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="1216x832" AutomationProperties.Name="Landscape 3:2" Checked="Size_Checked" ToolTip="Landscape (photo)">
+                    <RadioButton Style="{StaticResource Pill}" GroupName="size" Tag="1216x832" AutomationProperties.Name="Landscape 3:2" Checked="Size_Checked" ToolTip="Landscape (photo)">
                       <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource Shape}" Width="14" Height="10"/>
-                        <TextBlock Text="3:2" Margin="6,0,0,0"/>
+                        <TextBlock Text="3:2" Margin="4,0,0,0"/>
                       </StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="size" Tag="1344x768" AutomationProperties.Name="Wide 16:9" Checked="Size_Checked" ToolTip="Wide (desktop wallpaper)">
+                    <RadioButton Style="{StaticResource Pill}" GroupName="size" Tag="1344x768" AutomationProperties.Name="Wide 16:9" Checked="Size_Checked" ToolTip="Wide (desktop wallpaper)">
                       <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource Shape}" Width="15" Height="8"/>
-                        <TextBlock Text="16:9" Margin="6,0,0,0"/>
+                        <TextBlock Text="16:9" Margin="4,0,0,0"/>
                       </StackPanel>
                     </RadioButton>
                   </UniformGrid>
@@ -736,21 +736,21 @@
                 <TextBlock Text="Camera" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
                 <ComboBox x:Name="CameraBox" AutomationProperties.Name="Camera movement" SelectionChanged="VideoOption_Changed"/>
                 <TextBlock Text="Video shape" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
-                <Border Style="{StaticResource SegmentHost}">
+                <Border Style="{StaticResource PillHost}">
                   <UniformGrid x:Name="VideoSizeGroup" Rows="1">
-                    <RadioButton Style="{StaticResource Segment}" GroupName="vsize" Tag="832x480" AutomationProperties.Name="Wide video" ToolTip="Wide, 832 × 480">
+                    <RadioButton Style="{StaticResource Pill}" GroupName="vsize" Tag="832x480" AutomationProperties.Name="Wide video" ToolTip="Wide, 832 × 480">
                       <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource Shape}" Width="15" Height="9"/>
                         <TextBlock Text="Wide" Margin="6,0,0,0"/>
                       </StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="vsize" Tag="480x832" AutomationProperties.Name="Tall video" ToolTip="Tall, 480 × 832 (phone)">
+                    <RadioButton Style="{StaticResource Pill}" GroupName="vsize" Tag="480x832" AutomationProperties.Name="Tall video" ToolTip="Tall, 480 × 832 (phone)">
                       <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource Shape}" Width="9" Height="15"/>
                         <TextBlock Text="Tall" Margin="6,0,0,0"/>
                       </StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="vsize" Tag="624x624" AutomationProperties.Name="Square video" ToolTip="Square, 624 × 624">
+                    <RadioButton Style="{StaticResource Pill}" GroupName="vsize" Tag="624x624" AutomationProperties.Name="Square video" ToolTip="Square, 624 × 624">
                       <StackPanel Orientation="Horizontal">
                         <Border Style="{StaticResource Shape}" Width="12" Height="12"/>
                         <TextBlock Text="Square" Margin="6,0,0,0"/>
@@ -759,55 +759,55 @@
                   </UniformGrid>
                 </Border>
                 <TextBlock Text="Length" Style="{StaticResource Heading}" Margin="0,22,0,8" ToolTip="Longer clips take longer to make, roughly in proportion"/>
-                <Border Style="{StaticResource SegmentHost}">
+                <Border Style="{StaticResource PillHost}">
                   <UniformGrid x:Name="LengthGroup" Columns="3" ToggleButton.Checked="Length_Checked">
-                    <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="33" Content="2 s" AutomationProperties.Name="2 seconds"/>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="49" Content="3 s" AutomationProperties.Name="3 seconds"/>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="vlen" Tag="81" Content="5 s" AutomationProperties.Name="5 seconds"/>
-                    <RadioButton x:Name="Length8" Style="{StaticResource Segment}" GroupName="vlen" Tag="129" Content="8 s" AutomationProperties.Name="8 seconds" Visibility="Collapsed"/>
-                    <RadioButton x:Name="Length10" Style="{StaticResource Segment}" GroupName="vlen" Tag="161" Content="10 s" AutomationProperties.Name="10 seconds" Visibility="Collapsed"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="vlen" Tag="33" Content="2 s" AutomationProperties.Name="2 seconds"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="vlen" Tag="49" Content="3 s" AutomationProperties.Name="3 seconds"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="vlen" Tag="81" Content="5 s" AutomationProperties.Name="5 seconds"/>
+                    <RadioButton x:Name="Length8" Style="{StaticResource Pill}" GroupName="vlen" Tag="129" Content="8 s" AutomationProperties.Name="8 seconds" Visibility="Collapsed"/>
+                    <RadioButton x:Name="Length10" Style="{StaticResource Pill}" GroupName="vlen" Tag="161" Content="10 s" AutomationProperties.Name="10 seconds" Visibility="Collapsed"/>
                     <!-- MiniMax H3: longer videos are made in 10-second parts, each going on from the end of the one before -->
-                    <RadioButton x:Name="Length15" Style="{StaticResource Segment}" GroupName="vlen" Tag="241" Content="15 s" AutomationProperties.Name="15 seconds" Visibility="Collapsed"/>
-                    <RadioButton x:Name="Length30" Style="{StaticResource Segment}" GroupName="vlen" Tag="481" Content="30 s" AutomationProperties.Name="30 seconds" Visibility="Collapsed"/>
-                    <RadioButton x:Name="Length60" Style="{StaticResource Segment}" GroupName="vlen" Tag="961" Content="1 min" AutomationProperties.Name="1 minute" Visibility="Collapsed"/>
+                    <RadioButton x:Name="Length15" Style="{StaticResource Pill}" GroupName="vlen" Tag="241" Content="15 s" AutomationProperties.Name="15 seconds" Visibility="Collapsed"/>
+                    <RadioButton x:Name="Length30" Style="{StaticResource Pill}" GroupName="vlen" Tag="481" Content="30 s" AutomationProperties.Name="30 seconds" Visibility="Collapsed"/>
+                    <RadioButton x:Name="Length60" Style="{StaticResource Pill}" GroupName="vlen" Tag="961" Content="1 min" AutomationProperties.Name="1 minute" Visibility="Collapsed"/>
                   </UniformGrid>
                 </Border>
                 <TextBlock x:Name="LongNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"
                            Text="Over 10 seconds, the video is made in 10-second parts, each going on from the end of the one before, and joined. A minute is 7 parts: expect hours on this PC."/>
               </StackPanel>
 
-              <StackPanel x:Name="CountSection">
-                <TextBlock Text="Number of images" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
-                <Border Style="{StaticResource SegmentHost}">
+              <DockPanel x:Name="CountSection" Margin="0,18,0,0">
+                <TextBlock Text="Images" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
+                <Border Style="{StaticResource PillHost}" HorizontalAlignment="Right" Width="180">
                   <UniformGrid x:Name="CountGroup" Rows="1">
-                    <RadioButton Style="{StaticResource Segment}" GroupName="count" Tag="1" Content="1"/>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="count" Tag="2" Content="2"/>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="count" Tag="3" Content="3"/>
-                    <RadioButton Style="{StaticResource Segment}" GroupName="count" Tag="4" Content="4"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="1" Content="1"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="2" Content="2"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="3" Content="3"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="4" Content="4"/>
                   </UniformGrid>
                 </Border>
-              </StackPanel>
+              </DockPanel>
 
               <DockPanel Margin="0,22,0,8">
                 <Ellipse x:Name="QualityDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
                 <TextBlock Text="Quality" Style="{StaticResource Heading}" Margin="0"
                            ToolTip="How many steps the model takes to draw. More steps add detail but take longer. Each model has its own numbers."/>
               </DockPanel>
-              <Border Style="{StaticResource SegmentHost}">
+              <Border Style="{StaticResource PillHost}">
                 <UniformGrid x:Name="QualityGroup" Rows="1">
-                  <RadioButton Style="{StaticResource Segment}" GroupName="quality" Tag="20" AutomationProperties.Name="Fast" Height="46">
+                  <RadioButton Style="{StaticResource Pill}" GroupName="quality" Tag="20" AutomationProperties.Name="Fast" Height="42">
                     <StackPanel>
                       <TextBlock Text="Fast" HorizontalAlignment="Center"/>
                       <TextBlock Text="20 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
                     </StackPanel>
                   </RadioButton>
-                  <RadioButton Style="{StaticResource Segment}" GroupName="quality" Tag="30" AutomationProperties.Name="Balanced" Height="46">
+                  <RadioButton Style="{StaticResource Pill}" GroupName="quality" Tag="30" AutomationProperties.Name="Balanced" Height="42">
                     <StackPanel>
                       <TextBlock Text="Balanced" HorizontalAlignment="Center"/>
                       <TextBlock Text="30 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
                     </StackPanel>
                   </RadioButton>
-                  <RadioButton Style="{StaticResource Segment}" GroupName="quality" Tag="45" AutomationProperties.Name="Best" Height="46">
+                  <RadioButton Style="{StaticResource Pill}" GroupName="quality" Tag="45" AutomationProperties.Name="Best" Height="42">
                     <StackPanel>
                       <TextBlock Text="Best" HorizontalAlignment="Center"/>
                       <TextBlock Text="45 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
@@ -818,7 +818,24 @@
                 </StackPanel>
               </Border>
 
-              <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Disclosure}" Margin="0,24,0,0" Content="Advanced settings"/>
+              <!-- the model, the LoRAs and the way into everything else: the rest of the model and LoRA controls are in Advanced -->
+              <Border Style="{StaticResource PanelCard}">
+                <StackPanel>
+                  <DockPanel>
+                    <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="QuickModelBox" ItemsSource="{Binding Items, ElementName=ModelBox}" SelectedItem="{Binding SelectedItem, ElementName=ModelBox, Mode=OneWay}"
+                              SelectionChanged="QuickModel_Changed" AutomationProperties.Name="Model" ToolTip="The model. Search, compare and its parts are in Advanced settings."/>
+                  </DockPanel>
+                  <Button Style="{StaticResource Row}" Margin="0,14,0,0" Click="LoraRow_Click" AutomationProperties.Name="LoRA add-ons"
+                          ToolTip="Small add-ons that teach the model a style, look or subject: opens them in Advanced settings">
+                    <DockPanel>
+                      <TextBlock x:Name="LoraRowText" DockPanel.Dock="Right" Text="None" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                      <TextBlock Text="LoRA add-ons" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </DockPanel>
+                  </Button>
+                  <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Fold}" Margin="0,14,0,0" Content="Advanced settings"/>
+                </StackPanel>
+              </Border>
               <StackPanel Visibility="{Binding IsChecked, ElementName=AdvancedToggle, Converter={StaticResource BoolVis}}">
                 <TextBox x:Name="AdvancedSearch" Style="{StaticResource Input}" Margin="0,14,0,0" Tag="Search settings: CFG, VAE, faces, seed…"
                          TextChanged="AdvancedSearch_TextChanged" AutomationProperties.Name="Search settings"/>

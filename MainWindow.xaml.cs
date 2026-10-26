@@ -86,6 +86,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         WatchExtras();
+        WatchGenerateText();
         if (!IsComfy(Root) && FindComfy(settings.ComfyDir) is string comfy) Root = comfy;
         galleryView = new ListCollectionView(shots) { Filter = o => InView((Shot)o), CustomSort = Comparer<Shot>.Create((a, b) => b.Date.CompareTo(a.Date)) };
         galleryView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(Shot.Day)));
@@ -304,6 +305,7 @@ public partial class MainWindow : Window
         try { active = AllActiveLoras(PromptBox?.Text, out _); } catch { return; }
         bool on = active != null && active.Count > 0;
         LoraChip.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        LoraRowText.Text = on ? $"{active.Count} on" : "None";
         if (on)
         {
             if (active.Count == 1)
@@ -561,9 +563,20 @@ public partial class MainWindow : Window
             var st = StylePreset.All.First(s => s.Key == (string)tile.Tag);
             if (st.Lora == null) continue;
             tile.IsEnabled = loras.Contains(st.Lora);
-            tile.ToolTip = tile.IsEnabled ? st.Apply("…") : $"Needs {st.Lora} in ComfyUI\\models\\loras";
+            tile.ToolTip = StyleTip(tile, tile.IsEnabled ? st.Apply("…") : $"Needs {st.Lora} in ComfyUI\\models\\loras");
         }
     }
+
+    // a style's tooltip: its example picture over what it adds to the prompt
+    static StackPanel StyleTip(RadioButton tile, string text) => new()
+    {
+        Width = 220,
+        Children =
+        {
+            new Border { Height = 130, CornerRadius = new CornerRadius(6), Background = new ImageBrush((ImageSource)tile.DataContext) { Stretch = Stretch.UniformToFill } },
+            new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) },
+        },
+    };
 
     StylePreset CurrentStyle => StylePreset.All.FirstOrDefault(s => s.Key == Picked(StyleGroup)) ?? StylePreset.All[0];
 
@@ -575,7 +588,6 @@ public partial class MainWindow : Window
             {
                 Style = (Style)FindResource("StyleTile"), GroupName = "style", Tag = st.Key, Content = st.Label,
                 DataContext = new BitmapImage(new Uri($"pack://application:,,,/styles/{st.Key}.jpg")),
-                ToolTip = st.Key == "none" ? "No style: only your prompt" : st.Apply("…"),
             };
             tile.Checked += (_, _) =>
             {
@@ -583,6 +595,7 @@ public partial class MainWindow : Window
                 if (st.Key == "logo" && ModelBox.SelectedItem != null && Sdxl)
                     Note("Tip: for lettering in a logo, pick Qwen-Image 2.1 in Advanced settings; this model can't spell.");
             };
+            tile.ToolTip = StyleTip(tile, st.Key == "none" ? "No style: only your prompt" : st.Apply("…"));
             if (st.Lora != null) tile.IsEnabled = false;          // until RefreshStyleTiles finds its LoRA
             StyleGroup.Children.Add(tile);
         }

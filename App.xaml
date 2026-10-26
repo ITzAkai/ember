@@ -148,45 +148,79 @@
         </Setter.Value>
       </Setter>
     </Style>
-    <!-- style preset tile: its DataContext is the preview image -->
+    <!-- style preset chip: its DataContext is the preview image, shown in its tooltip -->
     <Style x:Key="StyleTile" TargetType="RadioButton">
-      <Setter Property="Height" Value="78"/>
+      <Setter Property="Foreground" Value="{DynamicResource Soft}"/>
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="Margin" Value="0,0,6,6"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="B" CornerRadius="15" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" Padding="12,0">
+              <ContentPresenter VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Muted}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Muted}"/></Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="B" Property="Background" Value="{DynamicResource Accent}"/>
+                <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AccentInk}"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <!-- a row of rounded choices (shape, number, quality) -->
+    <Style x:Key="PillHost" TargetType="Border">
+      <Setter Property="Margin" Value="-3,0"/>
+    </Style>
+    <Style x:Key="Pill" TargetType="RadioButton">
+      <Setter Property="Foreground" Value="{DynamicResource Soft}"/>
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="Height" Value="32"/>
       <Setter Property="Margin" Value="3"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="RadioButton">
-            <Grid>
-              <Border CornerRadius="8" Background="{DynamicResource Raised}"/>
-              <Border CornerRadius="8">
-                <Border.Background><ImageBrush ImageSource="{Binding}" Stretch="UniformToFill"/></Border.Background>
-              </Border>
-              <Border CornerRadius="8">
-                <Border.Background>
-                  <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#00000000" Offset="0.4"/>
-                    <GradientStop Color="#D9000000" Offset="1"/>
-                  </LinearGradientBrush>
-                </Border.Background>
-              </Border>
-              <ContentPresenter VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="7,0,4,5"
-                                TextElement.Foreground="White" TextElement.FontSize="11.5" TextElement.FontWeight="SemiBold"/>
-              <Border x:Name="R" CornerRadius="8" BorderThickness="1" BorderBrush="#20FFFFFF"/>
-              <Border x:Name="Check" Width="18" Height="18" CornerRadius="9" Background="{DynamicResource Accent}" Visibility="Collapsed"
-                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0">
-                <TextBlock Text="&#xE73E;" FontFamily="{StaticResource Icons}" FontSize="10" Foreground="{DynamicResource AccentInk}"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              </Border>
-            </Grid>
+            <Border x:Name="B" CornerRadius="16" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" Padding="2,0">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="R" Property="BorderBrush" Value="#80FFFFFF"/></Trigger>
-              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="R" Property="BorderBrush" Value="#80FFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Muted}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger>
               <Trigger Property="IsChecked" Value="True">
-                <Setter TargetName="R" Property="BorderBrush" Value="{DynamicResource Accent}"/>
-                <Setter TargetName="R" Property="BorderThickness" Value="2"/>
-                <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="B" Property="Background" Value="{DynamicResource Accent}"/>
+                <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AccentInk}"/>
               </Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <!-- a whole-width row that opens something: a label, maybe a value, and a chevron -->
+    <Style x:Key="Row" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource Soft}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <DockPanel Background="Transparent">
+              <TextBlock DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="{StaticResource Icons}" FontSize="10" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/>
+              <ContentPresenter VerticalAlignment="Center"/>
+            </DockPanel>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>

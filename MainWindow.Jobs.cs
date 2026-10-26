@@ -29,6 +29,7 @@ class Job
     public BatchFiles Shared;                       // the uploads the pictures of one Generate share (one copy of the photo for all)
     public Func<Job, Task<JsonObject>> Next;        // a video made in parts: builds the next part once this one is done
     public bool Continued;                          // on its second part or later: keeps the time it began
+    public string TimeKey;                          // a plain picture's model, size and steps: how long it took is kept for the estimate on Generate
 }
 
 // files several jobs use: removed when the last of them is done
@@ -234,7 +235,7 @@ public partial class MainWindow
             if (pose != null && newPicture) UsePosePicture(g, pose);
             if (couple) UseCouple(g, left, right);
             return new JsonObject { ["prompt"] = g, ["client_id"] = clientId };
-        }, vary: (body, from, to) => Reseed(body, seed + from.Number, seed + to.Number));
+        }, vary: (body, from, to) => Reseed(body, seed + from.Number, seed + to.Number), timeKey: edit || expand != null || runWorkflow ? null : TimeKey);
     }
 
     // the same graph with another picture's seed: every sampler that took the seed (main, refine, hi-res, faces, references) gets the new one
@@ -252,7 +253,7 @@ public partial class MainWindow
     // vary: when given, only the first job is built (from the screen as it is now); the others are copies of it made by vary(copy, first, job),
     // so changing the model, sliders or LoRAs while they wait can't reach them
     async Task Enqueue(int images, Func<Job, Task<JsonObject>> build, string verb = "Painting · step", string label = null,
-        Func<JsonObject, Job, Job, JsonObject> vary = null)
+        Func<JsonObject, Job, Job, JsonObject> vary = null, string timeKey = null)
     {
         JsonObject template = null;
         Job first = null;
@@ -260,7 +261,7 @@ public partial class MainWindow
         Note("");
         for (int i = 0; i < images; i++)
         {
-            var job = new Job { Verb = verb, Number = i };
+            var job = new Job { Verb = verb, Number = i, TimeKey = timeKey };
             try { job.LogStart = File.Exists(ServerLog) ? new FileInfo(ServerLog).Length : 0; } catch { }
             var slot = new Shot { Pending = true, Progress = busy ? "Queued" : label ?? "Starting" };
             job.Slots.Add(slot);
@@ -347,6 +348,7 @@ public partial class MainWindow
         foreach (var slot in job.Slots) shots.Remove(slot);           // nothing came for these
         foreach (var f in job.Uploads) try { File.Delete(f); } catch { }
         if (job.Shared is { } shared && --shared.Users == 0) foreach (var f in shared.Files) try { File.Delete(f); } catch { }
+        if (error == null && !job.Black && job.TimeKey != null) { settings.Took[job.TimeKey] = (DateTime.Now - job.Started).TotalSeconds; ShowGenerateText(); }
         if (!quiet)
         {
             if (error == null && job.Black) { Note("The picture came out black: fp16 accumulation can do that with some LoRAs. Switch it off under Settings > Performance.", true); Flash(); }

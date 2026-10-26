@@ -78,6 +78,7 @@ public class Settings
     public bool SpeedOptionsSet { get; set; }
     public double ReserveVram { get; set; }
     public int CacheRam { get; set; }                            // ComfyUI --cache-ram in GB (0: off)
+    public Dictionary<string, double> Took { get; set; } = new();   // seconds one picture took, by "model|size|steps": Generate's estimate
     public bool LowMemory { get; set; }                          // ComfyUI keeps no results between runs and pins no RAM
     public Dictionary<string, Boosters> BoostersByFamily { get; set; } = new();   // before per-model profiles: the starting point for models without one
     public Dictionary<string, ModelProfile> Profiles { get; set; } = new();        // each model's own settings
