@@ -398,7 +398,64 @@ public partial class MainWindow
         };
         detail.Click += (_, _) => _ = DetailUpscale(s);
         menu.Items.Add(detail);
+        bool seedVr = SeedVrReady;
+        foreach (var f in new[] { 2, 4 })
+        {
+            var item = new MenuItem
+            {
+                Header = seedVr ? $"{f}× with SeedVR2, sharpest   ({size.Item1 * f} × {size.Item2 * f})" : $"{f}× with SeedVR2: get SeedVR2 in Models",
+                Tag = "", IsEnabled = seedVr,
+                ToolTip = "Rebuilds fine detail (skin, hair, fabric, lettering) instead of smoothing it, without changing the picture." + (f == 4 ? " 4× of a big picture needs a lot of memory." : ""),
+            };
+            item.Click += (_, _) => _ = SeedVrUpscale(s, f);
+            menu.Items.Add(item);
+        }
         menu.IsOpen = true;
+    }
+
+    const string SeedVrModel = "seedvr2_3b_int8_convrot.safetensors", SeedVrVae = "seedvr2_ema_vae_fp16.safetensors";
+    bool SeedVrReady => nodeNames.Contains("SeedVR2Conditioning") && File.Exists(Path.Combine(ModelsDir, "diffusion_models", SeedVrModel))
+        && File.Exists(Path.Combine(ModelsDir, "vae", SeedVrVae));
+
+    // ComfyUI's own SeedVR2 nodes, wired as in its template utility_seedvr2_3b_int8_upscale_image: one step, the picture as the guide
+    async Task SeedVrUpscale(Shot s, int factor)
+    {
+        if (!ready) { ViewerNote.Text = "ComfyUI isn't ready yet."; return; }
+        CloseViewer();
+        await Enqueue(1, async job =>
+        {
+            var source = await File.ReadAllBytesAsync(s.FilePath);
+            job.Before = source;
+            var image = await Upload(source, job);
+            var g = new JsonObject
+            {
+                ["20"] = Node("LoadImage", new() { ["image"] = image }),
+                ["30"] = Node("JoinImageWithAlpha", new() { ["image"] = Link("20", 0), ["alpha"] = Link("20", 1) }),
+                ["31"] = Node("ResizeImageMaskNode", new()
+                {
+                    ["input"] = Link("30", 0), ["resize_type"] = "scale by multiplier", ["resize_type.multiplier"] = (double)factor, ["scale_method"] = "lanczos",
+                }),
+                ["32"] = Node("SeedVR2Preprocess", new() { ["resized_images"] = Link("31", 0) }),
+                ["33"] = Node("VAELoader", new() { ["vae_name"] = SeedVrVae }),
+                ["34"] = Node("UNETLoader", new() { ["unet_name"] = SeedVrModel, ["weight_dtype"] = "default" }),
+                ["35"] = Node("VAEEncodeTiled", new() { ["pixels"] = Link("32", 0), ["vae"] = Link("33", 0), ["tile_size"] = 512, ["overlap"] = 128, ["temporal_size"] = 4096, ["temporal_overlap"] = 8 }),
+                ["36"] = Node("SeedVR2Conditioning", new() { ["model"] = Link("34", 0), ["vae_conditioning"] = Link("35", 0) }),
+                ["37"] = Node("KSampler", new()
+                {
+                    ["model"] = Link("34", 0), ["positive"] = Link("36", 0), ["negative"] = Link("36", 1), ["latent_image"] = Link("35", 0),
+                    ["seed"] = Random.Shared.NextInt64(0, 1L << 48), ["steps"] = 1, ["cfg"] = 1.0, ["sampler_name"] = "euler", ["scheduler"] = "simple", ["denoise"] = 1.0,
+                }),
+                ["38"] = Node("VAEDecodeTiled", new() { ["samples"] = Link("37", 0), ["vae"] = Link("33", 0), ["tile_size"] = 512, ["overlap"] = 128, ["temporal_size"] = 4096, ["temporal_overlap"] = 8 }),
+                ["39"] = Node("SeedVR2PostProcessing", new() { ["images"] = Link("38", 0), ["original_resized_images"] = Link("31", 0), ["color_correction_method"] = "none" }),
+                ["9"] = Node("SaveImage", new() { ["filename_prefix"] = "forge/up", ["images"] = Link("39", 0) }),
+            };
+            var meta = (s.Meta ?? new Meta(null, null, null, null, null, null, null, null)) with { Upscaled = $"{factor}× with SeedVR2 from {Path.GetFileName(s.FilePath)}" };
+            return new JsonObject
+            {
+                ["prompt"] = g, ["client_id"] = clientId,
+                ["extra_data"] = new JsonObject { ["extra_pnginfo"] = new JsonObject { ["forge"] = JsonSerializer.SerializeToNode(meta) } },
+            };
+        }, "Upscaling with SeedVR2", "Upscaling");
     }
 
     // Ultimate SD Upscale: Real-ESRGAN to 2×, then the selected model redraws it tile by tile at low strength, with the picture's own prompt
