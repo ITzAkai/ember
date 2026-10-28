@@ -13,7 +13,7 @@ namespace ImageForge;
 public partial class MainWindow
 {
     const int MaxReferences = 3;
-    class RefPicture { public byte[] Png; public BitmapSource Thumb; public Task<string> Looks; public string Seen; }
+    class RefPicture { public byte[] Png; public BitmapSource Thumb; public Task<string> Looks; public string Seen; public bool Mannequin; }
     readonly List<RefPicture> references = new();
 
     const string LooksSystem = Private + "Another image model will redraw the main subject of this picture, so list what it must keep. If there is a person, " +
@@ -384,17 +384,25 @@ public partial class MainWindow
 
     // ---------------- pose picture: the people in new pictures take the pose of the people in this picture ----------------
     // SDXL: xinsir's OpenPose ControlNet. Krea 2: thedeoxen's pose LoRA through ostris's edit nodes. Both from the same DWPose stick figure.
+    // MOSS-Image: darask0's colour/depth control (community, Apache 2.0) through ComfyUI's own MOSSImageControl, from a depth map made by
+    // Depth Anything V2 Small (Apache 2.0) in Pose control. A depth map keeps the body's shape as well as its pose.
+    static readonly PluginModel MossPoseLora = new("https://huggingface.co/darask0/MOSS-Image-color-depth-control/resolve/main/moss-control.safetensors",
+        "loras", "moss-control.safetensors", "e5c0c3efd05e4269207a39de6005798f14c90c6687c89c54eaffe4b76c43a763", 313_063_368);
+    static readonly PluginModel DepthFinder = new("https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/main/depth_anything_v2_vits.pth",
+        @"ckpts\depth-anything\Depth-Anything-V2-Small", "depth_anything_v2_vits.pth", "715fade13be8f229f8a70cc02066f656f2423a59effd0579197bbf57860e1378", 99_218_434, InPack: true);
     RefPicture posePicture;
     bool fillingPose;
     static Plugin PosePlugin => Recommended.First(p => p.Folder == "comfyui_controlnet_aux");
     static Plugin KreaPosePlugin => Recommended.First(p => p.Folder == "ComfyUI-Krea2-Ostris-Edit");
     string PoseModelFile => PosePlugin.Models.First(m => m.Folder == "controlnet").File;
     string KreaPoseLora => KreaPosePlugin.Models[0].File;
-    bool PoseFinderThere => StateOf(PosePlugin).Path is string dir && PosePlugin.Models.Where(m => m.InPack).All(m => File.Exists(Path.Combine(dir, m.Folder, m.File)));
-    bool PoseFamily => Sdxl || Krea;
+    bool PoseFinderThere => StateOf(PosePlugin).Path is string dir
+        && (Moss ? new[] { DepthFinder } : PosePlugin.Models.Where(m => m.InPack).ToArray()).All(m => File.Exists(Path.Combine(dir, m.Folder, m.File)));
+    bool PoseFamily => Sdxl || Krea || Moss;
     // the plugin (nodes) each family needs, and whether its files are there
-    bool PosePluginsThere => nodeNames.Contains("DWPreprocessor") && (!Krea || nodeNames.Contains("Krea2OstrisEditModelPatch"));
-    bool PoseFilesThere => PoseFinderThere && (Krea ? File.Exists(Path.Combine(ModelsDir, "loras", KreaPoseLora)) : File.Exists(Path.Combine(ModelsDir, "controlnet", PoseModelFile)));
+    bool PosePluginsThere => Moss ? nodeNames.Contains("DepthAnythingV2Preprocessor") && nodeNames.Contains("MOSSImageControl")
+        : nodeNames.Contains("DWPreprocessor") && (!Krea || nodeNames.Contains("Krea2OstrisEditModelPatch"));
+    bool PoseFilesThere => PoseFinderThere && (Moss ? File.Exists(Path.Combine(ModelsDir, "loras", MossPoseLora.File)) : Krea ? File.Exists(Path.Combine(ModelsDir, "loras", KreaPoseLora)) : File.Exists(Path.Combine(ModelsDir, "controlnet", PoseModelFile)));
     bool PoseReady => PoseFamily && PosePluginsThere && PoseFilesThere;
     bool UsingPosePicture => posePicture != null && CreateMode.IsChecked == true && !VideoOn && PoseReady;
 
@@ -406,6 +414,7 @@ public partial class MainWindow
         PosePicThumb.Visibility = PosePicStrength.Visibility = posePicture != null ? Visibility.Visible : Visibility.Collapsed;
         if (posePicture != null) PosePicImage.Background = new ImageBrush(posePicture.Thumb) { Stretch = Stretch.UniformToFill };
         PosePicAddRow.Visibility = posePicture == null && ready ? Visibility.Visible : Visibility.Collapsed;
+        MannequinBtn.Visibility = Moss ? Visibility.Visible : Visibility.Collapsed;       // the other pose finders see no one in a mannequin
         PosePicGetBtn.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
         PosePicGetBtn.Content = plugin ? $"Get its files ({Size(PoseFilesToGet.Sum(m => m.Model.Bytes))})" : Krea && nodeNames.Contains("DWPreprocessor") ? "Install Krea 2 pose…" : "Install pose control…";
         PoseMapImage.Visibility = posePicture != null && poseMap != null ? Visibility.Visible : Visibility.Collapsed;
@@ -414,6 +423,8 @@ public partial class MainWindow
                 : "Copy the pose of the people in a picture: needs Pose control (Settings > Plugins).")
             : !ready ? "Pose control needs its pose finder and pose model once."
             : posePicture != null && poseFound != null ? poseFound
+            : Moss ? "New pictures take its pose; the prompt decides the body. With a reference picture, the character comes from its description. "
+                + "The mannequins go with any prompt; your own pictures can't be used for nude or sexual pictures."
             : "Only the pose carries over: the prompt still decides who they are and how they look.";
         fillingPose = true;
         PosePicSlider.Value = settings.PoseStrength;
@@ -421,12 +432,12 @@ public partial class MainWindow
         PosePicValue.Text = settings.PoseStrength.ToString("0.00");
     }
 
-    void SetPosePicture(BitmapSource img)
+    void SetPosePicture(BitmapSource img, bool mannequin = false)
     {
         double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         img.Freeze();
-        posePicture = new RefPicture { Png = PngOf(img), Thumb = img };
+        posePicture = new RefPicture { Png = PngOf(img), Thumb = img, Mannequin = mannequin };
         (poseMap, poseMapPng, poseFound) = (null, null, null);
         ShowPosePicture();
         _ = FindPose(posePicture);
@@ -450,7 +461,8 @@ public partial class MainWindow
             var g = new JsonObject
             {
                 ["1"] = Node("LoadImage", new() { ["image"] = stored }),
-                ["2"] = Node("DWPreprocessor", new()
+                ["2"] = Moss ? Node("DepthAnythingV2Preprocessor", new() { ["image"] = Link("1", 0), ["ckpt_name"] = DepthFinder.File, ["resolution"] = 512 })
+                : Node("DWPreprocessor", new()
                 {
                     ["image"] = Link("1", 0), ["detect_hand"] = "enable", ["detect_body"] = "enable", ["detect_face"] = "enable", ["resolution"] = 512,
                     // drawn the way the model will get it: thick sticks for SDXL's xinsir ControlNet, plain ones for Krea 2's pose LoRA
@@ -476,10 +488,11 @@ public partial class MainWindow
             var map = new BitmapImage();
             map.BeginInit(); map.CacheOption = BitmapCacheOption.OnLoad; map.StreamSource = new MemoryStream(bytes); map.EndInit(); map.Freeze();
             if (posePicture != pic) return;
-            bool nobody = AllDark(map);
+            bool nobody = !Moss && AllDark(map);
             poseMap = nobody ? null : map;
-            poseMapPng = nobody ? null : bytes;
-            poseFound = nobody ? "No person found in this picture, so new pictures won't follow a pose. Try a clearer one where the whole body shows."
+            poseMapPng = nobody || Moss ? null : bytes;          // a depth map shows the body, so it never goes on to Fibo 2.0 edits
+            poseFound = Moss ? "The depth shape on the right is what new pictures follow, softened so the prompt decides the body."
+                : nobody ? "No person found in this picture, so new pictures won't follow a pose. Try a clearer one where the whole body shows."
                 : "The found pose is on the right: new pictures copy that stick figure. If it doesn't match the picture, try a clearer, full-body one.";
         }
         catch (Exception ex) { if (posePicture == pic) (poseMap, poseMapPng, poseFound) = (null, null, $"Couldn't show the pose ({ex.Message}); the picture is still used."); }
@@ -563,6 +576,12 @@ public partial class MainWindow
         {
             var want = new List<(Plugin, PluginModel)>();
             var dir = StateOf(PosePlugin).Path;
+            if (Moss)
+            {
+                if (dir == null || !File.Exists(Path.Combine(dir, DepthFinder.Folder, DepthFinder.File))) want.Add((PosePlugin, DepthFinder));
+                if (!File.Exists(Path.Combine(ModelsDir, MossPoseLora.Folder, MossPoseLora.File))) want.Add((PosePlugin, MossPoseLora));
+                return want;
+            }
             foreach (var m in PosePlugin.Models.Where(m => m.InPack && (dir == null || !File.Exists(Path.Combine(dir, m.Folder, m.File))))) want.Add((PosePlugin, m));
             var model = Krea ? (KreaPosePlugin, KreaPosePlugin.Models[0]) : (PosePlugin, PosePlugin.Models.First(m => m.Folder == "controlnet"));
             if (!File.Exists(Path.Combine(ModelsDir, model.Item2.Folder, model.Item2.File))) want.Add(model);
@@ -577,7 +596,8 @@ public partial class MainWindow
         try
         {
             // each plugin fetches its own (it skips what's already there): the finder with Pose control, the LoRA with Krea 2 pose
-            foreach (var p in PoseFilesToGet.Select(f => f.Plugin).Distinct())
+            if (Moss) await GetPluginModels(PosePlugin with { Models = [DepthFinder, MossPoseLora] }, dir);
+            else foreach (var p in PoseFilesToGet.Select(f => f.Plugin).Distinct())
                 await GetPluginModels(p, p == PosePlugin ? dir : StateOf(p).Path);
             Note("Pose control is ready.");
         }
@@ -590,6 +610,7 @@ public partial class MainWindow
     void UsePosePicture(JsonObject g, string uploaded)
     {
         if (Krea) { UseKreaPose(g, uploaded); return; }
+        if (Moss) { UseMossPose(g, uploaded); return; }
         var k = (JsonObject)g["3"]["inputs"];
         g["pose_pic"] = Node("LoadImage", new() { ["image"] = uploaded });
         g["pose_find"] = Node("DWPreprocessor", new()
@@ -605,6 +626,50 @@ public partial class MainWindow
         });
         k["positive"] = Link("pose", 0);
         k["negative"] = Link("pose", 1);
+    }
+
+    // MOSS-Image: the depth map, blurred as far as ImageBlur goes and held for the first 20% of the steps: that fixes the pose and leaves
+    // the body to the prompt. Tested on the kneeling mannequin with "a curvy, full-figured woman": blur 12 to 30% gave the mannequin's thin
+    // body and a beige band at its hips; blur 31 to 20% gave the pose and the curves; to 12% the legs drifted from the pose.
+    // The Pose strength slider is the control's strength.
+    void UseMossPose(JsonObject g, string uploaded)
+    {
+        var k = (JsonObject)g["3"]["inputs"];
+        if (double.Parse(k["denoise"].ToJsonString(), System.Globalization.CultureInfo.InvariantCulture) < 1) return;       // a redraw of another picture: its first steps, where the pose is set, don't run
+        var (w, h) = PictureSize();
+        g["pose_pic"] = Node("LoadImage", new() { ["image"] = uploaded });
+        g["pose_find"] = Node("DepthAnythingV2Preprocessor", new() { ["image"] = Link("pose_pic", 0), ["ckpt_name"] = DepthFinder.File, ["resolution"] = 1024 });
+        g["pose_soft"] = Node("ImageBlur", new() { ["image"] = Link("pose_find", 0), ["blur_radius"] = 31, ["sigma"] = 10.0 });
+        // padded to the picture's shape after the depth is found, in black (far away): black bars on the picture itself were read as
+        // near walls (tested: arms up came out as one hand to the head; the same seed with the depth map padded raised both arms)
+        g["pose_scale"] = Node("ResizeAndPadImage", new() { ["image"] = Link("pose_soft", 0), ["target_width"] = w, ["target_height"] = h, ["padding_color"] = "black", ["interpolation"] = "lanczos" });
+        g["pose_lora"] = Node("LoraLoaderModelOnly", new() { ["model"] = k["model"].DeepClone(), ["lora_name"] = MossPoseLora.File, ["strength_model"] = 1.0 });
+        g["pose"] = Node("MOSSImageControl", new()
+        {
+            ["positive"] = k["positive"].DeepClone(), ["negative"] = k["negative"].DeepClone(), ["vae"] = g["8"]["inputs"]["vae"].DeepClone(),
+            ["depth_map"] = Link("pose_scale", 0), ["strength"] = settings.PoseStrength, ["start_percent"] = 0.0, ["end_percent"] = 0.2,
+        });
+        k["model"] = Link("pose_lora", 0);
+        k["positive"] = Link("pose", 0);
+        k["negative"] = Link("pose", 1);
+    }
+
+    // the built-in poses: a plain mannequin (made with MOSS-Image for Ember), so no one's likeness goes in and they go with any prompt
+    static readonly (string File, string Label)[] Mannequins = [("standing", "Standing"), ("hands-on-hips", "Hands on hips"), ("walking", "Walking"),
+        ("sitting-chair", "Sitting on a stool"), ("sitting-floor", "Sitting, hugging the knees"), ("kneeling", "Kneeling, hands behind the head"),
+        ("arms-up", "Arms up"), ("lying", "Lying on one side")];
+
+    void Mannequin_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = (UIElement)sender };
+        foreach (var (file, label) in Mannequins)
+        {
+            var img = new BitmapImage(new Uri($"pack://application:,,,/poses/{file}.jpg"));
+            var item = new MenuItem { Header = label, Icon = new Image { Source = img, Height = 36, Width = 36, Stretch = Stretch.Uniform } };
+            item.Click += (_, _) => SetPosePicture(img, mannequin: true);
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
     }
 
     // Krea 2, as in the pose LoRA's own workflow: the stick figure goes in as Picture 1 of ostris's edit text encoder (for the prompt and

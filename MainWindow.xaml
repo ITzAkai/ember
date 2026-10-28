@@ -458,7 +458,9 @@
                 <DockPanel x:Name="PosePicAddRow">
                   <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Paste" Click="PosePicPaste_Click"
                           ToolTip="Use a copied picture" AutomationProperties.Name="Paste pose picture"/>
-                  <Button Style="{StaticResource Ghost}" Height="36" Content="Add a pose picture…" Click="PosePicAdd_Click" AutomationProperties.Name="Add pose picture"/>
+                  <Button x:Name="MannequinBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Mannequin…" Click="Mannequin_Click"
+                          ToolTip="A built-in pose: a plain mannequin, so it goes with any prompt" AutomationProperties.Name="Mannequin pose"/>
+                  <Button Style="{StaticResource Ghost}" Height="36" Content="Add a picture…" Click="PosePicAdd_Click" AutomationProperties.Name="Add pose picture"/>
                 </DockPanel>
                 <StackPanel x:Name="PosePicStrength" Visibility="Collapsed">
                   <DockPanel>

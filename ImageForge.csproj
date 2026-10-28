@@ -22,6 +22,7 @@
     <Resource Include="ember.ico" />
     <Resource Include="logo.png" />
     <Resource Include="styles\*.jpg" />
+    <Resource Include="poses\*.jpg" />
     <EmbeddedResource Include="bundles\**\*" LogicalName="bundles/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Remove="old-browser-version\**" />
     <None Remove="old-browser-version\**" />

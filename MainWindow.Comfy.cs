@@ -173,7 +173,7 @@ public partial class MainWindow
             upscaleModel = ComboOptions(up).FirstOrDefault();
             var lo = JsonNode.Parse(await http.GetStringAsync("/object_info/LoraLoader"))?["LoraLoader"]?["input"]?["required"]?["lora_name"];
             // the Krea 2 pose LoRA only works through Pose picture (with its edit patch): not offered as an ordinary LoRA
-            loras = ComboOptions(lo).Where(l => !l.Equals(KreaPoseLora, StringComparison.OrdinalIgnoreCase)).ToList();
+            loras = ComboOptions(lo).Where(l => !l.Equals(KreaPoseLora, StringComparison.OrdinalIgnoreCase) && !l.Equals(MossPoseLora.File, StringComparison.OrdinalIgnoreCase)).ToList();
             loraFamily = loras.ToDictionary(l => l, l => LoraFamily(Path.Combine(ModelsDir, "loras", l)));
             FillLoras();
             _ = LoadLoraInfo();                 // what each LoRA does, looked up in the background

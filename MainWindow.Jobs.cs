@@ -159,6 +159,9 @@ public partial class MainWindow
         // the same for painted edits made by Fibo 2.0, which takes the characters as they are (the pose goes in as a stick figure only)
         if (FiboRefs && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
         if (!edit && UsingStylePicture && SexualWords.IsMatch(words)) { Note("Style pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
+        // MOSS-Image's pose copies the body's shape too, so only the built-in mannequins go into a nude or sexual picture
+        if (!edit && UsingPosePicture && Moss && !posePicture.Mannequin && SexualWords.IsMatch(words))
+        { Note("With MOSS-Image, your own pose pictures can't be used for nude or sexual pictures: it copies the body's shape, and they may show a real person. Pick a mannequin pose instead.", true); return; }
         // a workflow: the same blocks for every word in it, and it must be able to run here
         if (!edit && expand == null && UsingWorkflow)
         {
@@ -208,12 +211,16 @@ public partial class MainWindow
             }
             bool newPicture = !edit && expand == null;
             var style = newPicture && UsingStylePicture ? await Upload(stylePicture.Png, job) : null;
-            var pose = newPicture && UsingPosePicture ? await Upload(PosePng(), job)
+            var pose = newPicture && UsingPosePicture ? await Upload(Moss ? posePicture.Png : PosePng(), job)    // MOSS pads the depth map instead (UseMossPose)
                 : fibo && FiboPose ? await Upload(poseMapPng, job) : null;        // only the stick figure: no one's likeness goes in
             bool couple = newPicture && UsingCouple;
             // picture n gets seed + n, so the seed saved with each one makes that same picture again
             // painted edits and expansions go plain, without LoRAs and style: made for whole pictures, they take over a small redraw
             // (tested on Krea 2 with a LoRA set: "a red door" came out as a face; without them, a red door)
+            // MOSS-Image with a pose: the reference character goes in as its description only. Drawn first by Qwen-Image, the picture would be
+            // redrawn at 0.35, and the pose is set in the first steps, which then never run. (Tested: Qwen-Image itself takes no pose from a
+            // mannequin, its stick figure or depth map, nor swaps a character into a posed picture.)
+            if (pose != null && newPicture && Moss) refs = null;
             var g = Graph(seed + job.Number, image, masked, denoise, plain: masked, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))),
                 prompt: prompt, negative: negative);
             // painted edits: Fibo 2.0 Edit Turbo when installed (made for it, 4 steps), then Qwen-Image 2.1 (both follow the description);
