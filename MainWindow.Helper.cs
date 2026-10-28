@@ -15,8 +15,15 @@ public partial class MainWindow
         "and bodies don't blend together; name exactly what they are doing and where each is relative to the other; prefer full-body framing with a clear " +
         "camera angle over first-person views; and keep the action near the start. ";
 
+    // ideas pasted from other models' prompts: without this, BREAK became "breaking through barriers" and <lora:…> tags stayed in the text
+    const string OtherTags = "The idea may be written in another image model's prompt style. Read every tag as part of the idea: booru tags " +
+        "(1girl or 1boy is one female or male character, 2girls two, solo one person, looking at viewer, from above…); weights like (red dress:1.3) or " +
+        "((red dress)) mean that part matters more, so give it more detail, and [word] or (word:0.7) less; quality and score tags (masterpiece, best quality, " +
+        "score_9, score_8_up) ask for a high-quality picture, and score tags stay only if this model's form above starts with them; BREAK only separates parts of the prompt; <lora:name:0.8> tags are add-on files. " +
+        "Write none of that syntax yourself (no brackets, weight numbers, BREAK or <lora:…> tags), and use tags only where this model's form above asks for them. ";
+
     string EnhanceSystemFor() => Private + "You write prompts for an AI image generator. Turn the user's idea into one detailed prompt. " + PromptForm(false) +
-        ManyPeople + NoNegative + KeepAsked + "Reply with the prompt only.";
+        OtherTags + ManyPeople + NoNegative + KeepAsked + "Reply with the prompt only.";
 
     // a picture -> the prompt that recreates it on the selected model, as closely as it can be put in words
     string DescribeSystemFor() => Private + "Look at the picture and write the prompt that makes an AI image generator recreate it as exactly as possible. " +
@@ -80,16 +87,20 @@ public partial class MainWindow
     {
         fillingHelper = true;
         var items = new List<string> { HelperDefault };
+        if (kreaTe != null) items.Add(HelperFast);
         items.AddRange((await OllamaModels()).Select(m => "Ollama: " + m));
         HelperBox.ItemsSource = items;
         HelperBox.SelectedItem = items.Contains(settings.HelperModel ?? "") ? settings.HelperModel : HelperDefault;
         HelperNote.Text = items.Count > 1
             ? "Ollama models write prompts from text only; Describe image and photo edits always use Qwen3-VL, which can see pictures."
-            : "Qwen3-VL 8B runs inside ComfyUI. If Ollama is running on this PC, its models show up here too.";
+            : "Qwen3-VL runs inside ComfyUI. If Ollama is running on this PC, its models show up here too.";
+        if (kreaTe != null) HelperNote.Text = "The 4B writes about 40% faster, with a little less detail. " + HelperNote.Text;
         fillingHelper = false;
     }
 
     const string HelperDefault = "Qwen3-VL 8B in ComfyUI";
+    // Krea 2's text encoder, the same Qwen3-VL family at half the size: it sees pictures too. Measured with MOSS-Image loaded: 10 s against 16 s.
+    const string HelperFast = "Qwen3-VL 4B in ComfyUI (faster)";
     bool fillingHelper;
 
     void Helper_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

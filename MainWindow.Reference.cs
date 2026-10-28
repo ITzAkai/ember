@@ -13,7 +13,7 @@ namespace ImageForge;
 public partial class MainWindow
 {
     const int MaxReferences = 3;
-    class RefPicture { public byte[] Png; public BitmapSource Thumb; public Task<string> Looks; public string Seen; public bool Mannequin; }
+    class RefPicture { public byte[] Png; public BitmapSource Thumb; public Task<string> Looks; public string Seen; public bool Mannequin; public string Words; }
     readonly List<RefPicture> references = new();
 
     const string LooksSystem = Private + "Another image model will redraw the main subject of this picture, so list what it must keep. If there is a person, " +
@@ -432,12 +432,12 @@ public partial class MainWindow
         PosePicValue.Text = settings.PoseStrength.ToString("0.00");
     }
 
-    void SetPosePicture(BitmapSource img, bool mannequin = false)
+    void SetPosePicture(BitmapSource img, bool mannequin = false, string words = null)
     {
         double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         img.Freeze();
-        posePicture = new RefPicture { Png = PngOf(img), Thumb = img, Mannequin = mannequin };
+        posePicture = new RefPicture { Png = PngOf(img), Thumb = img, Mannequin = mannequin, Words = words };
         (poseMap, poseMapPng, poseFound) = (null, null, null);
         ShowPosePicture();
         _ = FindPose(posePicture);
@@ -654,19 +654,27 @@ public partial class MainWindow
         k["negative"] = Link("pose", 1);
     }
 
-    // the built-in poses: a plain mannequin (made with MOSS-Image for Ember), so no one's likeness goes in and they go with any prompt
-    static readonly (string File, string Label)[] Mannequins = [("standing", "Standing"), ("hands-on-hips", "Hands on hips"), ("walking", "Walking"),
-        ("sitting-chair", "Sitting on a stool"), ("sitting-floor", "Sitting, hugging the knees"), ("kneeling", "Kneeling, hands behind the head"),
-        ("arms-up", "Arms up"), ("lying", "Lying on one side")];
+    // the built-in poses: a plain mannequin (made with MOSS-Image for Ember), so no one's likeness goes in and they go with any prompt.
+    // Words: added to the prompt, since a faceless depth shape doesn't say which way the body faces. Tested: without them the stool pose
+    // came out seen from behind and the lying one as a woman standing; with them both right (holding the depth map longer didn't help).
+    static readonly (string File, string Label, string Words)[] Mannequins = [
+        ("standing", "Standing", "The person stands facing the camera, arms relaxed at the sides."),
+        ("hands-on-hips", "Hands on hips", "The person stands facing the camera with both hands on the hips, feet apart."),
+        ("walking", "Walking", "The person walks towards the camera mid-stride."),
+        ("sitting-chair", "Sitting on a stool", "The person sits on a stool facing the camera, hands on the knees."),
+        ("sitting-floor", "Sitting, hugging the knees", "The person sits on the ground facing the camera, hugging the knees to the chest."),
+        ("kneeling", "Kneeling, hands behind the head", "The person kneels upright facing the camera, both hands behind the head."),
+        ("arms-up", "Arms up", "The person stands facing the camera with both arms stretched straight up."),
+        ("lying", "Lying on one side", "The person lies on one side on the ground, head propped on one hand, seen from the front.")];
 
     void Mannequin_Click(object sender, RoutedEventArgs e)
     {
         var menu = new ContextMenu { PlacementTarget = (UIElement)sender };
-        foreach (var (file, label) in Mannequins)
+        foreach (var (file, label, words) in Mannequins)
         {
             var img = new BitmapImage(new Uri($"pack://application:,,,/poses/{file}.jpg"));
             var item = new MenuItem { Header = label, Icon = new Image { Source = img, Height = 36, Width = 36, Stretch = Stretch.Uniform } };
-            item.Click += (_, _) => SetPosePicture(img, mannequin: true);
+            item.Click += (_, _) => SetPosePicture(img, mannequin: true, words: words);
             menu.Items.Add(item);
         }
         menu.IsOpen = true;

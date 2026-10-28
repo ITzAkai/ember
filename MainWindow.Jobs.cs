@@ -222,7 +222,7 @@ public partial class MainWindow
             // mannequin, its stick figure or depth map, nor swaps a character into a posed picture.)
             if (pose != null && newPicture && Moss) refs = null;
             var g = Graph(seed + job.Number, image, masked, denoise, plain: masked, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))),
-                prompt: prompt, negative: negative);
+                prompt: pose != null && newPicture && Moss && posePicture?.Words is string poseWords ? prompt.TrimEnd() + " " + poseWords : prompt, negative: negative);
             // painted edits: Fibo 2.0 Edit Turbo when installed (made for it, 4 steps), then Qwen-Image 2.1 (both follow the description);
             // otherwise, and for expansions, the picked model, or the inpainting model when the setting is on. Expand's soft join reaches
             // 48 px into the photo, so the join is painted too.

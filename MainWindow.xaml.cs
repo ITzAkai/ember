@@ -732,6 +732,8 @@ public partial class MainWindow : Window
         bool edit = EditMode.IsChecked == true;
         if (edit && photo == null) { Note("Choose a photo first, then describe the change.", true); return; }
         var style = CurrentStyle.Key == "none" ? "" : $"\n(The style: {CurrentStyle.Label}.)";
+        // a mannequin pose adds its words to the picture's prompt; a different pose written here drew two people (one lying, one standing)
+        if (!edit && UsingPosePicture && Moss && posePicture.Words is string pose) style += $"\n(The pose, write exactly this one: {pose})";
         // in Edit photo the model sees the photo: Qwen edits by instruction, the other models repaint from a description of the result
         bool fromPicture = VideoOn && (PictureVideo || H3) && startPicture != null;        // picture-to-video: it looks at the start picture
         var system = edit ? (Qwen ? EditInstructionSystem : EditResultSystem) : fromPicture ? VideoFromPictureSystem : VideoOn ? VideoSystem : EnhanceSystemFor();
@@ -808,6 +810,7 @@ public partial class MainWindow : Window
             finally { writing = false; EnhanceBtn.IsEnabled = DescribeFileBtn.IsEnabled = DescribePasteBtn.IsEnabled = true; }
         }
         string te = qwenTe, teType = "qwen_image", plainSystem = system;
+        if (!plainHelper && settings.HelperModel == HelperFast && kreaTe != null) (te, teType) = (kreaTe, "krea2");
         int plainMax = maxTokens;
         if (!plainHelper) MossHelper(prompt, png, ref te, ref teType, ref system, ref maxTokens);
         if (!ready || te == null) { Note("This needs ComfyUI running and the Qwen-Image 2.1 text encoder.", true); return null; }
