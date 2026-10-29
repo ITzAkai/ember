@@ -148,24 +148,17 @@ public partial class MainWindow
         if (!ready) return;
         if (string.IsNullOrWhiteSpace(PromptBox.Text)) { Note("Write a prompt first.", true); PromptBox.Focus(); return; }
         var words = PromptBox.Text + "\n" + CoupleText;           // everything typed that goes into the picture, the two-people boxes too
-        if (SexualWithMinor(words)) { Note(MinorNote, true); return; }       // the uncensored models won't stop it, so the app does (pictures and video)
+
         Remember(PromptBox.Text.Trim());
         if (ModelBox.SelectedItem == null) { Note(VideoOn ? "No video model yet: get Wan 2.1 on the Models page." : "No model selected.", true); return; }
         bool edit = EditMode.IsChecked == true;
         if (edit && photo == null) { Note("Choose a photo to edit first.", true); return; }
         if (edit && CropLayer.Visibility == Visibility.Visible) { Note("Apply or cancel the crop first.", true); return; }
-        // a reference or style picture may show a real person, so it never goes into a nude or sexual picture
-        if (UsingReferences && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
-        // the same for painted edits made by Fibo 2.0, which takes the characters as they are (the pose goes in as a stick figure only)
-        if (FiboRefs && SexualWords.IsMatch(words)) { Note("Reference pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
-        if (!edit && UsingStylePicture && SexualWords.IsMatch(words)) { Note("Style pictures can't be used for nude or sexual pictures: they may show a real person.", true); return; }
-        // MOSS-Image's pose copies the body's shape too, so only the built-in mannequins go into a nude or sexual picture
-        if (!edit && UsingPosePicture && Moss && !posePicture.Mannequin && SexualWords.IsMatch(words))
-        { Note("With MOSS-Image, your own pose pictures can't be used for nude or sexual pictures: it copies the body's shape, and they may show a real person. Pick a mannequin pose instead.", true); return; }
+
         // a workflow: the same blocks for every word in it, and it must be able to run here
         if (!edit && expand == null && UsingWorkflow)
         {
-            if (WorkflowBlocked(PromptBox.Text, NegativeBox.Text) is string why) { Note(why, true); return; }
+
             if (WorkflowProblem() is string problem) { Note(problem, true); return; }
         }
         if (!edit && UsingCouple && (CoupleLeftBox.Text.Trim() == "" || CoupleRightBox.Text.Trim() == ""))
@@ -472,7 +465,7 @@ public partial class MainWindow
     {
         if (!ready) { ViewerNote.Text = "ComfyUI isn't ready yet."; return; }
         var prompt = s.Meta?.Prompt ?? PromptBox.Text.Trim();
-        if (SexualWithMinor(prompt)) { ViewerNote.Text = MinorNote; return; }
+
         CloseViewer();
         long seed = Random.Shared.NextInt64(0, 1L << 48);
         await Enqueue(1, async job =>

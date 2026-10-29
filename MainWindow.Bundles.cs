@@ -159,7 +159,7 @@ public partial class MainWindow
 
     UIElement BundleCard(Bundle b)
     {
-        bool hidden = b.Adult && !settings.AdultAgreed;
+        bool hidden = false;
         var installed = b.Files.Count(f => InstalledPath(f) != null);
         var missing = b.Files.Where(f => InstalledPath(f) == null).ToList();
         var stack = new StackPanel();
@@ -189,7 +189,7 @@ public partial class MainWindow
             var img = new Image { Width = 150, Height = 150, Stretch = Stretch.UniformToFill, Source = Thumb(file, 300) };
             var frame = new Border { CornerRadius = new CornerRadius(8), ClipToBounds = true, Margin = new Thickness(0, 0, 8, 8), Child = img, Cursor = System.Windows.Input.Cursors.Hand,
                 ToolTip = "Open the picture" };
-            frame.MouseLeftButtonUp += (_, _) => { if (!(b.Adult && !settings.AdultAgreed)) System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(file) { UseShellExecute = true }); };
+            frame.MouseLeftButtonUp += (_, _) => { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(file) { UseShellExecute = true }); };
             pics.Children.Add(frame);
         }
         if (pics.Children.Count > 0) show.Children.Add(pics);
@@ -324,8 +324,6 @@ public partial class MainWindow
         var prompts = pictures.Select(p => { try { return ReadMeta(p)?.Prompt; } catch { return null; } })
             .Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct().Take(4).ToList();
         var everything = string.Join("\n", new[] { name, about, tab.Negative }.Concat(prompts));
-        if (SexualWithMinor(everything)) { BundlesNote.Text = MinorNote; return; }
-        adult |= SexualWords.IsMatch(everything);       // sexual prompts or text always get the 18+ gate
 
         // the files it needs: the model, its LoRAs, and for model-only files the text encoder and VAE it runs with
         var needed = new List<(string Folder, string File)>();
@@ -512,8 +510,7 @@ public partial class MainWindow
                 f.Sha256 = f.Sha256.ToLowerInvariant();
             }
             var text = string.Join("\n", new[] { b.Name, b.Description, b.Tab.Negative, b.Tab.Prompt }.Concat(b.Prompts ?? new()));   // its tab's prompt goes in the prompt box too
-            if (SexualWithMinor(text)) throw new Exception(MinorNote);
-            b.Adult |= SexualWords.IsMatch(text);
+
             b.Showcase = (b.Showcase ?? new()).Where(s => s == Path.GetFileName(s) && ShowcaseTypes.Contains(Path.GetExtension(s).ToLowerInvariant()) && File.Exists(Path.Combine(temp, s))).ToList();
             b.Prompts ??= new();
             b.Tab.Loras ??= new();

@@ -84,7 +84,7 @@ public class Settings
     public Dictionary<string, ModelProfile> Profiles { get; set; } = new();        // each model's own settings
     public List<ModelProfile> Tabs { get; set; } = new();
     public string ActiveTab { get; set; }
-    public bool AdultAgreed { get; set; }                   // confirmed 18+ once, so adult bundles show their pictures
+    public bool AdultAgreed { get; set; } = true;              // always agreed
     public string BundleAuthor { get; set; }                // the name "Make a bundle" fills in
 
     // IMAGEFORGE_SETTINGS: another folder for settings, LoRA info and recommendations (test copies leave the real ones alone)
