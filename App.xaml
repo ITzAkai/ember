@@ -177,6 +177,30 @@
         </Setter.Value>
       </Setter>
     </Style>
+    <!-- a text tab (Prompt / Negative): the one you're on is brighter, with an ember underline -->
+    <Style x:Key="Tab" TargetType="RadioButton">
+      <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="B" BorderThickness="0,0,0,2" BorderBrush="Transparent" Padding="0,4,0,4" Background="Transparent">
+              <ContentPresenter VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
     <!-- the rail: icon buttons; the place you're in gets a lighter surface and the ember outline -->
     <Style x:Key="RailItem" TargetType="RadioButton">
       <Setter Property="Foreground" Value="{DynamicResource Muted}"/>

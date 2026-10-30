@@ -11,7 +11,7 @@ public partial class MainWindow
 
     (FrameworkElement Header, ToggleButton Toggle, StackPanel Body)[] AdvancedSections =>
     [
-        (ModelSectionHeader, ModelSectionToggle, ModelSectionBody), (LoraGroupHeader, LoraGroupToggle, LoraGroupBody),
+        (ModelSectionHeader, ModelSectionToggle, ModelSectionBody),
         (VideoSectionHeader, VideoSectionToggle, VideoSectionBody), (SamplingSectionHeader, SamplingSectionToggle, SamplingSectionBody), (BoostersSectionHeader, BoostersSectionToggle, BoostersSectionBody),
     ];
 

@@ -280,8 +280,24 @@
                         ToolTip="Bigger prompt text (Ctrl + mouse wheel, Ctrl + =)" AutomationProperties.Name="Bigger prompt text"/>
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" Content="&#xE8E8;" FontSize="13" Click="SmallerText_Click"
                         ToolTip="Smaller prompt text (Ctrl + mouse wheel, Ctrl + −)" AutomationProperties.Name="Smaller prompt text"/>
-                <TextBlock x:Name="PromptHeading" Text="Prompt" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="PromptHeading" Text="Prompt" Visibility="Collapsed"/>
+                <ToggleButton x:Name="NegativeToggle" Visibility="Collapsed" Style="{StaticResource Fold}" Content="Negative prompt" ToolTip="What to keep out of the image. Ctrl+F in the box finds and replaces."/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                  <RadioButton x:Name="PromptTab" Style="{StaticResource Tab}" GroupName="promptTab" IsChecked="True"
+                               Content="{Binding Text, ElementName=PromptHeading}" AutomationProperties.Name="Prompt"/>
+                  <RadioButton x:Name="NegativeTab" Style="{StaticResource Tab}" GroupName="promptTab" Margin="16,0,0,0" Content="Negative"
+                               IsChecked="{Binding IsChecked, ElementName=NegativeToggle, Mode=TwoWay}" AutomationProperties.Name="Negative prompt"
+                               ToolTip="What to keep out of the image. Ctrl+F in the box finds and replaces."/>
+                </StackPanel>
               </DockPanel>
+              <StackPanel x:Name="PromptArea">
+                <StackPanel.Style>
+                  <Style TargetType="StackPanel">
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsChecked, ElementName=NegativeToggle}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </StackPanel.Style>
               <TextBox x:Name="PromptBox" Style="{StaticResource Input}" Height="140" AcceptsReturn="True" TextWrapping="Wrap" AllowDrop="True"
                        PreviewDragOver="Prompt_PreviewDragOver" PreviewDrop="Prompt_PreviewDrop"
                        PreviewKeyDown="PromptBoxes_PreviewKeyDown" PreviewMouseWheel="PromptBoxes_PreviewMouseWheel"
@@ -303,7 +319,55 @@
                   </StackPanel>
                 </Button>
               </DockPanel>
+              </StackPanel>
+              <StackPanel x:Name="NegativeArea" Visibility="{Binding IsChecked, ElementName=NegativeToggle, Converter={StaticResource BoolVis}}">
+              <TextBox x:Name="NegativeBox" Style="{StaticResource Input}" Height="140" AcceptsReturn="True" TextWrapping="Wrap"
+                       PreviewKeyDown="PromptBoxes_PreviewKeyDown" PreviewMouseWheel="PromptBoxes_PreviewMouseWheel"
+                       VerticalScrollBarVisibility="Auto" Tag="What to keep out of the image"/>
+              <DockPanel x:Name="NegativeLock" Margin="0,6,0,0" Visibility="Collapsed">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="8,0,0,0" Content="Unlock anyway" Click="UnlockNegative_Click"/>
+                <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"
+                           Text="Negative prompt isn't needed for this model: at CFG 1 it's ignored."/>
+              </DockPanel>
+              <TextBlock x:Name="NegativeWarn" Style="{StaticResource Note}" Foreground="{DynamicResource Accent}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"
+                         Text="Negative prompt has no effect at CFG 1. Raise CFG to use it (slower, and it may over-cook turbo models)."/>
+              </StackPanel>
                 </StackPanel>
+              </Border>
+
+              <!-- the pose picture: on the panel, as it's used on nearly every picture -->
+              <Border Style="{StaticResource PanelCard}" Visibility="{Binding Visibility, ElementName=PosePicSection}">
+              <StackPanel x:Name="PosePicSection" Visibility="Collapsed" AllowDrop="True" DragOver="Reference_DragOver" Drop="PosePic_Drop" Background="Transparent">
+                <TextBlock Text="Pose picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                  <Grid x:Name="PosePicThumb" Width="72" Height="72" HorizontalAlignment="Left" Visibility="Collapsed">
+                    <Border x:Name="PosePicImage" CornerRadius="8"/>
+                    <Button Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="9" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,3,3,0" Background="{DynamicResource Surface}" Click="PosePicRemove_Click" ToolTip="Remove the pose picture" AutomationProperties.Name="Remove pose picture"/>
+                  </Grid>
+                  <!-- the pose the pose finder sees in it: what will be copied -->
+                  <Border x:Name="PoseMapImage" Width="72" Height="72" CornerRadius="8" Margin="8,0,0,0" Background="Black" Visibility="Collapsed"
+                          ToolTip="The pose found in the picture: this stick figure is what new pictures copy" AutomationProperties.Name="Found pose"/>
+                </StackPanel>
+                <DockPanel x:Name="PosePicAddRow">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Paste" Click="PosePicPaste_Click"
+                          ToolTip="Use a copied picture" AutomationProperties.Name="Paste pose picture"/>
+                  <Button x:Name="MannequinBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Mannequin…" Click="Mannequin_Click"
+                          ToolTip="A built-in pose: a plain mannequin, so it goes with any prompt" AutomationProperties.Name="Mannequin pose"/>
+                  <Button Style="{StaticResource Ghost}" Height="36" Content="Add a picture…" Click="PosePicAdd_Click" AutomationProperties.Name="Add pose picture"/>
+                </DockPanel>
+                <StackPanel x:Name="PosePicStrength" Visibility="Collapsed">
+                  <DockPanel>
+                    <TextBlock x:Name="PosePicValue" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
+                    <TextBlock Style="{StaticResource Note}" Text="How closely new pictures follow the pose"/>
+                  </DockPanel>
+                  <Slider x:Name="PosePicSlider" Minimum="0.3" Maximum="1.2" TickFrequency="0.05" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"
+                          ValueChanged="PosePicSlider_Changed" AutomationProperties.Name="Pose strength"/>
+                </StackPanel>
+                <TextBlock x:Name="PosePicNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <Button x:Name="PosePicGetBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" HorizontalAlignment="Left" Margin="0,6,0,0"
+                        Visibility="Collapsed" Click="PosePicGet_Click"/>
+              </StackPanel>
               </Border>
 
               <Border Style="{StaticResource PanelCard}" x:Name="ExtrasCard">
@@ -407,58 +471,10 @@
               </StackPanel>
 
               <!-- create mode, SDXL models: the people in new pictures take the pose of the people in this picture (ControlNet, DWPose) -->
-              <StackPanel x:Name="PosePicSection" Visibility="Collapsed" AllowDrop="True" DragOver="Reference_DragOver" Drop="PosePic_Drop" Background="Transparent">
-                <TextBlock Text="Pose picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                  <Grid x:Name="PosePicThumb" Width="72" Height="72" HorizontalAlignment="Left" Visibility="Collapsed">
-                    <Border x:Name="PosePicImage" CornerRadius="8"/>
-                    <Button Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="9" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Margin="0,3,3,0" Background="{DynamicResource Surface}" Click="PosePicRemove_Click" ToolTip="Remove the pose picture" AutomationProperties.Name="Remove pose picture"/>
-                  </Grid>
-                  <!-- the pose the pose finder sees in it: what will be copied -->
-                  <Border x:Name="PoseMapImage" Width="72" Height="72" CornerRadius="8" Margin="8,0,0,0" Background="Black" Visibility="Collapsed"
-                          ToolTip="The pose found in the picture: this stick figure is what new pictures copy" AutomationProperties.Name="Found pose"/>
-                </StackPanel>
-                <DockPanel x:Name="PosePicAddRow">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Paste" Click="PosePicPaste_Click"
-                          ToolTip="Use a copied picture" AutomationProperties.Name="Paste pose picture"/>
-                  <Button x:Name="MannequinBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="36" Padding="12,0" Margin="6,0,0,0" Content="Mannequin…" Click="Mannequin_Click"
-                          ToolTip="A built-in pose: a plain mannequin, so it goes with any prompt" AutomationProperties.Name="Mannequin pose"/>
-                  <Button Style="{StaticResource Ghost}" Height="36" Content="Add a picture…" Click="PosePicAdd_Click" AutomationProperties.Name="Add pose picture"/>
-                </DockPanel>
-                <StackPanel x:Name="PosePicStrength" Visibility="Collapsed">
-                  <DockPanel>
-                    <TextBlock x:Name="PosePicValue" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
-                    <TextBlock Style="{StaticResource Note}" Text="How closely new pictures follow the pose"/>
-                  </DockPanel>
-                  <Slider x:Name="PosePicSlider" Minimum="0.3" Maximum="1.2" TickFrequency="0.05" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"
-                          ValueChanged="PosePicSlider_Changed" AutomationProperties.Name="Pose strength"/>
-                </StackPanel>
-                <TextBlock x:Name="PosePicNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0"/>
-                <Button x:Name="PosePicGetBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" FontSize="12" HorizontalAlignment="Left" Margin="0,6,0,0"
-                        Visibility="Collapsed" Click="PosePicGet_Click"/>
-              </StackPanel>
                   </StackPanel>
                 </StackPanel>
               </Border>
 
-              <Border Style="{StaticResource PanelCard}">
-                <StackPanel>
-                  <ToggleButton x:Name="NegativeToggle" Style="{StaticResource Fold}" Content="Negative prompt" ToolTip="What to keep out of the image. Ctrl+F in the box finds and replaces."/>
-                  <StackPanel Visibility="{Binding IsChecked, ElementName=NegativeToggle, Converter={StaticResource BoolVis}}">
-              <TextBox x:Name="NegativeBox" Style="{StaticResource Input}" Height="66" AcceptsReturn="True" TextWrapping="Wrap"
-                       PreviewKeyDown="PromptBoxes_PreviewKeyDown" PreviewMouseWheel="PromptBoxes_PreviewMouseWheel"
-                       VerticalScrollBarVisibility="Auto" Tag="What to keep out of the image"/>
-              <DockPanel x:Name="NegativeLock" Margin="0,6,0,0" Visibility="Collapsed">
-                <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="8,0,0,0" Content="Unlock anyway" Click="UnlockNegative_Click"/>
-                <TextBlock Style="{StaticResource Note}" TextWrapping="Wrap" VerticalAlignment="Center"
-                           Text="Negative prompt isn't needed for this model: at CFG 1 it's ignored."/>
-              </DockPanel>
-              <TextBlock x:Name="NegativeWarn" Style="{StaticResource Note}" Foreground="{DynamicResource Accent}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"
-                         Text="Negative prompt has no effect at CFG 1. Raise CFG to use it (slower, and it may over-cook turbo models)."/>
-                  </StackPanel>
-                </StackPanel>
-              </Border>
               <!-- Find / Replace for whichever prompt box it was opened on -->
               <Popup x:Name="FindPopup" Placement="Top" StaysOpen="True" AllowsTransparency="True" VerticalOffset="-4">
                 <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="8" Padding="8">
@@ -791,6 +807,30 @@
                   </RadioButton>
                 </UniformGrid>
               </Border>
+                <!-- steps and CFG: changed on nearly every picture, so they're here, not in More settings -->
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition/>
+                  </Grid.ColumnDefinitions>
+                <StackPanel ToolTip="Exactly how many steps to take. Fast, Balanced and Best set this for the model; you can fine-tune it here.">
+                  <DockPanel Margin="0,18,0,4">
+                    <TextBox x:Name="StepsBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" AutomationProperties.Name="Steps number"
+                             Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" CaretBrush="{DynamicResource Accent}"/>
+                    <TextBlock Text="Steps" Style="{StaticResource Heading}" Margin="0"/>
+                  </DockPanel>
+                  <Slider x:Name="StepsSlider" Minimum="1" Maximum="100" Value="30" TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" AutomationProperties.Name="Steps"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" ToolTip="How strictly the picture follows your prompt. Low: freer and more natural. High: follows the words harder, but can look harsh or over-coloured. Picking a model sets a good value; fast models want 1 to 2.">
+                  <DockPanel Margin="0,18,0,4">
+                    <Ellipse x:Name="CfgDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=CfgSlider, StringFormat={}{0:0.0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
+                    <TextBlock Text="Prompt guidance (CFG)" Style="{StaticResource Heading}" Margin="0"/>
+                  </DockPanel>
+                  <Slider x:Name="CfgSlider" Minimum="1" Maximum="15" TickFrequency="0.5" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"/>
+                </StackPanel>
+                </Grid>
                 </StackPanel>
               </Border>
 
@@ -802,13 +842,22 @@
                     <ComboBox x:Name="QuickModelBox" ItemsSource="{Binding Items, ElementName=ModelBox}" SelectedItem="{Binding SelectedItem, ElementName=ModelBox, Mode=OneWay}"
                               SelectionChanged="QuickModel_Changed" AutomationProperties.Name="Model" ToolTip="The model. Search, compare and its parts are in Advanced settings."/>
                   </DockPanel>
-                  <Button Style="{StaticResource Row}" Margin="0,14,0,0" Click="LoraRow_Click" AutomationProperties.Name="LoRA add-ons"
-                          ToolTip="Small add-ons that teach the model a style, look or subject: opens them in Advanced settings">
-                    <DockPanel>
-                      <TextBlock x:Name="LoraRowText" DockPanel.Dock="Right" Text="None" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                      <TextBlock Text="LoRA add-ons" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    </DockPanel>
-                  </Button>
+                  <DockPanel Margin="0,16,0,0">
+                    <TextBlock x:Name="LoraRowText" DockPanel.Dock="Right" Text="None" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/>
+                    <TextBlock Text="LoRAs" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"
+                               ToolTip="Small add-ons that teach the model a style, look or subject"/>
+                  </DockPanel>
+                <StackPanel x:Name="LoraSection">
+                  <DockPanel Margin="0,12,0,8" LastChildFill="False">
+                    <Button DockPanel.Dock="Right" Content="+ Add LoRA" Style="{StaticResource Ghost}" Padding="8,3" FontSize="11" Click="AddLoraRow_Click" ToolTip="Add another LoRA to use multiple LoRAs together" AutomationProperties.Name="Add LoRA"/>
+                    <Ellipse x:Name="LoraDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
+                    <TextBlock Text="Used together, each at its own strength" Style="{StaticResource Note}" VerticalAlignment="Center"/>
+                  </DockPanel>
+                  <TextBox x:Name="LoraSearch" Style="{StaticResource Input}" Height="30" Padding="8,0" VerticalContentAlignment="Center" Margin="0,0,0,8"
+                           Tag="Search LoRAs by name or what they do…" TextChanged="LoraSearch_TextChanged" AutomationProperties.Name="Search LoRAs"/>
+                  <TextBlock x:Name="LoraFitNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+                  <StackPanel x:Name="LoraRowsPanel"/>
+                </StackPanel>
                   <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Fold}" Margin="0,14,0,0" Content="Advanced settings"/>
                 </StackPanel>
               </Border>
@@ -857,35 +906,6 @@
                 </StackPanel>
                 </StackPanel>
                 </Border>
-                <Border x:Name="LoraGroupHeader" Style="{StaticResource PanelCard}">
-                <StackPanel>
-                <DockPanel>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="26" Margin="8,0,-4,0" FontSize="12" Content="&#xE72C;" ToolTip="Reset this section" Tag="loras"
-                          Click="ResetSection_Click" AutomationProperties.Name="Reset LoRAs"/>
-                  <ToggleButton x:Name="LoraGroupToggle" Style="{StaticResource Fold}" IsChecked="True" Margin="0" ToolTip="Small add-ons that teach the model a style, look or subject">
-                    <DockPanel>
-                      <TextBlock Text="LoRAs" Margin="0,0,8,0"/>
-                      <TextBlock FontWeight="Normal" Foreground="{DynamicResource Muted}" TextTrimming="CharacterEllipsis">
-                        <TextBlock.Text><Binding Path="Text" ElementName="LoraRowText"/></TextBlock.Text>
-                      </TextBlock>
-                    </DockPanel>
-                  </ToggleButton>
-                </DockPanel>
-                <StackPanel x:Name="LoraGroupBody" Visibility="{Binding IsChecked, ElementName=LoraGroupToggle, Converter={StaticResource BoolVis}}">
-                <StackPanel x:Name="LoraSection">
-                  <DockPanel Margin="0,12,0,8" LastChildFill="False">
-                    <Button DockPanel.Dock="Right" Content="+ Add LoRA" Style="{StaticResource Ghost}" Padding="8,3" FontSize="11" Click="AddLoraRow_Click" ToolTip="Add another LoRA to use multiple LoRAs together" AutomationProperties.Name="Add LoRA"/>
-                    <Ellipse x:Name="LoraDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
-                    <TextBlock Text="Used together, each at its own strength" Style="{StaticResource Note}" VerticalAlignment="Center"/>
-                  </DockPanel>
-                  <TextBox x:Name="LoraSearch" Style="{StaticResource Input}" Height="30" Padding="8,0" VerticalContentAlignment="Center" Margin="0,0,0,8"
-                           Tag="Search LoRAs by name or what they do…" TextChanged="LoraSearch_TextChanged" AutomationProperties.Name="Search LoRAs"/>
-                  <TextBlock x:Name="LoraFitNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
-                  <StackPanel x:Name="LoraRowsPanel"/>
-                </StackPanel>
-                </StackPanel>
-                </StackPanel>
-                </Border>
                 <!-- Video mode, MiniMax H3: settings only videos have -->
                 <StackPanel x:Name="VideoAdvArea" Visibility="Collapsed">
                 <Border x:Name="VideoSectionHeader" Style="{StaticResource PanelCard}">
@@ -928,23 +948,7 @@
                 <StackPanel x:Name="SamplingSectionBody" Visibility="{Binding IsChecked, ElementName=SamplingSectionToggle, Converter={StaticResource BoolVis}}">
 
 
-                <StackPanel ToolTip="How strictly the picture follows your prompt. Low: freer and more natural. High: follows the words harder, but can look harsh or over-coloured. Picking a model sets a good value; fast models want 1 to 2.">
-                  <DockPanel Margin="0,18,0,4">
-                    <Ellipse x:Name="CfgDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
-                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=CfgSlider, StringFormat={}{0:0.0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
-                    <TextBlock Text="Prompt guidance (CFG)" Style="{StaticResource Heading}" Margin="0"/>
-                  </DockPanel>
-                  <Slider x:Name="CfgSlider" Minimum="1" Maximum="15" TickFrequency="0.5" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"/>
-                </StackPanel>
 
-                <StackPanel ToolTip="Exactly how many steps to take. Fast, Balanced and Best set this for the model; you can fine-tune it here.">
-                  <DockPanel Margin="0,18,0,4">
-                    <TextBox x:Name="StepsBox" DockPanel.Dock="Right" Width="46" Height="24" Padding="4,0" VerticalContentAlignment="Center" AutomationProperties.Name="Steps number"
-                             Background="{DynamicResource Field}" Foreground="{DynamicResource Ink}" BorderBrush="{DynamicResource Line}" CaretBrush="{DynamicResource Accent}"/>
-                    <TextBlock Text="Steps" Style="{StaticResource Heading}" Margin="0"/>
-                  </DockPanel>
-                  <Slider x:Name="StepsSlider" Minimum="1" Maximum="100" Value="30" TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" AutomationProperties.Name="Steps"/>
-                </StackPanel>
 
                 <Grid Margin="0,16,0,0">
                   <Grid.ColumnDefinitions>

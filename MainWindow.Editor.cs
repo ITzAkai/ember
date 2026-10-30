@@ -49,8 +49,8 @@ public partial class MainWindow
     // the Extras fold (pictures, two people, workflow): shown while one of its sections is, and opened when one of them is in use
     void WatchExtras()
     {
-        FrameworkElement[] sections = [ReferenceSection, CoupleSection, WorkflowSection, StylePicSection, PosePicSection],
-            used = [ReferenceList, CoupleBoxes, StylePicThumb, PosePicThumb];
+        FrameworkElement[] sections = [ReferenceSection, CoupleSection, WorkflowSection, StylePicSection],      // pose has its own card now
+            used = [ReferenceList, CoupleBoxes, StylePicThumb];
         void Update(object s, EventArgs e)
         {
             ExtrasCard.Visibility = sections.Any(x => x.Visibility == Visibility.Visible) ? Visibility.Visible : Visibility.Collapsed;
@@ -92,11 +92,6 @@ public partial class MainWindow
         if (QuickModelBox.IsKeyboardFocusWithin && QuickModelBox.SelectedItem is string m && !Equals(ModelBox.SelectedItem, m)) ModelBox.SelectedItem = m;
     }
 
-    void LoraRow_Click(object sender, RoutedEventArgs e)
-    {
-        AdvancedToggle.IsChecked = LoraGroupToggle.IsChecked = true;
-        Dispatcher.BeginInvoke(() => LoraGroupHeader.BringIntoView(), System.Windows.Threading.DispatcherPriority.Loaded);
-    }
 
     // a picture dropped on the closed fold becomes a reference picture
     void ExtrasDrop(object sender, DragEventArgs e) { ExtrasToggle.IsChecked = true; Reference_Drop(sender, e); }
