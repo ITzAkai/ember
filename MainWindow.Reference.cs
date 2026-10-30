@@ -13,11 +13,12 @@ namespace ImageForge;
 public partial class MainWindow
 {
     const int MaxReferences = 3;
-    class RefPicture { public byte[] Png; public BitmapSource Thumb; public Task<string> Looks; public string Seen; public bool Mannequin; public string Words; }
+    class RefPicture { public byte[] Png; public BitmapSource Thumb; public Task<string> Looks; public string Seen; public string Words; }
     readonly List<RefPicture> references = new();
 
     const string LooksSystem = Private + "Another image model will redraw the main subject of this picture, so list what it must keep. If there is a person, " +
-        "describe only that person: hair colour, length and style, eye colour, skin tone, face details, and every piece of clothing and accessory with its colour; " +
+        "describe only that person, starting with who they are (man, woman, femboy, trans woman or trans man), judged from the body rather than the clothes or " +
+        "hair: hair colour, length and style, eye colour, skin tone, face details, and every piece of clothing and accessory with its colour; " +
         "nothing around them (no setting, signs, lights or weather). Only if there is no person, describe the place: its main features, materials and colours. " +
         "No pose, lighting or art style. Reply with 10 to 30 short comma-separated tags only.";
 
@@ -423,8 +424,7 @@ public partial class MainWindow
                 : "Copy the pose of the people in a picture: needs Pose control (Settings > Plugins).")
             : !ready ? "Pose control needs its pose finder and pose model once."
             : posePicture != null && poseFound != null ? poseFound
-            : Moss ? "New pictures take its pose; the prompt decides the body. With a reference picture, the character comes from its description. "
-                + "The mannequins go with any prompt; your own pictures can't be used for nude or sexual pictures."
+            : Moss ? "New pictures take its pose; the prompt decides the body. With a reference picture, the character comes from its description."
             : "Only the pose carries over: the prompt still decides who they are and how they look.";
         fillingPose = true;
         PosePicSlider.Value = settings.PoseStrength;
@@ -432,12 +432,12 @@ public partial class MainWindow
         PosePicValue.Text = settings.PoseStrength.ToString("0.00");
     }
 
-    void SetPosePicture(BitmapSource img, bool mannequin = false, string words = null)
+    void SetPosePicture(BitmapSource img, string words = null)
     {
         double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         img.Freeze();
-        posePicture = new RefPicture { Png = PngOf(img), Thumb = img, Mannequin = mannequin, Words = words };
+        posePicture = new RefPicture { Png = PngOf(img), Thumb = img, Words = words };
         (poseMap, poseMapPng, poseFound) = (null, null, null);
         ShowPosePicture();
         _ = FindPose(posePicture);
@@ -674,7 +674,7 @@ public partial class MainWindow
         {
             var img = new BitmapImage(new Uri($"pack://application:,,,/poses/{file}.jpg"));
             var item = new MenuItem { Header = label, Icon = new Image { Source = img, Height = 36, Width = 36, Stretch = Stretch.Uniform } };
-            item.Click += (_, _) => SetPosePicture(img, mannequin: true, words: words);
+            item.Click += (_, _) => SetPosePicture(img, words: words);
             menu.Items.Add(item);
         }
         menu.IsOpen = true;

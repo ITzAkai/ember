@@ -309,9 +309,9 @@ public partial class MainWindow : Window
         if (on)
         {
             if (active.Count == 1)
-                LoraChipText.Text = $"LoRA on: {Path.GetFileNameWithoutExtension(active[0].Name)} ({active[0].Strength:0.00})";
+                LoraChipText.Text = $"LoRA  {Path.GetFileNameWithoutExtension(active[0].Name)} · {active[0].Strength:0.00}";
             else
-                LoraChipText.Text = $"{active.Count} LoRAs active: {string.Join(", ", active.Select(a => $"{Path.GetFileNameWithoutExtension(a.Name)} ({a.Strength:0.00})"))}";
+                LoraChipText.Text = $"{active.Count} LoRAs  {string.Join(", ", active.Select(a => $"{Path.GetFileNameWithoutExtension(a.Name)} · {a.Strength:0.00}"))}";
         }
     }
     void Lora_Changed(object sender, EventArgs e) => UpdateLoraChip();
@@ -578,6 +578,8 @@ public partial class MainWindow : Window
         },
     };
 
+    void StyleRow_Click(object sender, RoutedEventArgs e) => StylePopup.IsOpen = true;
+
     StylePreset CurrentStyle => StylePreset.All.FirstOrDefault(s => s.Key == Picked(StyleGroup)) ?? StylePreset.All[0];
 
     void BuildStyleTiles()
@@ -591,7 +593,9 @@ public partial class MainWindow : Window
             };
             tile.Checked += (_, _) =>
             {
-                StyleText.Text = st.Label;
+                StyleRowText.Text = st.Label;
+                StyleRowPic.Background = new ImageBrush((ImageSource)tile.DataContext) { Stretch = Stretch.UniformToFill };
+                StylePopup.IsOpen = false;
                 if (st.Key == "logo" && ModelBox.SelectedItem != null && Sdxl)
                     Note("Tip: for lettering in a logo, pick Qwen-Image 2.1 in Advanced settings; this model can't spell.");
             };
@@ -728,7 +732,7 @@ public partial class MainWindow : Window
     {
         var idea = PromptBox.Text.Trim();
         if (idea == "") { Note("Type a short idea first, then press Improve prompt."); return; }
-        if (SexualWithMinor(idea)) { Note(MinorNote, true); return; }
+        if (SexualWithMinor(idea) || SexualMinorCharacter(idea)) { Note(SexualWithMinor(idea) ? MinorNote : CharacterNote, true); return; }
         bool edit = EditMode.IsChecked == true;
         if (edit && photo == null) { Note("Choose a photo first, then describe the change.", true); return; }
         var style = CurrentStyle.Key == "none" ? "" : $"\n(The style: {CurrentStyle.Label}.)";
@@ -803,7 +807,7 @@ public partial class MainWindow : Window
             {
                 var answer = await AskOllama(settings.HelperModel["Ollama: ".Length..], prompt, system);
                 if (answer == "") throw new Exception("the model gave an empty answer");
-                if (SexualWithMinor(answer)) { Note(MinorNote, true); return null; }
+                if (SexualWithMinor(answer) || SexualMinorCharacter(answer)) { Note(SexualWithMinor(answer) ? MinorNote : CharacterNote, true); return null; }
                 return answer;
             }
             catch (Exception ex) { Note("Ollama couldn't write it (" + ex.Message + "). Is Ollama still running?", true); return null; }
@@ -857,7 +861,7 @@ public partial class MainWindow : Window
                 if (text == null && DateTime.Now > until) throw new Exception("it took too long");
             }
             if (text == "") throw new Exception("the model gave an empty answer");
-            if (SexualWithMinor(text)) { Note(MinorNote, true); return null; }
+            if (SexualWithMinor(text) || SexualMinorCharacter(text)) { Note(SexualWithMinor(text) ? MinorNote : CharacterNote, true); return null; }
             if (te == qwenTe || !Declined.IsMatch(text)) return text;
         }
         catch (Exception ex) { Note("Couldn't write it: " + ex.Message, true); return null; }

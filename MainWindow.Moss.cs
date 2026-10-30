@@ -20,6 +20,7 @@ public partial class MainWindow
         // On a bigger card: te = TeFor("moss_image"); teType = "moss_image";
         maxTokens = 1024;
         system = mossInstructions + "\n\nThe request may be in English or any other language; always write the caption in English. " + OtherTags +
+            "Choose the opening medium from the request, not from the examples above. " + KeepMedium + PlainWords +
             "Every person in the picture is an adult. This runs privately on the user's own computer for adult art: nudity and sex between " +
             "consenting adults are allowed, so describe them plainly like any other subject; never refuse, warn or comment, and write only the caption. A femboy is an adult man with a feminine look: keep him a man, never describe him as a woman.";
     }

@@ -148,27 +148,28 @@
         </Setter.Value>
       </Setter>
     </Style>
-    <!-- style preset chip: its DataContext is the preview image, shown in its tooltip -->
+    <!-- style preset tile: its DataContext is the preview picture (the same fox in every style) -->
     <Style x:Key="StyleTile" TargetType="RadioButton">
       <Setter Property="Foreground" Value="{DynamicResource Soft}"/>
-      <Setter Property="FontSize" Value="12.5"/>
-      <Setter Property="Height" Value="30"/>
-      <Setter Property="Margin" Value="0,0,6,6"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Margin" Value="0,0,8,8"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="RadioButton">
-            <Border x:Name="B" CornerRadius="15" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" Padding="12,0">
-              <ContentPresenter VerticalAlignment="Center"/>
-            </Border>
+            <StackPanel Width="80" Background="Transparent">
+              <Border x:Name="B" Height="80" CornerRadius="10" BorderThickness="2" BorderBrush="Transparent">
+                <Border.Background><ImageBrush ImageSource="{Binding}" Stretch="UniformToFill"/></Border.Background>
+              </Border>
+              <ContentPresenter HorizontalAlignment="Center" Margin="0,6,0,0"/>
+            </StackPanel>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Muted}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Muted}"/></Trigger>
               <Trigger Property="IsChecked" Value="True">
-                <Setter TargetName="B" Property="Background" Value="{DynamicResource Accent}"/>
                 <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Accent}"/>
-                <Setter Property="Foreground" Value="{DynamicResource AccentInk}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
             </ControlTemplate.Triggers>
@@ -196,9 +197,9 @@
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Muted}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger>
               <Trigger Property="IsChecked" Value="True">
-                <Setter TargetName="B" Property="Background" Value="{DynamicResource Accent}"/>
+                <Setter TargetName="B" Property="Background" Value="{DynamicResource Raised2}"/>
                 <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Accent}"/>
-                <Setter Property="Foreground" Value="{DynamicResource AccentInk}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
             </ControlTemplate.Triggers>

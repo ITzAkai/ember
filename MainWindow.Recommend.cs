@@ -279,6 +279,7 @@ public partial class MainWindow
                 int level = mine.Count == 0 ? 0 : mine.Max(i => i.Level);
                 dot.Fill = Brush(level == 0 ? "Ok" : level == 1 ? "Accent" : "Danger");
                 dot.ToolTip = level == 0 ? "Inside the recommended range for this model" : string.Join("\n", mine.Select(i => i.Text));
+                if (dot == SizeDot || dot == QualityDot) dot.Visibility = level == 0 ? Visibility.Collapsed : Visibility.Visible;     // on the main screen only a warning shows
             }
             var r = ModelRec;
             GuardSummary.Text = issues.Count == 0 ? $"Recommended settings for {r.Label}." : $"{issues.Count} setting{(issues.Count == 1 ? "" : "s")} outside the recommendation for {r.Label}.";

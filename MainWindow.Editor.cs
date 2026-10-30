@@ -46,7 +46,7 @@ public partial class MainWindow
         ShowBoosters();
     }
 
-    // the "Pictures, two people, workflow" fold: shown while one of its sections is, and opened when one of them is in use
+    // the Extras fold (pictures, two people, workflow): shown while one of its sections is, and opened when one of them is in use
     void WatchExtras()
     {
         FrameworkElement[] sections = [ReferenceSection, CoupleSection, WorkflowSection, StylePicSection, PosePicSection],

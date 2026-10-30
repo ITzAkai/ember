@@ -221,8 +221,8 @@ public partial class MainWindow
             b.ContextMenu = menu;
             TabsBar.Children.Add(b);
         }
-        var add = new Button { Content = "+ Save as tab", Style = (Style)FindResource("Ghost"), Height = 28, Padding = new Thickness(10, 0, 10, 0), FontSize = 12,
-            Margin = new Thickness(0, 0, 6, 6), ToolTip = "Keep this model and all its settings as a tab. Right-click to import tabs." };
+        var add = new Button { Content = "\uE710", Style = (Style)FindResource("IconBtn"), Width = 28, Height = 28, FontSize = 12,
+            Margin = new Thickness(0, 0, 8, 8), ToolTip = "Save as tab: keep this model and all its settings as a tab. Right-click to import tabs." };
         System.Windows.Automation.AutomationProperties.SetName(add, "Save as tab");
         add.Click += (_, _) => NewTab();
         var addMenu = new ContextMenu();

@@ -301,14 +301,14 @@
                 </Border>
               </StackPanel>
 
-              <DockPanel Margin="0,0,0,6">
+              <DockPanel Margin="0,0,0,8">
                 <Button x:Name="HistoryBtn" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" Margin="2,0,-6,0"
                         Content="&#xE81C;" FontSize="14" Click="History_Click" ToolTip="Recent prompts"/>
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" Content="&#xE721;" FontSize="13" Click="FindPrompt_Click"
                         ToolTip="Find and replace (Ctrl+F)" AutomationProperties.Name="Find in prompt"/>
-                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="28" Content="A+" FontSize="12" FontFamily="Segoe UI" Click="BiggerText_Click"
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" Content="&#xE8E9;" FontSize="13" Click="BiggerText_Click"
                         ToolTip="Bigger prompt text (Ctrl + mouse wheel, Ctrl + =)" AutomationProperties.Name="Bigger prompt text"/>
-                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="28" Content="A−" FontSize="11" FontFamily="Segoe UI" Click="SmallerText_Click"
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" Content="&#xE8E8;" FontSize="13" Click="SmallerText_Click"
                         ToolTip="Smaller prompt text (Ctrl + mouse wheel, Ctrl + −)" AutomationProperties.Name="Smaller prompt text"/>
                 <TextBlock x:Name="PromptHeading" Text="Prompt" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
               </DockPanel>
@@ -316,35 +316,29 @@
                        PreviewDragOver="Prompt_PreviewDragOver" PreviewDrop="Prompt_PreviewDrop"
                        PreviewKeyDown="PromptBoxes_PreviewKeyDown" PreviewMouseWheel="PromptBoxes_PreviewMouseWheel"
                        VerticalScrollBarVisibility="Auto" Tag="Describe the image: subject, style, lighting, mood…"/>
-              <WrapPanel HorizontalAlignment="Right" Margin="0,8,0,-4">
-                <Button x:Name="DescribeFileBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,6,4" Click="DescribeFile_Click"
+              <DockPanel Margin="0,8,0,0" LastChildFill="False">
+                <Button x:Name="DescribeFileBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Width="32" Height="28" Padding="0" Margin="8,0,0,0" Click="DescribeFile_Click"
                         ToolTip="Pick a picture and get a prompt that recreates it. You can also drop a picture on the prompt box." AutomationProperties.Name="Describe image">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE722;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                    <TextBlock Text="Describe image" VerticalAlignment="Center"/>
-                  </StackPanel>
+                  <TextBlock Text="&#xE722;" FontFamily="{StaticResource Icons}" FontSize="13"/>
                 </Button>
-                <Button x:Name="DescribePasteBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,6,4" Click="DescribePaste_Click"
+                <Button x:Name="DescribePasteBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Width="32" Height="28" Padding="0" Click="DescribePaste_Click"
                         ToolTip="Get a prompt from a copied picture (Copy image in a browser, or a screenshot). Ctrl+V in the prompt box does the same." AutomationProperties.Name="Describe copied picture">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE77F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                    <TextBlock Text="Paste image" VerticalAlignment="Center"/>
-                  </StackPanel>
+                  <TextBlock Text="&#xE77F;" FontFamily="{StaticResource Icons}" FontSize="13"/>
                 </Button>
-                <Button x:Name="EnhanceBtn" Style="{StaticResource Ghost}" Height="28" Padding="10,0" Margin="0,0,0,4" Click="Enhance_Click"
+                <Button x:Name="EnhanceBtn" Style="{StaticResource Ghost}" Height="28" Padding="12,0" Click="Enhance_Click"
                         ToolTip="Turn a short idea into a detailed prompt, written by the local Qwen model" AutomationProperties.Name="Improve prompt">
                   <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE70F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <TextBlock Text="&#xE70F;" FontFamily="{StaticResource Icons}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBlock x:Name="EnhanceText" Text="Improve prompt" VerticalAlignment="Center"/>
                   </StackPanel>
                 </Button>
-              </WrapPanel>
+              </DockPanel>
                 </StackPanel>
               </Border>
 
               <Border Style="{StaticResource PanelCard}" x:Name="ExtrasCard">
                 <StackPanel>
-                  <ToggleButton x:Name="ExtrasToggle" Style="{StaticResource Fold}" Content="Pictures, two people, workflow" AllowDrop="True" DragOver="Reference_DragOver" Drop="ExtrasDrop" ToolTip="Reference, style and pose pictures, two people described apart, and ComfyUI workflows. Opens by itself when one is in use."/>
+                  <ToggleButton x:Name="ExtrasToggle" Style="{StaticResource Fold}" Content="Extras" AllowDrop="True" DragOver="Reference_DragOver" Drop="ExtrasDrop" ToolTip="Reference, style and pose pictures, two people described apart, and ComfyUI workflows. Opens by itself when one is in use."/>
                   <StackPanel Visibility="{Binding IsChecked, ElementName=ExtrasToggle, Converter={StaticResource BoolVis}}">
               <!-- create mode: a character or a place that new pictures keep exactly as it is -->
               <StackPanel x:Name="ReferenceSection" AllowDrop="True" DragOver="Reference_DragOver" Drop="Reference_Drop" Background="Transparent">
@@ -519,11 +513,21 @@
 
               <Border Style="{StaticResource PanelCard}">
                 <StackPanel>
-              <DockPanel Margin="0,0,0,5">
-                <TextBlock x:Name="StyleText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
-                <TextBlock Text="Style" Style="{StaticResource Heading}" Margin="0"/>
-              </DockPanel>
-              <WrapPanel x:Name="StyleGroup" Margin="0,2,0,0"/>
+              <!-- the style as one row with its picture; the choices open as picture tiles -->
+              <Button x:Name="StyleRow" Style="{StaticResource Row}" Click="StyleRow_Click" AutomationProperties.Name="Style"
+                      ToolTip="Pick a style: each tile is the same picture in that style">
+                <DockPanel>
+                  <Border x:Name="StyleRowPic" Width="40" Height="40" CornerRadius="8" Margin="0,0,12,0" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"/>
+                  <TextBlock x:Name="StyleRowText" DockPanel.Dock="Right" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  <TextBlock Text="Style" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </DockPanel>
+              </Button>
+              <Popup x:Name="StylePopup" PlacementTarget="{Binding ElementName=StyleRow}" Placement="Bottom" VerticalOffset="8" StaysOpen="False"
+                     AllowsTransparency="True" PopupAnimation="Fade">
+                <Border Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="12" Padding="12,12,4,4">
+                  <WrapPanel x:Name="StyleGroup" Width="352"/>
+                </Border>
+              </Popup>
 
               <!-- edit mode: how far to move away from the photo -->
               <StackPanel x:Name="StrengthSection" Visibility="Collapsed">
@@ -540,7 +544,7 @@
 
               <!-- create mode: output size -->
               <StackPanel x:Name="SizeSection">
-                <DockPanel Margin="0,22,0,8">
+                <DockPanel Margin="0,24,0,8">
                   <Ellipse x:Name="SizeDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
                   <TextBlock x:Name="SizeText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
                   <TextBlock Text="Aspect ratio" Style="{StaticResource Heading}" Margin="0"/>
@@ -1054,10 +1058,11 @@
                   <TextBlock Text="&#xE71A;" FontFamily="{StaticResource Icons}" FontSize="14"/>
                 </Button>
               </Grid>
-              <Border x:Name="LoraChip" Visibility="Collapsed" HorizontalAlignment="Center" Margin="0,10,0,0" CornerRadius="12" Padding="10,2,3,2"
-                      Background="{DynamicResource Raised2}" BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+              <Border x:Name="LoraChip" Visibility="Collapsed" HorizontalAlignment="Center" Margin="0,8,0,0" CornerRadius="12" Padding="12,2,4,2"
+                      Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock x:Name="LoraChipText" FontSize="12" Foreground="{DynamicResource Accent}" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="LoraChipText" FontSize="12" Foreground="{DynamicResource Soft}" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"
+                             ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
                   <Button Style="{StaticResource IconBtn}" Width="22" Height="22" FontSize="9" Content="&#xE711;" Margin="6,0,0,0" Click="LoraOff_Click"
                           ToolTip="Turn the add-on off" AutomationProperties.Name="Turn LoRA off"/>
                 </StackPanel>
@@ -1115,10 +1120,7 @@
           </Grid>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock Text="Gallery" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
-            <Border CornerRadius="10" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
-                    Padding="9,2" Margin="12,0,0,0" VerticalAlignment="Center">
-              <TextBlock x:Name="CountText" Text="0" FontSize="12" Foreground="{DynamicResource Muted}"/>
-            </Border>
+            <TextBlock x:Name="CountText" Text="0" FontSize="12" Foreground="{DynamicResource Muted}" Margin="12,2,0,0" VerticalAlignment="Center"/>
             <Border Style="{StaticResource SegmentHost}" Padding="2" Margin="16,0,0,0" VerticalAlignment="Center">
               <StackPanel x:Name="ViewGroup" Orientation="Horizontal">
                 <RadioButton x:Name="AllView" Style="{StaticResource Segment}" GroupName="view" Height="28" Width="46" Tag="all" Content="All" Checked="View_Checked"/>
