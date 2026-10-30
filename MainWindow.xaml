@@ -1081,9 +1081,9 @@
             <Button x:Name="CanvasFullBtn" Style="{StaticResource IconBtn}" Content="&#xE740;" FontSize="14" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,0"
                     Click="CanvasFull_Click" ToolTip="Full view, with the picture's details (or double-click it)" AutomationProperties.Name="Full view"/>
             <StackPanel x:Name="CanvasActions" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16">
-              <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Margin="0,0,8,0" Content="Upscale" Click="CanvasUpscale_Click" AutomationProperties.Name="Canvas upscale"/>
-              <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Margin="0,0,8,0" Content="Edit" Click="CanvasEdit_Click" AutomationProperties.Name="Canvas edit"/>
-              <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Margin="0,0,8,0" Content="Make a video" Click="CanvasVideo_Click" AutomationProperties.Name="Canvas video"/>
+              <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Margin="0,0,8,0" x:Name="CanvasUpscaleBtn" Content="Upscale" Click="CanvasUpscale_Click" AutomationProperties.Name="Canvas upscale"/>
+              <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Margin="0,0,8,0" x:Name="CanvasEditBtn" Content="Edit" Click="CanvasEdit_Click" AutomationProperties.Name="Canvas edit"/>
+              <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Margin="0,0,8,0" x:Name="CanvasVideoBtn" Content="Make a video" Click="CanvasVideo_Click" AutomationProperties.Name="Canvas video"/>
               <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Content="Use prompt" Click="CanvasUsePrompt_Click" AutomationProperties.Name="Canvas use prompt"/>
             </StackPanel>
           </Grid>

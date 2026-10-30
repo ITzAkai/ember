@@ -94,6 +94,7 @@ public partial class MainWindow : Window
         Strip.ItemsSource = new ListCollectionView(shots) { Filter = o => !((Shot)o).Secret };
         RecentStrip.ItemsSource = new ListCollectionView(shots) { Filter = o => !((Shot)o).Secret };     // secret pictures never show outside their tab
         shots.CollectionChanged += (_, _) => UpdateCount();
+        shots.CollectionChanged += (_, _) => CanvasFollowShots();
         BuildStyleTiles();
         ApplySettings();
         ApplyPromptSize();

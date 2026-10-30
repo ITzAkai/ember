@@ -115,7 +115,8 @@ public partial class MainWindow
     }
 
     // arrows walk what you were looking at: the gallery tab (all or favourites), or every image from the editor
-    IEnumerable<Shot> Browsable() => (EditMode.IsChecked == true ? shots.Where(s => !s.Secret) : galleryView.Cast<Shot>()).Where(s => !s.Pending);
+    IEnumerable<Shot> Browsable() => (EditMode.IsChecked == true ? shots.Where(s => !s.Secret)
+        : CanvasPanel.IsVisible ? RecentStrip.Items.Cast<Shot>() : galleryView.Cast<Shot>()).Where(s => !s.Pending);
 
     void Prev_Click(object sender, RoutedEventArgs e) => Step(-1);
     void Next_Click(object sender, RoutedEventArgs e) => Step(1);

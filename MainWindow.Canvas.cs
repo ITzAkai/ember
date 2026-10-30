@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace ImageForge;
 
@@ -24,13 +25,31 @@ public partial class MainWindow
     void ShowOnCanvas(Shot s)
     {
         if (s?.Pending == true) { OpenLive(s); SelectOnStrip(canvasShot); return; }
+        if (s?.Secret == true) { OpenViewer(s); return; }        // secret pictures only ever show in their own tab's viewer
         BitmapSource img = null;
         if (s != null) try { img = LoadImage(s.FilePath, 0); } catch { img = null; }       // a video's FilePath is its poster
         canvasShot = img != null ? s : null;
         CanvasImage.Source = img;
         CanvasImage.Visibility = CanvasActions.Visibility = CanvasFullBtn.Visibility = img != null ? Visibility.Visible : Visibility.Collapsed;
         CanvasEmpty.Visibility = img != null ? Visibility.Collapsed : Visibility.Visible;
+        // as in the viewer: a video's poster isn't upscaled, edited or animated
+        CanvasUpscaleBtn.Visibility = CanvasEditBtn.Visibility = CanvasVideoBtn.Visibility = s?.IsVideo == true ? Visibility.Collapsed : Visibility.Visible;
         SelectOnStrip(canvasShot);
+    }
+
+    // the picture on the canvas left the list (deleted, moved to the secret tab, another output folder): show the newest one instead,
+    // once, after the change settles (a folder switch removes hundreds one at a time)
+    bool canvasRepick;
+    void CanvasFollowShots()
+    {
+        if (canvasShot == null || canvasRepick || shots.Contains(canvasShot) && !canvasShot.Secret) return;
+        canvasRepick = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            canvasRepick = false;
+            if (canvasShot != null && shots.Contains(canvasShot) && !canvasShot.Secret) return;
+            ShowOnCanvas(shots.FirstOrDefault(x => !x.Pending && !x.Secret));
+        }, DispatcherPriority.Background);
     }
 
     void SelectOnStrip(Shot s)

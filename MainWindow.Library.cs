@@ -135,6 +135,7 @@ public partial class MainWindow
         var list = Browsable().ToList();
         int i = list.IndexOf(viewing);
         if (!remove(viewing)) return;
+        if (i < 0) { CloseViewer(); Note(note); return; }      // it wasn't in the list being walked
         list.RemoveAt(i);
         if (list.Count == 0) { CloseViewer(); Note(note); return; }
         OpenViewer(list[Math.Min(i, list.Count - 1)]);
