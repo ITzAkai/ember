@@ -154,48 +154,10 @@
 
   <Grid>
     <Grid.RowDefinitions>
-      <RowDefinition Height="60"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition/>
     </Grid.RowDefinitions>
-
-    <!-- header -->
-    <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
-      <DockPanel Margin="20,0">
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button x:Name="UpdateBtn" Style="{StaticResource Primary}" Height="32" Padding="12,0" Margin="0,0,16,0" Visibility="Collapsed" Click="Update_Click"
-                  ToolTip="A new version is downloaded: restart now to use it, or it's installed when you close Ember" AutomationProperties.Name="Update">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="&#xE896;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
-              <TextBlock x:Name="UpdateBtnText" Text="Update" VerticalAlignment="Center"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Bundles_Click" ToolTip="Ready-made setups: a model, its LoRAs and settings, in one click" AutomationProperties.Name="Bundles">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
-              <TextBlock Text="Bundles" VerticalAlignment="Center"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource Ghost}" Height="32" Margin="0,0,8,0" Click="Models_Click" ToolTip="Installed models and more to download" AutomationProperties.Name="Models">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="&#xE8F1;" FontFamily="{StaticResource Icons}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
-              <TextBlock Text="Models" VerticalAlignment="Center"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource IconBtn}" Content="&#xE943;" FontSize="15" Margin="0,0,2,0" Click="Expert_Click" AutomationProperties.Name="ComfyUI"
-                  ToolTip="ComfyUI's own node editor, inside Ember. The most advanced option."/>
-          <Button Style="{StaticResource IconBtn}" Content="&#xE713;" FontSize="15" Margin="0,0,12,0" Click="Settings_Click" ToolTip="Settings" AutomationProperties.Name="Settings"/>
-          <Border x:Name="Pill" CornerRadius="13" Padding="11,5" BorderThickness="1">
-            <StackPanel Orientation="Horizontal">
-              <Ellipse x:Name="PillDot" Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"/>
-              <TextBlock x:Name="PillText" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-        <Image Source="logo.png" Width="36" Height="36" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
-        <TextBlock Text="Ember" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0"/>
-      </DockPanel>
-    </Border>
 
     <!-- shown while recommended plugins are missing, until dismissed -->
     <Border x:Name="PluginBanner" Grid.Row="1" Visibility="Collapsed" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="20,10">
@@ -215,12 +177,36 @@
 
     <Grid Grid.Row="2">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="376"/>
+        <ColumnDefinition x:Name="RailColumn" Width="52"/>
         <ColumnDefinition/>
+        <ColumnDefinition x:Name="PanelColumn" Width="340"/>
       </Grid.ColumnDefinitions>
 
+      <!-- the rail: what you're doing (create, edit, video), the gallery, and the app's other places -->
+      <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+        <DockPanel x:Name="Rail" Margin="0,12">
+          <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center">
+            <Button x:Name="UpdateBtn" Style="{StaticResource RailButton}" Foreground="{DynamicResource Accent}" Visibility="Collapsed" Click="Update_Click"
+                    ToolTip="A new version is downloaded: restart now to use it, or it's installed when you close Ember" AutomationProperties.Name="Update">
+              <Grid><TextBlock Text="&#xE896;"/><TextBlock x:Name="UpdateBtnText" Text="Update" Visibility="Collapsed"/></Grid>
+            </Button>
+            <Button Style="{StaticResource RailButton}" Content="&#xE7B8;" Click="Bundles_Click" ToolTip="Ready-made setups: a model, its LoRAs and settings, in one click" AutomationProperties.Name="Bundles"/>
+            <Button Style="{StaticResource RailButton}" Content="&#xE8F1;" Click="Models_Click" ToolTip="Installed models and more to download" AutomationProperties.Name="Models"/>
+            <Button Style="{StaticResource RailButton}" Content="&#xE943;" Click="Expert_Click" ToolTip="ComfyUI's own node editor, inside Ember. The most advanced option." AutomationProperties.Name="ComfyUI"/>
+            <Button Style="{StaticResource RailButton}" Content="&#xE713;" Click="Settings_Click" ToolTip="Settings" AutomationProperties.Name="Settings"/>
+          </StackPanel>
+          <StackPanel HorizontalAlignment="Center">
+            <Image Source="logo.png" Width="28" Height="28" Margin="0,0,0,16" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="Ember"/>
+            <RadioButton x:Name="CreateMode" AutomationProperties.Name="Create" Style="{StaticResource RailItem}" GroupName="mode" Checked="Mode_Checked" Content="&#xE771;" ToolTip="Create: new pictures from a prompt"/>
+            <RadioButton x:Name="EditMode" AutomationProperties.Name="Edit photo" Style="{StaticResource RailItem}" GroupName="mode" Checked="Mode_Checked" Content="&#xE91B;" ToolTip="Edit photo"/>
+            <RadioButton x:Name="VideoMode" AutomationProperties.Name="Video" Style="{StaticResource RailItem}" GroupName="mode" Checked="Mode_Checked" Content="&#xE714;" ToolTip="Video"/>
+            <RadioButton x:Name="GalleryRail" AutomationProperties.Name="Gallery" Style="{StaticResource RailItem}" GroupName="rail" Content="&#xE8B9;" ToolTip="Gallery: all your pictures" Margin="0,12,0,0"/>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
       <!-- controls -->
-      <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+      <Border Grid.Column="2" Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition/>
@@ -228,6 +214,12 @@
           </Grid.RowDefinitions>
           <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="22,20,22,18">
+              <Border x:Name="Pill" HorizontalAlignment="Left" Margin="0,0,0,12" CornerRadius="13" Padding="11,5" BorderThickness="1">
+                <StackPanel Orientation="Horizontal">
+                  <Ellipse x:Name="PillDot" Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="PillText" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Border>
               <!-- model tabs: a model plus all its settings, one click away -->
               <WrapPanel x:Name="TabsBar" Margin="0,0,0,10"/>
               <!-- the open tab's unsaved changes: saved into it, or as a new tab that leaves it as it was -->
@@ -251,28 +243,6 @@
                             ToolTip="Make a new tab with these changes and keep this one as it was"/>
                   </Grid>
                 </StackPanel>
-              </Border>
-              <Border Style="{StaticResource SegmentHost}" Margin="0,0,0,12">
-                <UniformGrid Rows="1">
-                  <RadioButton x:Name="CreateMode" AutomationProperties.Name="Create" Style="{StaticResource Segment}" GroupName="mode" Checked="Mode_Checked">
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                      <TextBlock Text="Create" FontWeight="SemiBold"/>
-                    </StackPanel>
-                  </RadioButton>
-                  <RadioButton x:Name="EditMode" AutomationProperties.Name="Edit photo" Style="{StaticResource Segment}" GroupName="mode" Checked="Mode_Checked">
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="&#xE91B;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                      <TextBlock Text="Edit photo" FontWeight="SemiBold"/>
-                    </StackPanel>
-                  </RadioButton>
-                  <RadioButton x:Name="VideoMode" AutomationProperties.Name="Video" Style="{StaticResource Segment}" GroupName="mode" Checked="Mode_Checked">
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="&#xE714;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                      <TextBlock Text="Video" FontWeight="SemiBold"/>
-                    </StackPanel>
-                  </RadioButton>
-                </UniformGrid>
               </Border>
 
               <Border Style="{StaticResource PanelCard}">
