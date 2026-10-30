@@ -27,14 +27,14 @@ public partial class MainWindow
     void Mode_Checked(object sender, RoutedEventArgs e)
     {
         bool edit = EditMode.IsChecked == true, video = VideoMode.IsChecked == true;
-        GalleryPanel.Visibility = edit ? Visibility.Collapsed : Visibility.Visible;
+        ShowCentre(edit ? Centre.Editor : Centre.Canvas);
         SizeSection.Visibility = CoupleSection.Visibility = WorkflowSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
         ShowWorkflow();
         ShowEditExtras();
         VideoSection.Visibility = video ? Visibility.Visible : Visibility.Collapsed;
         ShowVideoOptions();
         CountSection.Visibility = video ? Visibility.Collapsed : Visibility.Visible;
-        EditorPanel.Visibility = PhotoSection.Visibility = StrengthSection.Visibility = edit ? Visibility.Visible : Visibility.Collapsed;
+        PhotoSection.Visibility = StrengthSection.Visibility = edit ? Visibility.Visible : Visibility.Collapsed;
         PromptHeading.Text = edit ? "Describe the result" : video ? "Describe the video" : "Prompt";
         TabsBar.Visibility = edit ? Visibility.Collapsed : Visibility.Visible;     // video models have tabs too (MiniMax H3 bundles open as one)
         PromptBox.Tag = edit ? "e.g. the same scene in winter, snow on the roofs, golden hour"

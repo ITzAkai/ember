@@ -197,10 +197,10 @@
           </StackPanel>
           <StackPanel HorizontalAlignment="Center">
             <Image Source="logo.png" Width="28" Height="28" Margin="0,0,0,16" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="Ember"/>
-            <RadioButton x:Name="CreateMode" AutomationProperties.Name="Create" Style="{StaticResource RailItem}" GroupName="mode" Checked="Mode_Checked" Content="&#xE771;" ToolTip="Create: new pictures from a prompt"/>
-            <RadioButton x:Name="EditMode" AutomationProperties.Name="Edit photo" Style="{StaticResource RailItem}" GroupName="mode" Checked="Mode_Checked" Content="&#xE91B;" ToolTip="Edit photo"/>
-            <RadioButton x:Name="VideoMode" AutomationProperties.Name="Video" Style="{StaticResource RailItem}" GroupName="mode" Checked="Mode_Checked" Content="&#xE714;" ToolTip="Video"/>
-            <RadioButton x:Name="GalleryRail" AutomationProperties.Name="Gallery" Style="{StaticResource RailItem}" GroupName="rail" Content="&#xE8B9;" ToolTip="Gallery: all your pictures" Margin="0,12,0,0"/>
+            <RadioButton x:Name="CreateMode" Click="ModeRail_Click" AutomationProperties.Name="Create" Style="{StaticResource RailItem}" GroupName="mode" Checked="Mode_Checked" Content="&#xE771;" ToolTip="Create: new pictures from a prompt"/>
+            <RadioButton x:Name="EditMode" Click="ModeRail_Click" AutomationProperties.Name="Edit photo" Style="{StaticResource RailItem}" GroupName="mode" Checked="Mode_Checked" Content="&#xE91B;" ToolTip="Edit photo"/>
+            <RadioButton x:Name="VideoMode" Click="ModeRail_Click" AutomationProperties.Name="Video" Style="{StaticResource RailItem}" GroupName="mode" Checked="Mode_Checked" Content="&#xE714;" ToolTip="Video"/>
+            <RadioButton x:Name="GalleryRail" AutomationProperties.Name="Gallery" Style="{StaticResource RailItem}" GroupName="rail" Checked="GalleryRail_Click" Content="&#xE8B9;" ToolTip="Gallery: all your pictures" Margin="0,12,0,0"/>
           </StackPanel>
         </DockPanel>
       </Border>
@@ -1066,8 +1066,11 @@
         </Grid>
       </Border>
 
-      <!-- gallery (create mode) -->
-      <Grid x:Name="GalleryPanel" Grid.Column="1">
+      <!-- the canvas: the picture you're on, large (filled in by the next step) -->
+      <Grid x:Name="CanvasPanel" Grid.Column="1"/>
+
+      <!-- gallery: every picture, from the rail -->
+      <Grid x:Name="GalleryPanel" Grid.Column="1" Visibility="Collapsed">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto"/>
           <RowDefinition/>
