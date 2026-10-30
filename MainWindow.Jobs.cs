@@ -628,7 +628,12 @@ public partial class MainWindow
         }
     }
 
-    void ShowNewest() { GalleryScroll.ScrollToTop(); StripScroll.ScrollToLeftEnd(); }
+    // a finished picture shows on the canvas when the canvas is what's on screen (the gallery isn't pulled away from)
+    void ShowNewest(Shot finished = null)
+    {
+        GalleryScroll.ScrollToTop(); StripScroll.ScrollToLeftEnd();
+        if (finished != null && !finished.Secret && CanvasPanel.Visibility == Visibility.Visible) ShowOnCanvas(finished);
+    }
 
     // every pixel near black, as a picture is when the maths overflowed
     static bool IsBlack(BitmapSource img)
@@ -661,9 +666,9 @@ public partial class MainWindow
             job.Slots.RemoveAt(0);
             int i = shots.IndexOf(slot);
             if (LivePanel.DataContext == slot) { CloseLive(); OpenViewer(shot); }      // watching it being made: show the result
-            if (i >= 0) { shots[i] = shot; ShowNewest(); return; }
+            if (i >= 0) { shots[i] = shot; ShowNewest(shot); return; }
         }
         shots.Insert(0, shot);
-        ShowNewest();
+        ShowNewest(shot);
     }
 }

@@ -92,6 +92,7 @@ public partial class MainWindow : Window
         galleryView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(Shot.Day)));
         Gallery.ItemsSource = galleryView;
         Strip.ItemsSource = new ListCollectionView(shots) { Filter = o => !((Shot)o).Secret };
+        RecentStrip.ItemsSource = new ListCollectionView(shots) { Filter = o => !((Shot)o).Secret };     // secret pictures never show outside their tab
         shots.CollectionChanged += (_, _) => UpdateCount();
         BuildStyleTiles();
         ApplySettings();

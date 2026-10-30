@@ -21,6 +21,7 @@ public partial class MainWindow
             unloaded.AddRange(new DirectoryInfo(dir).GetFiles("*.png").OrderByDescending(f => f.LastWriteTime)
                 .Select(f => f.FullName).Where(p => !shots.Any(s => s.FilePath == p)));
         await LoadMore(120);
+        if (canvasShot == null) ShowOnCanvas(shots.FirstOrDefault(s => !s.Pending && !s.Secret));
     }
 
     async Task LoadMore(int count)
