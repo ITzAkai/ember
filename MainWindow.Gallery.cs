@@ -134,7 +134,7 @@ public partial class MainWindow
         if (s == null) return;
         if (!selectMode && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) SetSelectMode(true);   // Ctrl+click starts picking
         if (selectMode) { s.Selected = !s.Selected; UpdateSelection(); }
-        else OpenViewer(s);
+        else { ShowOnCanvas(s); ShowCentre(EditMode.IsChecked == true ? Centre.Editor : Centre.Canvas); }     // the canvas has the full view a double-click away
     }
 
     void Select_Click(object sender, RoutedEventArgs e) => SetSelectMode(!selectMode);
