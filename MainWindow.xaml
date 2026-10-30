@@ -155,12 +155,11 @@
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
       <RowDefinition/>
     </Grid.RowDefinitions>
 
     <!-- shown while recommended plugins are missing, until dismissed -->
-    <Border x:Name="PluginBanner" Grid.Row="1" Visibility="Collapsed" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="20,10">
+    <Border x:Name="PluginBanner" Grid.Row="0" Visibility="Collapsed" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="20,10">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
           <Button Style="{StaticResource Primary}" Height="32" Padding="14,0" Content="Install" Click="InstallPluginsBanner_Click" AutomationProperties.Name="Install recommended plugins"/>
@@ -175,7 +174,7 @@
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="2">
+    <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
         <ColumnDefinition x:Name="RailColumn" Width="52"/>
         <ColumnDefinition/>
@@ -209,17 +208,18 @@
       <Border Grid.Column="2" Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0">
         <Grid>
           <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
-          <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="22,20,22,18">
-              <Border x:Name="Pill" HorizontalAlignment="Left" Margin="0,0,0,12" CornerRadius="13" Padding="11,5" BorderThickness="1">
-                <StackPanel Orientation="Horizontal">
-                  <Ellipse x:Name="PillDot" Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                  <TextBlock x:Name="PillText" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                </StackPanel>
-              </Border>
+          <Border x:Name="Pill" HorizontalAlignment="Left" Margin="22,16,22,0" CornerRadius="13" Padding="11,5" BorderThickness="1">
+            <StackPanel Orientation="Horizontal">
+              <Ellipse x:Name="PillDot" Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"/>
+              <TextBlock x:Name="PillText" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+          <ScrollViewer x:Name="LeftScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="22,12,22,18">
               <!-- model tabs: a model plus all its settings, one click away -->
               <WrapPanel x:Name="TabsBar" Margin="0,0,0,10"/>
               <!-- the open tab's unsaved changes: saved into it, or as a new tab that leaves it as it was -->
@@ -866,7 +866,7 @@
           </ScrollViewer>
 
           <!-- action area -->
-          <Border Grid.Row="1" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="22,16,22,18">
+          <Border Grid.Row="2" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="22,16,22,18">
             <StackPanel>
               <StackPanel x:Name="ProgressArea" Visibility="Collapsed" Margin="0,0,0,14">
                 <DockPanel>
@@ -1098,11 +1098,10 @@
           <Grid>
             <Image x:Name="CanvasImage" Margin="12" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Cursor="Hand"
                    MouseLeftButtonDown="CanvasImage_MouseDown" AutomationProperties.Name="Canvas picture" ToolTip="Double-click for the full view"/>
-            <TextBlock x:Name="CanvasEmpty" Visibility="Collapsed" Style="{StaticResource Note}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       Text="Your pictures show here. Write a prompt and press Generate"/>
-            <Button x:Name="CanvasFullBtn" Style="{StaticResource IconBtn}" Content="&#xE740;" FontSize="14" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,0"
+            <TextBlock x:Name="CanvasEmpty" Style="{StaticResource Note}" HorizontalAlignment="Center" VerticalAlignment="Center" Text="Loading your pictures…"/>
+            <Button x:Name="CanvasFullBtn" Visibility="Collapsed" Style="{StaticResource IconBtn}" Content="&#xE740;" FontSize="14" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,0"
                     Click="CanvasFull_Click" ToolTip="Full view, with the picture's details (or double-click it)" AutomationProperties.Name="Full view"/>
-            <StackPanel x:Name="CanvasActions" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16">
+            <StackPanel x:Name="CanvasActions" Visibility="Collapsed" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16">
               <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Margin="0,0,8,0" x:Name="CanvasUpscaleBtn" Content="Upscale" Click="CanvasUpscale_Click" AutomationProperties.Name="Canvas upscale"/>
               <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Margin="0,0,8,0" x:Name="CanvasEditBtn" Content="Edit" Click="CanvasEdit_Click" AutomationProperties.Name="Canvas edit"/>
               <Button Style="{StaticResource Ghost}" Height="28" Padding="12,0" Margin="0,0,8,0" x:Name="CanvasVideoBtn" Content="Make a video" Click="CanvasVideo_Click" AutomationProperties.Name="Canvas video"/>
@@ -1113,7 +1112,7 @@
         <ListBox x:Name="RecentStrip" Grid.Row="1" Height="104" Margin="0,12,0,0" Background="Transparent" BorderThickness="0" Padding="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled"
                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel"
-                 SelectionChanged="RecentStrip_SelectionChanged" AutomationProperties.Name="Recent pictures">
+                 SelectionChanged="RecentStrip_SelectionChanged" PreviewMouseWheel="RecentStrip_PreviewMouseWheel" AutomationProperties.Name="Recent pictures">
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate><VirtualizingStackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
           </ListBox.ItemsPanel>
@@ -1125,9 +1124,11 @@
                 <Setter.Value>
                   <ControlTemplate TargetType="ListBoxItem">
                     <Border x:Name="B" CornerRadius="8" BorderThickness="2" BorderBrush="Transparent" Margin="0,0,8,0">
-                      <Border Width="64" Height="88" CornerRadius="6" Background="{DynamicResource Raised}">
+                      <Grid Width="64" Height="88">
+                        <Border CornerRadius="6" Background="{DynamicResource Raised}"/>
+                        <Border CornerRadius="6"><Border.Background><ImageBrush ImageSource="{Binding Preview}" Stretch="UniformToFill"/></Border.Background></Border>
                         <Border CornerRadius="6"><Border.Background><ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/></Border.Background></Border>
-                      </Border>
+                      </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                       <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Muted}"/></Trigger>
@@ -1147,6 +1148,7 @@
           <RowDefinition Height="Auto"/>
           <RowDefinition/>
         </Grid.RowDefinitions>
+        <StackPanel>
         <DockPanel Margin="28,20,32,12">
           <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Width="36" Padding="0" Click="Folder_Click" ToolTip="Open the images folder" AutomationProperties.Name="Open folder">
             <TextBlock Text="&#xE838;" FontFamily="{StaticResource Icons}" FontSize="14"/>
@@ -1166,25 +1168,26 @@
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock Text="Gallery" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
             <TextBlock x:Name="CountText" Text="0" FontSize="12" Foreground="{DynamicResource Muted}" Margin="12,2,0,0" VerticalAlignment="Center"/>
-            <Border Style="{StaticResource SegmentHost}" Padding="2" Margin="16,0,0,0" VerticalAlignment="Center">
-              <StackPanel x:Name="ViewGroup" Orientation="Horizontal">
-                <RadioButton x:Name="AllView" Style="{StaticResource Segment}" GroupName="view" Height="28" Width="46" Tag="all" Content="All" Checked="View_Checked"/>
-                <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="70" Tag="created" Content="Created" Checked="View_Checked" ToolTip="Made from a prompt"/>
-                <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="60" Tag="edited" Content="Edited" Checked="View_Checked" ToolTip="Photo edits, variations, expansions and cut-outs"/>
-                <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="78" Tag="upscaled" Content="Upscaled" Checked="View_Checked"/>
-                <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="62" Tag="video" Content="Videos" Checked="View_Checked"/>
-                <RadioButton x:Name="FavView" AutomationProperties.Name="Favourites" Style="{StaticResource Segment}" GroupName="view" Height="28" Width="38" Tag="favourites"
-                             Checked="View_Checked" ToolTip="Favourites">
-                  <TextBlock Text="&#xE735;" FontFamily="{StaticResource Icons}" FontSize="13"/>
-                </RadioButton>
-                <RadioButton AutomationProperties.Name="Secret gallery" Style="{StaticResource Segment}" GroupName="view" Height="28" Width="38" Tag="secret"
-                             Checked="View_Checked" ToolTip="Secret gallery: locked with a password">
-                  <TextBlock Text="&#xE72E;" FontFamily="{StaticResource Icons}" FontSize="13"/>
-                </RadioButton>
-              </StackPanel>
-            </Border>
           </StackPanel>
         </DockPanel>
+            <Border Style="{StaticResource SegmentHost}" Padding="2" Margin="28,0,0,12" HorizontalAlignment="Left">
+          <StackPanel x:Name="ViewGroup" Orientation="Horizontal">
+            <RadioButton x:Name="AllView" Style="{StaticResource Segment}" GroupName="view" Height="28" Width="46" Tag="all" Content="All" Checked="View_Checked"/>
+            <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="70" Tag="created" Content="Created" Checked="View_Checked" ToolTip="Made from a prompt"/>
+            <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="60" Tag="edited" Content="Edited" Checked="View_Checked" ToolTip="Photo edits, variations, expansions and cut-outs"/>
+            <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="78" Tag="upscaled" Content="Upscaled" Checked="View_Checked"/>
+            <RadioButton Style="{StaticResource Segment}" GroupName="view" Height="28" Width="62" Tag="video" Content="Videos" Checked="View_Checked"/>
+            <RadioButton x:Name="FavView" AutomationProperties.Name="Favourites" Style="{StaticResource Segment}" GroupName="view" Height="28" Width="38" Tag="favourites"
+                         Checked="View_Checked" ToolTip="Favourites">
+              <TextBlock Text="&#xE735;" FontFamily="{StaticResource Icons}" FontSize="13"/>
+            </RadioButton>
+            <RadioButton AutomationProperties.Name="Secret gallery" Style="{StaticResource Segment}" GroupName="view" Height="28" Width="38" Tag="secret"
+                         Checked="View_Checked" ToolTip="Secret gallery: locked with a password">
+              <TextBlock Text="&#xE72E;" FontFamily="{StaticResource Icons}" FontSize="13"/>
+            </RadioButton>
+          </StackPanel>
+        </Border>
+        </StackPanel>
 
         <ScrollViewer x:Name="GalleryScroll" Grid.Row="1" VerticalScrollBarVisibility="Visible" Padding="22,0,12,22" ScrollChanged="Gallery_ScrollChanged"
                       PreviewMouseWheel="Gallery_PreviewMouseWheel">
@@ -1406,7 +1409,7 @@
     </Grid>
 
     <!-- live view: a picture being made, big; bound to its card, so it follows each preview -->
-    <Grid x:Name="LivePanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#F2090A0C">
+    <Grid x:Name="LivePanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#F2090A0C">
       <Border Background="Transparent" MouseLeftButtonUp="LiveBackdrop_Click"/>
       <Image Source="{Binding Preview}" Margin="84,36,84,90" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" IsHitTestVisible="False"/>
       <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center" Width="420" Margin="0,0,0,30" IsHitTestVisible="False">
@@ -1422,7 +1425,7 @@
     </Grid>
 
     <!-- full-window image viewer -->
-    <Grid x:Name="ViewerPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#F2090A0C" Focusable="True">
+    <Grid x:Name="ViewerPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#F2090A0C" Focusable="True">
       <Grid.ColumnDefinitions>
         <ColumnDefinition/>
         <ColumnDefinition Width="360"/>
@@ -1578,7 +1581,7 @@
     </Grid>
 
     <!-- settings -->
-    <Grid x:Name="SettingsPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
+    <Grid x:Name="SettingsPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
       <Border Width="580" MaxHeight="780" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
               CornerRadius="14" MouseLeftButtonUp="OverlayCard_Click">
         <DockPanel Margin="26,20,26,24">
@@ -1729,7 +1732,7 @@
     </Grid>
 
     <!-- models -->
-    <Grid x:Name="ModelsPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
+    <Grid x:Name="ModelsPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
       <Border Width="760" MaxHeight="820" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
               CornerRadius="14" MouseLeftButtonUp="OverlayCard_Click">
         <DockPanel Margin="26,20,26,24">
@@ -1757,7 +1760,7 @@
     </Grid>
 
     <!-- bundles -->
-    <Grid x:Name="BundlesPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
+    <Grid x:Name="BundlesPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#B3000000" MouseLeftButtonUp="OverlayBackdrop_Click">
       <Border Width="820" MaxHeight="860" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
               CornerRadius="14" MouseLeftButtonUp="OverlayCard_Click">
         <DockPanel Margin="26,20,26,24">
@@ -1781,7 +1784,7 @@
     </Grid>
 
     <!-- ComfyUI (Expert): ComfyUI's own editor, full window -->
-    <Grid x:Name="ExpertPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="{DynamicResource Bg}">
+    <Grid x:Name="ExpertPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="{DynamicResource Bg}">
       <DockPanel>
         <Border DockPanel.Dock="Top" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="20,10">
           <DockPanel>

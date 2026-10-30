@@ -628,11 +628,11 @@ public partial class MainWindow
         }
     }
 
-    // a finished picture shows on the canvas when the canvas is what's on screen (the gallery isn't pulled away from)
+    // a finished picture goes on the canvas (ShowOnCanvas never switches views, so the gallery isn't pulled away from)
     void ShowNewest(Shot finished = null)
     {
         GalleryScroll.ScrollToTop(); StripScroll.ScrollToLeftEnd();
-        if (finished != null && !finished.Secret && CanvasPanel.Visibility == Visibility.Visible) ShowOnCanvas(finished);
+        if (finished != null && !finished.Secret) ShowOnCanvas(finished);
     }
 
     // every pixel near black, as a picture is when the maths overflowed

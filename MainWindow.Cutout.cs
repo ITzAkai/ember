@@ -39,7 +39,7 @@ public partial class MainWindow
             try { Directory.CreateDirectory(Path.GetDirectoryName(OriginalOf(path))); File.Copy(s.FilePath, OriginalOf(path), true); } catch { }
             var shot = MakeShot(path);
             int i = shots.IndexOf(slot);
-            if (shot != null && i >= 0) shots[i] = shot; else shots.Remove(slot);
+            if (shot != null && i >= 0) { shots[i] = shot; ShowNewest(shot); } else shots.Remove(slot);
             Note($"Background removed in {(DateTime.Now - started).TotalSeconds:0.0} s.");
         }
         catch (Exception ex) { shots.Remove(slot); Note("Couldn't remove the background: " + ex.Message, true); }

@@ -80,6 +80,7 @@ public partial class MainWindow
             { File.Delete(NewExe); rejectedDigest = digest; return true; }
             updateReady = true;
             UpdateBtnText.Text = $"Update to {tag}";
+            UpdateBtn.ToolTip = $"Update to {tag}: restart now to use it, or it's installed when you close Ember";
             UpdateBtn.Visibility = Visibility.Visible;
             return true;
         }

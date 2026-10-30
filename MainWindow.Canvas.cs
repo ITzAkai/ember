@@ -1,5 +1,8 @@
 // The centre of the window: the picture you're on (the canvas), the whole gallery, or the photo editor; the rail picks which.
+using System.IO;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -27,11 +30,13 @@ public partial class MainWindow
         if (s?.Pending == true) { OpenLive(s); SelectOnStrip(canvasShot); return; }
         if (s?.Secret == true) { OpenViewer(s); return; }        // secret pictures only ever show in their own tab's viewer
         BitmapSource img = null;
-        if (s != null) try { img = LoadImage(s.FilePath, 0); } catch { img = null; }       // a video's FilePath is its poster
+        if (s != null) try { img = LoadImage(s.FilePath, CanvasWidth(s.FilePath)); } catch { img = null; }       // a video's FilePath is its poster
+        if (s != null && img == null && canvasShot != null) { Note("Couldn't open that picture.", true); SelectOnStrip(canvasShot); return; }
         canvasShot = img != null ? s : null;
         CanvasImage.Source = img;
         CanvasImage.Visibility = CanvasActions.Visibility = CanvasFullBtn.Visibility = img != null ? Visibility.Visible : Visibility.Collapsed;
         CanvasEmpty.Visibility = img != null ? Visibility.Collapsed : Visibility.Visible;
+        CanvasEmpty.Text = "Your pictures show here. Write a prompt and press Generate";
         // as in the viewer: a video's poster isn't upscaled, edited or animated
         CanvasUpscaleBtn.Visibility = CanvasEditBtn.Visibility = CanvasVideoBtn.Visibility = s?.IsVideo == true ? Visibility.Collapsed : Visibility.Visible;
         SelectOnStrip(canvasShot);
@@ -50,6 +55,27 @@ public partial class MainWindow
             if (canvasShot != null && shots.Contains(canvasShot) && !canvasShot.Secret) return;
             ShowOnCanvas(shots.FirstOrDefault(x => !x.Pending && !x.Secret));
         }, DispatcherPriority.Background);
+    }
+
+    // the canvas decodes big pictures (4x upscales) at 2560 px wide at most; the full view still opens them at full size
+    static int CanvasWidth(string path)
+    {
+        try
+        {
+            using var f = File.OpenRead(path);
+            return BitmapDecoder.Create(f, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None).Frames[0].PixelWidth > 2560 ? 2560 : 0;
+        }
+        catch { return 0; }
+    }
+
+    // M5: the wheel scrolls the strip sideways, as the editor's results strip does
+    void RecentStrip_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        if (VisualTreeHelper.GetChildrenCount(RecentStrip) > 0 && VisualTreeHelper.GetChild(RecentStrip, 0) is Border { Child: ScrollViewer sv })
+        {
+            sv.ScrollToHorizontalOffset(sv.HorizontalOffset - e.Delta);
+            e.Handled = true;
+        }
     }
 
     void SelectOnStrip(Shot s)
@@ -71,7 +97,12 @@ public partial class MainWindow
     // Edit and Use prompt act on the picture straight away; Upscale and Make a video run in the full view, where their menu and notes show
     void CanvasEdit_Click(object sender, RoutedEventArgs e) { if (canvasShot == null) return; viewing = canvasShot; EditThis_Click(sender, e); }
     void CanvasUsePrompt_Click(object sender, RoutedEventArgs e) { if (canvasShot == null) return; viewing = canvasShot; UsePrompt_Click(sender, e); }
-    void CanvasUpscale_Click(object sender, RoutedEventArgs e) { if (canvasShot == null) return; OpenViewer(canvasShot); Upscale_Click(UpscaleBtn, e); }
+    void CanvasUpscale_Click(object sender, RoutedEventArgs e)
+    {
+        if (canvasShot == null) return;
+        OpenViewer(canvasShot);
+        Dispatcher.BeginInvoke(() => Upscale_Click(UpscaleBtn, e), DispatcherPriority.Loaded);      // after the viewer is laid out, so the menu sits on its button
+    }
     void CanvasVideo_Click(object sender, RoutedEventArgs e) { if (canvasShot == null) return; OpenViewer(canvasShot); MakeVideoFromViewed_Click(sender, e); }
 
     void GalleryRail_Click(object sender, RoutedEventArgs e) => ShowCentre(Centre.Gallery);
