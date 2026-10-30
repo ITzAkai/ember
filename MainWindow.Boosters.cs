@@ -194,6 +194,7 @@ public partial class MainWindow
         ShowCouple();
         ShowStylePicture();
         ShowPosePicture();
+        ShowActiveBoosters();
     }
 
     FrameworkElement BoosterRow(string title, (bool Can, bool On, string Why) state, Action<bool?> set,
@@ -244,6 +245,17 @@ public partial class MainWindow
             panel.Children.Add(row);
         }
         return panel;
+    }
+
+    // the line above Generate: what will run on top of the model, so an always-on booster like Fix faces is never a surprise
+    void ShowActiveBoosters()
+    {
+        if (ActiveBoostersText == null) return;
+        var on = new (Func<(bool Can, bool On, string Why)> State, string Name)[]
+            { (PagState, "PAG"), (RescaleState, "RescaleCFG"), (NagState, "NAG"), (RefineState, "Refine"), (HiResState, "Hi-res fix"), (FacesState, "Fix faces"), (FinishState, "Colour finish") }
+            .Where(x => { var s = x.State(); return s.Can && s.On; }).Select(x => x.Name).ToList();
+        ActiveBoostersText.Text = on.Count == 0 ? "" : string.Join(" · ", on) + " on";
+        ActiveBoostersText.Visibility = on.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     void BoostersChanged() { settings.Save(); ShowBoosters(); RefreshGuard(); }

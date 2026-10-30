@@ -48,6 +48,8 @@ public partial class MainWindow
         }
     }
 
+    void CloseMore_Click(object sender, RoutedEventArgs e) => AdvancedToggle.IsChecked = false;
+
     void ResetSection_Click(object sender, RoutedEventArgs e)
     {
         var model = ModelBox.SelectedItem as string;

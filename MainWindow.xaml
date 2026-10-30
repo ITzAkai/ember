@@ -858,10 +858,97 @@
                   <TextBlock x:Name="LoraFitNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
                   <StackPanel x:Name="LoraRowsPanel"/>
                 </StackPanel>
-                  <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Fold}" Margin="0,14,0,0" Content="Advanced settings"/>
+                  <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Fold}" Margin="0,14,0,0" Content="More settings" AutomationProperties.Name="More settings"
+                                ToolTip="Sampler, scheduler, seed, quality boosters, the model's parts and the rest"/>
                 </StackPanel>
               </Border>
-              <StackPanel Visibility="{Binding IsChecked, ElementName=AdvancedToggle, Converter={StaticResource BoolVis}}">
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- action area -->
+          <Border Grid.Row="1" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="22,16,22,18">
+            <StackPanel>
+              <StackPanel x:Name="ProgressArea" Visibility="Collapsed" Margin="0,0,0,14">
+                <DockPanel>
+                  <TextBlock x:Name="EtaText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
+                  <TextBlock x:Name="StageText" FontSize="12.5" FontWeight="SemiBold"/>
+                </DockPanel>
+                <ProgressBar x:Name="Bar" Margin="0,9,0,0"/>
+                <DockPanel x:Name="QueueRow" Margin="0,6,0,0" Visibility="Collapsed">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="Auto" Height="24" Padding="8,0" Margin="0,0,-8,0"
+                          FontFamily="Segoe UI" FontSize="12" Content="Clear queue" Click="ClearQueue_Click"/>
+                  <TextBlock x:Name="QueueText" Style="{StaticResource Note}"/>
+                </DockPanel>
+              </StackPanel>
+              <!-- the boosters that will run, e.g. "Fix faces on": set per model in More settings -->
+              <TextBlock x:Name="ActiveBoostersText" Style="{StaticResource Note}" FontSize="11.5" Margin="2,0,0,8" Visibility="Collapsed"
+                         TextTrimming="CharacterEllipsis" ToolTip="Quality boosters on for this model (More settings, Quality boosters)"/>
+              <!-- Generate stays available while busy: another click joins the queue -->
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="GenerateBtn" Style="{StaticResource Primary}" Height="46" IsEnabled="False" Click="Generate_Click" ToolTip="Ctrl + Enter in the prompt box does the same">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" FontSize="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock x:Name="GenerateText" Text="Generate" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Button x:Name="CancelBtn" Grid.Column="1" Style="{StaticResource Ghost}" Width="46" Height="46" Padding="0" Margin="8,0,0,0" Visibility="Collapsed"
+                        Click="Cancel_Click" ToolTip="Stop the image being made now" AutomationProperties.Name="Stop">
+                  <TextBlock Text="&#xE71A;" FontFamily="{StaticResource Icons}" FontSize="14"/>
+                </Button>
+              </Grid>
+              <Border x:Name="LoraChip" Visibility="Collapsed" HorizontalAlignment="Center" Margin="0,8,0,0" CornerRadius="12" Padding="12,2,4,2"
+                      Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock x:Name="LoraChipText" FontSize="12" Foreground="{DynamicResource Soft}" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"
+                             ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+                  <Button Style="{StaticResource IconBtn}" Width="22" Height="22" FontSize="9" Content="&#xE711;" Margin="6,0,0,0" Click="LoraOff_Click"
+                          ToolTip="Turn the add-on off" AutomationProperties.Name="Turn LoRA off"/>
+                </StackPanel>
+              </Border>
+              <TextBlock x:Name="Hint" Style="{StaticResource Note}" Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Center" Visibility="Collapsed"/>
+              <!-- shown when there is no ComfyUI yet -->
+              <Button x:Name="SetupPanel" Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Center" Margin="0,10,0,0" Visibility="Collapsed"
+                      Click="SetUpComfy_Click" ToolTip="Pick your ComfyUI portable folder, or any folder to download ComfyUI into" AutomationProperties.Name="Set up ComfyUI">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE896;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <TextBlock Text="Set up ComfyUI" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <!-- shown when ComfyUI is down or didn't start -->
+              <StackPanel x:Name="RestartPanel" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0" Visibility="Collapsed">
+                <Button x:Name="RestartBtn" Style="{StaticResource Ghost}" Height="32" Click="Restart_Click">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE72C;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="Restart ComfyUI" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Click="OpenLog_Click" ToolTip="ComfyUI's own messages, for when something goes wrong">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE8A5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="Open log" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- More settings: a drawer over the panel (everything not on the panel itself) -->
+      <Border x:Name="MoreDrawer" Grid.Column="2" Panel.ZIndex="1" Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0"
+              Visibility="{Binding IsChecked, ElementName=AdvancedToggle, Converter={StaticResource BoolVis}}">
+        <DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="22,16,16,12">
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="12" Width="32" Height="32" Click="CloseMore_Click"
+                    ToolTip="Back to the panel" AutomationProperties.Name="Close more settings"/>
+            <TextBlock Text="More settings" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          </DockPanel>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+              <StackPanel Margin="22,0,22,18">
                 <TextBox x:Name="AdvancedSearch" Style="{StaticResource Input}" Margin="0,0,0,12" Tag="Search settings: CFG, VAE, faces, seed…"
                          TextChanged="AdvancedSearch_TextChanged" AutomationProperties.Name="Search settings"/>
                 <Border x:Name="ModelSectionHeader" Style="{StaticResource PanelCard}">
@@ -997,77 +1084,8 @@
                 </Border>
                 </StackPanel>
               </StackPanel>
-            </StackPanel>
           </ScrollViewer>
-
-          <!-- action area -->
-          <Border Grid.Row="1" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="22,16,22,18">
-            <StackPanel>
-              <StackPanel x:Name="ProgressArea" Visibility="Collapsed" Margin="0,0,0,14">
-                <DockPanel>
-                  <TextBlock x:Name="EtaText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
-                  <TextBlock x:Name="StageText" FontSize="12.5" FontWeight="SemiBold"/>
-                </DockPanel>
-                <ProgressBar x:Name="Bar" Margin="0,9,0,0"/>
-                <DockPanel x:Name="QueueRow" Margin="0,6,0,0" Visibility="Collapsed">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="Auto" Height="24" Padding="8,0" Margin="0,0,-8,0"
-                          FontFamily="Segoe UI" FontSize="12" Content="Clear queue" Click="ClearQueue_Click"/>
-                  <TextBlock x:Name="QueueText" Style="{StaticResource Note}"/>
-                </DockPanel>
-              </StackPanel>
-              <!-- Generate stays available while busy: another click joins the queue -->
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition/>
-                  <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Button x:Name="GenerateBtn" Style="{StaticResource Primary}" Height="46" IsEnabled="False" Click="Generate_Click" ToolTip="Ctrl + Enter in the prompt box does the same">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE771;" FontFamily="{StaticResource Icons}" FontSize="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock x:Name="GenerateText" Text="Generate" VerticalAlignment="Center"/>
-                  </StackPanel>
-                </Button>
-                <Button x:Name="CancelBtn" Grid.Column="1" Style="{StaticResource Ghost}" Width="46" Height="46" Padding="0" Margin="8,0,0,0" Visibility="Collapsed"
-                        Click="Cancel_Click" ToolTip="Stop the image being made now" AutomationProperties.Name="Stop">
-                  <TextBlock Text="&#xE71A;" FontFamily="{StaticResource Icons}" FontSize="14"/>
-                </Button>
-              </Grid>
-              <Border x:Name="LoraChip" Visibility="Collapsed" HorizontalAlignment="Center" Margin="0,8,0,0" CornerRadius="12" Padding="12,2,4,2"
-                      Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock x:Name="LoraChipText" FontSize="12" Foreground="{DynamicResource Soft}" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"
-                             ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-                  <Button Style="{StaticResource IconBtn}" Width="22" Height="22" FontSize="9" Content="&#xE711;" Margin="6,0,0,0" Click="LoraOff_Click"
-                          ToolTip="Turn the add-on off" AutomationProperties.Name="Turn LoRA off"/>
-                </StackPanel>
-              </Border>
-              <TextBlock x:Name="Hint" Style="{StaticResource Note}" Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Center" Visibility="Collapsed"/>
-              <!-- shown when there is no ComfyUI yet -->
-              <Button x:Name="SetupPanel" Style="{StaticResource Ghost}" Height="32" HorizontalAlignment="Center" Margin="0,10,0,0" Visibility="Collapsed"
-                      Click="SetUpComfy_Click" ToolTip="Pick your ComfyUI portable folder, or any folder to download ComfyUI into" AutomationProperties.Name="Set up ComfyUI">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="&#xE896;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                  <TextBlock Text="Set up ComfyUI" VerticalAlignment="Center"/>
-                </StackPanel>
-              </Button>
-              <!-- shown when ComfyUI is down or didn't start -->
-              <StackPanel x:Name="RestartPanel" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0" Visibility="Collapsed">
-                <Button x:Name="RestartBtn" Style="{StaticResource Ghost}" Height="32" Click="Restart_Click">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE72C;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Text="Restart ComfyUI" VerticalAlignment="Center"/>
-                  </StackPanel>
-                </Button>
-                <Button Style="{StaticResource Ghost}" Height="32" Margin="8,0,0,0" Click="OpenLog_Click" ToolTip="ComfyUI's own messages, for when something goes wrong">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE8A5;" FontFamily="{StaticResource Icons}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Text="Open log" VerticalAlignment="Center"/>
-                  </StackPanel>
-                </Button>
-              </StackPanel>
-            </StackPanel>
-          </Border>
-        </Grid>
+        </DockPanel>
       </Border>
 
       <!-- the canvas: the picture you're on, as large as it fits, with its actions; under it the recent pictures -->
