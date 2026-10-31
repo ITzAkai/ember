@@ -76,6 +76,9 @@ public partial class MainWindow
         new("BiRefNet lite", "Background", "onnx", "BiRefNet_lite.onnx",
             "https://huggingface.co/onnx-community/BiRefNet_lite-ONNX/resolve/main/onnx/model.onnx", 224005088,
             "5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333", "MIT", "Cut out: keeps the subject, removes the background."),
+        new("WD tagger (EVA02 large v3)", "Tagger", "onnx", "wd-eva02-large-tagger-v3.onnx",
+            "https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3/resolve/b25b82a03f7282e41aa2f257a52c7583b710bd1c/model.onnx", 1260435999,
+            "9e768793060c7939b277ccb382783e8670e8a042d29d77aa736be0c8cc898bfc", "Apache 2.0", "Helps Describe tell who is in a picture."),
     };
 
     readonly Dictionary<CatalogItem, CancellationTokenSource> downloads = new();
@@ -110,7 +113,7 @@ public partial class MainWindow
         ("Video models", "For the Video tab."),
         ("LoRA add-ons", "Small trained styles or subjects. Each fits one model family and only shows up with it."),
         ("Parts", "Text encoders read your prompt and VAEs turn the result into pixels: a model can't run without its two parts."),
-        ("Tools", "Used by Expand, Remove, Upscale and Cut out."),
+        ("Tools", "Used by Expand, Remove, Upscale, Cut out and Describe."),
         ("Other files", "Ember can't tell what these are for."),
     };
 
@@ -235,7 +238,7 @@ public partial class MainWindow
                 use = () => UseLora(file, family);
             }
             var fi = new FileInfo(f.Path);
-            entries.Add(new ModelEntry(group, f.Family, title, KindOf(f.Folder), about ?? "", facts, f.Path, null, inUse, use, warn, page, picture, size,
+            entries.Add(new ModelEntry(group, f.Family, title, KindOf(f.Folder, file), about ?? "", facts, f.Path, null, inUse, use, warn, page, picture, size,
                 fi.CreationTimeUtc > fi.LastWriteTimeUtc ? fi.CreationTimeUtc : fi.LastWriteTimeUtc));      // a copied file keeps its old date: added is the later one
         }
         installedEntries = entries;
@@ -381,10 +384,10 @@ public partial class MainWindow
         Note($"LoRA add-on on: {Path.GetFileNameWithoutExtension(lora)}.");
     }
 
-    static string KindOf(string folder) => folder switch
+    static string KindOf(string folder, string file = null) => folder switch
     {
         "checkpoints" => "Model", "diffusion_models" => "Diffusion model", "text_encoders" => "Text encoder", "vae" => "VAE",
-        "loras" => "LoRA", "upscale_models" => "Upscaler", _ => "Background",
+        "loras" => "LoRA", "upscale_models" => "Upscaler", "onnx" when file?.Contains("tagger", StringComparison.OrdinalIgnoreCase) == true => "Tagger", _ => "Background",
     };
 
     void Section(string title, string note = null)

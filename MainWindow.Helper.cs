@@ -75,8 +75,9 @@ public partial class MainWindow
         "every uncovered intimate part with its size, shape and state; and any sexual act exactly: who does what to whom, with which body parts, their " +
         "positions and where they touch. ";
 
-    string DescribeSystemFor() => Private + "Look at the picture and write the prompt that makes an AI image generator recreate it as exactly as possible. " +
-        WhoTheyAre + WholeBody + PlainWords +
+    // who: what the picture tagger found (MainWindow.Who.cs). It takes the place of the general rules: next to them the writer still overruled it
+    string DescribeSystemFor(string who = null) => Private + "Look at the picture and write the prompt that makes an AI image generator recreate it as exactly as possible. " +
+        (who ?? WhoTheyAre) + WholeBody + PlainWords +
         "Describe everything you can see, specifically: how many people there are and where each one is in the frame; for each person their build, skin tone, " +
         "face, eye colour, expression, hair colour, length and style, every piece of clothing and accessory with its colour, material and fit, any nudity plainly, " +
         "the exact pose, what their hands are doing and where they are looking; every object, the background and the setting; the camera angle, distance and " +

@@ -780,7 +780,11 @@ public partial class MainWindow : Window
         double aspect = (double)img.PixelWidth / img.PixelHeight;
         double scale = Math.Min(1, 1024.0 / Math.Max(img.PixelWidth, img.PixelHeight));      // plenty for the model, and quicker
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
-        var text = await AskTextModel("Write the prompt for this picture.", DescribeSystemFor(), PngOf(img), "Looking at the picture…", maxTokens: 400);
+        if (writing) return;
+        Note("Looking at the picture…");
+        var who = await WhoNote(img);
+        // the tagger's answer in the request too: the writer weighs that more than its instructions
+        var text = await AskTextModel("Write the prompt for this picture. " + who.Note, DescribeSystemFor(who.Note), PngOf(img), "Looking at the picture…", maxTokens: 400);
         if (text == null) return;
         if (PromptBox.Text.Trim() is { Length: > 0 } old) Remember(old);
         PromptBox.Text = text;
@@ -790,7 +794,8 @@ public partial class MainWindow : Window
             Pick(SizeGroup, SizeGroup.Children.OfType<RadioButton>().Select(r => (string)r.Tag)
                 .MinBy(t => { var p = t.Split('x'); return Math.Abs(Math.Log(double.Parse(p[0]) / double.Parse(p[1]) / aspect)); }), "1024x1024");
         SaveSettings();
-        Note("Prompt written from the picture, and the size set to match its shape. Your previous prompt is in Recent prompts (clock button).");
+        Note($"Prompt written from the picture{(who.Saw == null ? "" : $" (the tagger saw {who.Saw})")}, and the size set to match its shape. " +
+             "Your previous prompt is in Recent prompts (clock button).");
     }
 
     bool writing;       // one request to the text model at a time
