@@ -21,14 +21,15 @@ public partial class MainWindow
         GalleryRail.IsChecked = c == Centre.Gallery;
     }
 
-    Shot canvasShot;
+    Shot canvasShot, canvasLive;
     bool pickingOnStrip;
 
     // the picture you're on; a picture still being made opens the live view instead, and the canvas stays where it was
     void ShowOnCanvas(Shot s)
     {
-        if (s?.Pending == true) { OpenLive(s); SelectOnStrip(canvasShot); return; }
+        if (s?.Pending == true) { ShowLiveOnCanvas(s); return; }
         if (s?.Secret == true) { OpenViewer(s); return; }        // secret pictures only ever show in their own tab's viewer
+        HideLive();
         BitmapSource img = null;
         if (s != null) try { img = LoadImage(s.FilePath, CanvasWidth(s.FilePath)); } catch { img = null; }       // a video's FilePath is its poster
         if (s != null && img == null && canvasShot != null) { Note("Couldn't open that picture.", true); SelectOnStrip(canvasShot); return; }
@@ -44,9 +45,36 @@ public partial class MainWindow
 
     // the picture on the canvas left the list (deleted, moved to the secret tab, another output folder): show the newest one instead,
     // once, after the change settles (a folder switch removes hundreds one at a time)
+    // a picture being made, live: its preview, progress and status; the picture it covers comes back when it's done or gone
+    void ShowLiveOnCanvas(Shot slot)
+    {
+        canvasLive = slot;
+        CanvasLive.DataContext = slot;
+        CanvasLive.Visibility = Visibility.Visible;
+        CanvasImage.Visibility = CanvasActions.Visibility = CanvasFullBtn.Visibility = CanvasEmpty.Visibility = Visibility.Collapsed;
+        SelectOnStrip(slot);
+    }
+
+    void HideLive()
+    {
+        if (canvasLive == null) return;
+        canvasLive = null;
+        CanvasLive.Visibility = Visibility.Collapsed;
+        CanvasLive.DataContext = null;
+    }
+
     bool canvasRepick;
     void CanvasFollowShots()
     {
+        // the live picture was cancelled or failed (a finished one is shown by ShowNewest right after): the picture underneath comes back
+        if (canvasLive != null && !shots.Contains(canvasLive))
+        {
+            HideLive();
+            bool shown = CanvasImage.Source != null && canvasShot != null;
+            CanvasImage.Visibility = CanvasActions.Visibility = CanvasFullBtn.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+            CanvasEmpty.Visibility = shown ? Visibility.Collapsed : Visibility.Visible;
+            SelectOnStrip(canvasShot);
+        }
         if (canvasShot == null || canvasRepick || shots.Contains(canvasShot) && !canvasShot.Secret) return;
         canvasRepick = true;
         Dispatcher.BeginInvoke(() =>
