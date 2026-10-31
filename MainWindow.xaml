@@ -1782,7 +1782,7 @@
 
     <!-- models -->
     <Grid x:Name="ModelsPanel" Grid.RowSpan="2" Visibility="Collapsed" Background="#E0000000" MouseLeftButtonUp="OverlayBackdrop_Click">
-      <Border Width="760" MaxHeight="820" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
+      <Border Width="820" MaxHeight="820" Margin="24" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"
               CornerRadius="14" MouseLeftButtonUp="OverlayCard_Click">
         <DockPanel Margin="26,20,26,24">
           <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
@@ -1801,7 +1801,52 @@
             <TextBox x:Name="LinkBox" Style="{StaticResource Input}" Height="36" VerticalContentAlignment="Center" KeyDown="LinkBox_KeyDown"
                      Tag="Paste a Hugging Face or Civitai link to a model…" AutomationProperties.Name="Model link"/>
           </DockPanel>
-          <ScrollViewer x:Name="ModelsScroll" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+          <!-- what's downloading, with progress and Cancel, then the last few that ended -->
+          <Border x:Name="DownloadsBox" DockPanel.Dock="Top" Visibility="Collapsed" Margin="0,12,0,0" Padding="14,10,10,8" CornerRadius="10"
+                  Background="{DynamicResource Raised}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+            <DockPanel>
+              <DockPanel DockPanel.Dock="Top">
+                <Button x:Name="ClearDownloadsBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="28" Content="Clear finished" Click="ClearDownloads_Click"
+                        AutomationProperties.Name="Clear finished downloads"/>
+                <TextBlock x:Name="DownloadsTitle" Text="Downloads" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              </DockPanel>
+              <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
+                <StackPanel x:Name="DownloadsList" Margin="0,0,6,0"/>
+              </ScrollViewer>
+            </DockPanel>
+          </Border>
+          <!-- Installed or Get more and the order, a search, then a kind and a family, and the picks -->
+          <DockPanel DockPanel.Dock="Top" Margin="0,16,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Text="Sort" Style="{StaticResource Note}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+              <RadioButton x:Name="SortName" Style="{StaticResource Tab}" GroupName="ModelsSort" Content="Name" IsChecked="True" Margin="0,0,12,0"
+                           Checked="ModelsView_Checked" AutomationProperties.Name="Sort by name"/>
+              <RadioButton x:Name="SortSize" Style="{StaticResource Tab}" GroupName="ModelsSort" Content="Size" Margin="0,0,12,0"
+                           Checked="ModelsView_Checked" AutomationProperties.Name="Sort by size"/>
+              <RadioButton x:Name="SortNew" Style="{StaticResource Tab}" GroupName="ModelsSort" Content="Newest"
+                           Checked="ModelsView_Checked" AutomationProperties.Name="Sort by newest"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+              <RadioButton x:Name="ShowInstalled" Style="{StaticResource Tab}" GroupName="ModelsShow" Content="Installed" IsChecked="True" Margin="0,0,16,0"
+                           Checked="ModelsView_Checked" AutomationProperties.Name="Installed"/>
+              <RadioButton x:Name="ShowToGet" Style="{StaticResource Tab}" GroupName="ModelsShow" Content="Get more"
+                           Checked="ModelsView_Checked" AutomationProperties.Name="Get more"/>
+            </StackPanel>
+          </DockPanel>
+          <TextBox x:Name="ModelsSearch" DockPanel.Dock="Top" Style="{StaticResource Input}" Height="34" Margin="0,10,0,0" VerticalContentAlignment="Center"
+                   Tag="Search names, trigger words, families…" TextChanged="ModelsSearch_TextChanged" AutomationProperties.Name="Search models"/>
+          <WrapPanel x:Name="ModelKinds" DockPanel.Dock="Top" Margin="0,10,0,0"/>
+          <WrapPanel x:Name="ModelFamilies" DockPanel.Dock="Top"/>
+          <DockPanel DockPanel.Dock="Top" Margin="0,4,0,0">
+            <Button x:Name="RemovePickedBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="30" Margin="6,0,0,0" Visibility="Collapsed"
+                    Click="RemovePicked_Click" AutomationProperties.Name="Remove picked"/>
+            <Button x:Name="ClearPicksBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="30" Margin="6,0,0,0" Visibility="Collapsed" Content="Clear"
+                    Click="ClearPicks_Click" AutomationProperties.Name="Clear picks"/>
+            <Button x:Name="PickAllBtn" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Height="30" Click="PickAll_Click" AutomationProperties.Name="Pick all shown"
+                    ToolTip="Tick every file the filters show, to remove them together"/>
+            <TextBlock x:Name="ModelsCount" Style="{StaticResource Note}" VerticalAlignment="Center"/>
+          </DockPanel>
+          <ScrollViewer x:Name="ModelsScroll" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
             <StackPanel x:Name="ModelsList" Margin="0,0,6,0"/>
           </ScrollViewer>
         </DockPanel>

@@ -16,7 +16,8 @@ namespace ImageForge;
 
 // Strength: the strength its page recommends (one value, or low and high), [] when it gives none, null when not looked for yet
 public record LoraInfo(string Name, string Description, string[] Trigger, string Url, long Size, DateTime Modified, double[] Strength = null,
-                       string BaseModel = null);     // what it was trained for ("Illustrious", "Pony", "SDXL 1.0"…); "" when nobody says, null when not looked for
+                       string BaseModel = null,      // what it was trained for ("Illustrious", "Pony", "SDXL 1.0"…); "" when nobody says, null when not looked for
+                       string Picture = null, string SafePicture = null);     // small pictures from its Civitai page: its first, and its first rated safe for work; "" when none, null when not looked for
 
 public partial class MainWindow
 {
@@ -35,13 +36,24 @@ public partial class MainWindow
             try { loraInfo = JsonSerializer.Deserialize<Dictionary<string, LoraInfo>>(File.ReadAllText(LoraInfoFile)) is { } d ? new(d, StringComparer.OrdinalIgnoreCase) : loraInfo; }
             catch { /* none yet */ }
             ShowLoraInfo();
+            bool pictured = false;
             foreach (var lora in loras.ToList())
             {
                 var path = Path.Combine(ModelsDir, "loras", lora);
                 if (!File.Exists(path)) continue;
                 var fi = RealFile(path);
-                if (loraInfo.TryGetValue(lora, out var known) && known.Size == fi.Length && known.Modified == fi.LastWriteTimeUtc && known.Strength != null && known.BaseModel != null) continue;     // (many LoRAs have no trigger words: not a reason to look again)
+                if (loraInfo.TryGetValue(lora, out var known) && known.Size == fi.Length && known.Modified == fi.LastWriteTimeUtc && known.Strength != null && known.BaseModel != null)     // (many LoRAs have no trigger words: not a reason to look again)
+                {
+                    // looked up before pictures were kept: its page has them, without reading the whole file again
+                    if (known.Picture == null && known.Url != null) { loraInfo[lora] = await WithPictures(known, lora); pictured = true; }
+                    continue;
+                }
                 loraInfo[lora] = await LookUp(path, fi);
+                try { File.WriteAllText(LoraInfoFile, JsonSerializer.Serialize(loraInfo)); } catch { }
+                ShowLoraInfo();
+            }
+            if (pictured)          // saved and shown once at the end: a few hundred at a time would redraw the Models page for each
+            {
                 try { File.WriteAllText(LoraInfoFile, JsonSerializer.Serialize(loraInfo)); } catch { }
                 ShowLoraInfo();
             }
@@ -69,12 +81,44 @@ public partial class MainWindow
                 var strength = StrengthIn(verAbout) ?? StrengthIn(about) ?? [];
                 about = Short(about ?? verAbout ?? local.Description);
                 var trigger = (ver["trainedWords"] as JsonArray)?.Select(t => t?.ToString()?.Trim()).Where(t => !string.IsNullOrEmpty(t)).ToArray() ?? [];
+                var (picture, safe) = Pictures(ver["images"]);
                 return new LoraInfo(ver["model"]?["name"]?.ToString() ?? local.Name, about, trigger.Length > 0 ? trigger : local.Trigger,
-                    $"https://{host}/models/{modelId}", fi.Length, fi.LastWriteTimeUtc, strength, ver["baseModel"]?.ToString() is { Length: > 0 } bm ? bm : local.BaseModel);
+                    $"https://{host}/models/{modelId}", fi.Length, fi.LastWriteTimeUtc, strength, ver["baseModel"]?.ToString() is { Length: > 0 } bm ? bm : local.BaseModel, picture, safe);
             }
         }
         catch { /* offline, or Civitai busy: the file's own notes will do */ }
         return local;
+    }
+
+    // the first picture of a Civitai version, and its first rated PG or PG-13 (nsfwLevel 1 or 2), each asked for small; "" when there is none
+    static (string Picture, string Safe) Pictures(JsonNode images)
+    {
+        var list = (images as JsonArray)?.Where(i => i?["url"] != null && (i["type"]?.ToString() ?? "image") == "image").ToList() ?? [];
+        string Small(JsonNode i) => i == null ? "" : Regex.Replace(i["url"].ToString(), @"/(width=\d+|original=true)/", "/width=160/");
+        int Level(JsonNode i) => i["nsfwLevel"] is JsonValue v && v.TryGetValue(out int n) ? n : 16;        // not rated: treated as adult
+        return (Small(list.FirstOrDefault()), Small(list.FirstOrDefault(i => Level(i) <= 2)));
+    }
+
+    // a LoRA looked up before pictures were kept: the pictures of its version on its Civitai page (the version whose file has its name or size)
+    async Task<LoraInfo> WithPictures(LoraInfo info, string lora)
+    {
+        try
+        {
+            var page = new Uri(info.Url);
+            if (!IsCivitai(page) || page.AbsolutePath.Trim('/').Split('/') is not ["models", var id, ..]) return info with { Picture = "", SafePicture = "" };
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"https://{page.Host}/api/v1/models/{id}");
+            if (CivitaiKey is string key) req.Headers.Authorization = new("Bearer", key);
+            using var res = await web.SendAsync(req);
+            if (res.StatusCode == HttpStatusCode.NotFound) return info with { Picture = "", SafePicture = "" };
+            if (!res.IsSuccessStatusCode) return info;          // busy or offline: asked again next time
+            var versions = JsonNode.Parse(await res.Content.ReadAsStringAsync())?["modelVersions"] as JsonArray;
+            var name = Path.GetFileName(lora);
+            var ver = versions?.FirstOrDefault(v => (v?["files"] as JsonArray)?.Any(f => f?["name"]?.ToString() == name
+                          || f?["sizeKB"] is JsonValue kb && kb.TryGetValue(out double k) && Math.Abs(k * 1024 - info.Size) < 2048) == true) ?? versions?.FirstOrDefault();
+            var (picture, safe) = Pictures(ver?["images"]);
+            return info with { Picture = picture, SafePicture = safe };
+        }
+        catch { return info; }
     }
 
     // what the trainer wrote into the file: a title or description if any, else the tags it learned most
