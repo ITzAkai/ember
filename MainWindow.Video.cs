@@ -21,6 +21,7 @@ public partial class MainWindow
     static bool IsVideoFamily(string family) => family is "wan" or "wan_i2v" or "minimax_h3";
     bool PictureVideo => Family == "wan_i2v";           // Wan 2.1 Fun InP: the clip starts on a picture
     byte[] startPicture;                                // that picture, as PNG, at most 1280 px
+    BitmapSource startImage;                            // the same, to show on the canvas
     string startName;
     byte[] endPicture;                                  // MiniMax H3: the picture the clip ends on (optional)
     bool VideoOn => VideoMode.IsChecked == true;
@@ -210,11 +211,14 @@ public partial class MainWindow
         ChooseStartBtn.Visibility = Visibility.Collapsed;
         double aspect = (double)img.PixelWidth / img.PixelHeight;           // the clip takes the shape closest to the picture
         Pick(VideoSizeGroup, aspect > 1.2 ? "832x480" : aspect < 0.83 ? "480x832" : "624x624", "832x480");
+        startImage = img;
+        if (VideoOn) ShowStartOnCanvas(img);
     }
 
     void RemoveStart_Click(object sender, RoutedEventArgs e)
     {
-        startPicture = null; startName = null;
+        startPicture = null; startName = null; startImage = null;
+        HideStart();
         StartCard.Visibility = Visibility.Collapsed;
         ChooseStartBtn.Visibility = Visibility.Visible;
     }

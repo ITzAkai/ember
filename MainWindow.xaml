@@ -1140,6 +1140,10 @@
               </StackPanel>
             </Grid>
             <TextBlock x:Name="CanvasEmpty" Style="{StaticResource Note}" HorizontalAlignment="Center" VerticalAlignment="Center" Text="Loading your pictures…"/>
+            <Border x:Name="CanvasLabel" Visibility="Collapsed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" CornerRadius="6"
+                    Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" Padding="8,3">
+              <TextBlock x:Name="CanvasLabelText" Text="Start picture" FontSize="12" Foreground="{DynamicResource Soft}"/>
+            </Border>
             <Button x:Name="CanvasFullBtn" Visibility="Collapsed" Style="{StaticResource IconBtn}" Content="&#xE740;" FontSize="14" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,0"
                     Click="CanvasFull_Click" ToolTip="Full view, with the picture's details (or double-click it)" AutomationProperties.Name="Full view"/>
             <StackPanel x:Name="CanvasActions" Visibility="Collapsed" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16">

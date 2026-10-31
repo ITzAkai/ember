@@ -22,6 +22,7 @@ public partial class MainWindow
     }
 
     Shot canvasShot, canvasLive;
+    bool showingStart;
     bool pickingOnStrip;
 
     // the picture you're on; a picture still being made opens the live view instead, and the canvas stays where it was
@@ -30,6 +31,7 @@ public partial class MainWindow
         if (s?.Pending == true) { ShowLiveOnCanvas(s); return; }
         if (s?.Secret == true) { OpenViewer(s); return; }        // secret pictures only ever show in their own tab's viewer
         HideLive();
+        showingStart = false; CanvasLabel.Visibility = Visibility.Collapsed;
         BitmapSource img = null;
         if (s != null) try { img = LoadImage(s.FilePath, CanvasWidth(s.FilePath)); } catch { img = null; }       // a video's FilePath is its poster
         if (s != null && img == null && canvasShot != null) { Note("Couldn't open that picture.", true); SelectOnStrip(canvasShot); return; }
@@ -120,7 +122,24 @@ public partial class MainWindow
         if (!pickingOnStrip && RecentStrip.SelectedItem is Shot s && s != canvasShot) ShowOnCanvas(s);
     }
 
-    void CanvasImage_MouseDown(object sender, MouseButtonEventArgs e) { if (e.ClickCount == 2) OpenViewer(canvasShot); }
+    void CanvasImage_MouseDown(object sender, MouseButtonEventArgs e) { if (e.ClickCount == 2 && !showingStart) OpenViewer(canvasShot); }
+
+    // Video mode: the start picture the clip begins on, labelled; the picture it covers comes back when it's cleared or Video is left
+    void ShowStartOnCanvas(BitmapSource img)
+    {
+        HideLive();
+        showingStart = true;
+        CanvasImage.Source = img;
+        CanvasImage.Visibility = CanvasLabel.Visibility = Visibility.Visible;
+        CanvasActions.Visibility = CanvasFullBtn.Visibility = CanvasEmpty.Visibility = Visibility.Collapsed;
+        SelectOnStrip(null);
+    }
+
+    void HideStart()
+    {
+        if (!showingStart) return;
+        ShowOnCanvas(canvasShot);
+    }
     void CanvasFull_Click(object sender, RoutedEventArgs e) => OpenViewer(canvasShot);
 
     // Edit and Use prompt act on the picture straight away; Upscale and Make a video run in the full view, where their menu and notes show
