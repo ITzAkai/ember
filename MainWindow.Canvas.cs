@@ -21,70 +21,75 @@ public partial class MainWindow
         GalleryRail.IsChecked = c == Centre.Gallery;
     }
 
-    Shot canvasShot, canvasLive;
-    bool showingStart;
+    Shot canvasShot, canvasLive;      // the picture you're on, and one being made, shown live over it
+    BitmapSource canvasBitmap;        // canvasShot, decoded
+    bool showingStart = true;         // Video mode shows its start picture until a strip picture is picked
     bool pickingOnStrip;
 
-    // the picture you're on; a picture still being made opens the live view instead, and the canvas stays where it was
+    // Video mode, with a start picture its model starts from
+    bool StartOnCanvas => showingStart && startImage != null && VideoOn && (PictureVideo || H3);
+
+    // what the canvas shows follows from canvasShot, canvasLive and the start picture: this is the one place that decides
+    void RefreshCanvas()
+    {
+        if (CanvasImage == null) return;
+        bool live = canvasLive != null, start = StartOnCanvas;
+        CanvasImage.Source = start ? startImage : canvasBitmap;
+        CanvasImage.Visibility = CanvasImage.Source != null ? Visibility.Visible : Visibility.Collapsed;
+        CanvasLive.DataContext = canvasLive;
+        CanvasLive.Visibility = live ? Visibility.Visible : Visibility.Collapsed;          // over the picture: its preview covers it once it arrives
+        CanvasLabel.Visibility = start && !live ? Visibility.Visible : Visibility.Collapsed;
+        CanvasActions.Visibility = CanvasFullBtn.Visibility = !live && !start && canvasBitmap != null ? Visibility.Visible : Visibility.Collapsed;
+        CanvasEmpty.Visibility = !live && CanvasImage.Source == null ? Visibility.Visible : Visibility.Collapsed;
+        SelectOnStrip(live ? canvasLive : start ? null : canvasShot);
+    }
+
+    // the picture you're on, decoded; false, with nothing changed, when it won't open
+    bool SetCanvasPicture(Shot s)
+    {
+        BitmapSource img = null;
+        if (s != null) try { img = LoadImage(s.FilePath, CanvasWidth(s.FilePath)); } catch { img = null; }       // a video's FilePath is its poster
+        if (s != null && img == null) return false;
+        canvasShot = s;
+        canvasBitmap = img;
+        // as in the viewer: a video's poster isn't upscaled, edited or animated
+        CanvasUpscaleBtn.Visibility = CanvasEditBtn.Visibility = CanvasVideoBtn.Visibility = s?.IsVideo == true ? Visibility.Collapsed : Visibility.Visible;
+        return true;
+    }
+
+    // show a picture: a finished one takes the place of the live view and the start picture; one being made shows live
     void ShowOnCanvas(Shot s)
     {
         if (s?.Pending == true) { ShowLiveOnCanvas(s); return; }
         if (s?.Secret == true) { OpenViewer(s); return; }        // secret pictures only ever show in their own tab's viewer
-        HideLive();
-        showingStart = false; CanvasLabel.Visibility = Visibility.Collapsed;
-        BitmapSource img = null;
-        if (s != null) try { img = LoadImage(s.FilePath, CanvasWidth(s.FilePath)); } catch { img = null; }       // a video's FilePath is its poster
-        if (s != null && img == null && canvasShot != null) { Note("Couldn't open that picture.", true); SelectOnStrip(canvasShot); return; }
-        canvasShot = img != null ? s : null;
-        CanvasImage.Source = img;
-        CanvasImage.Visibility = CanvasActions.Visibility = CanvasFullBtn.Visibility = img != null ? Visibility.Visible : Visibility.Collapsed;
-        CanvasEmpty.Visibility = img != null ? Visibility.Collapsed : Visibility.Visible;
         CanvasEmpty.Text = "Your pictures show here. Write a prompt and press Generate";
-        // as in the viewer: a video's poster isn't upscaled, edited or animated
-        CanvasUpscaleBtn.Visibility = CanvasEditBtn.Visibility = CanvasVideoBtn.Visibility = s?.IsVideo == true ? Visibility.Collapsed : Visibility.Visible;
-        SelectOnStrip(canvasShot);
+        if (!SetCanvasPicture(s)) { Note("Couldn't open that picture.", true); RefreshCanvas(); return; }
+        canvasLive = null;
+        showingStart = false;
+        RefreshCanvas();
     }
+
+    void ShowLiveOnCanvas(Shot slot) { canvasLive = slot; RefreshCanvas(); }
+
+    // Video mode: the start picture the clip begins on, labelled; set again by SetStart and on entering Video
+    void ShowStartOnCanvas() { showingStart = true; RefreshCanvas(); }
 
     // the picture on the canvas left the list (deleted, moved to the secret tab, another output folder): show the newest one instead,
     // once, after the change settles (a folder switch removes hundreds one at a time)
-    // a picture being made, live: its preview, progress and status; the picture it covers comes back when it's done or gone
-    void ShowLiveOnCanvas(Shot slot)
-    {
-        canvasLive = slot;
-        CanvasLive.DataContext = slot;
-        CanvasLive.Visibility = Visibility.Visible;
-        CanvasImage.Visibility = CanvasActions.Visibility = CanvasFullBtn.Visibility = CanvasEmpty.Visibility = Visibility.Collapsed;
-        SelectOnStrip(slot);
-    }
-
-    void HideLive()
-    {
-        if (canvasLive == null) return;
-        canvasLive = null;
-        CanvasLive.Visibility = Visibility.Collapsed;
-        CanvasLive.DataContext = null;
-    }
-
     bool canvasRepick;
     void CanvasFollowShots()
     {
-        // the live picture was cancelled or failed (a finished one is shown by ShowNewest right after): the picture underneath comes back
-        if (canvasLive != null && !shots.Contains(canvasLive))
-        {
-            HideLive();
-            bool shown = CanvasImage.Source != null && canvasShot != null;
-            CanvasImage.Visibility = CanvasActions.Visibility = CanvasFullBtn.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
-            CanvasEmpty.Visibility = shown ? Visibility.Collapsed : Visibility.Visible;
-            SelectOnStrip(canvasShot);
-        }
+        // the live picture was cancelled or failed (a finished one is shown by ShowNewest right after): what it covered shows again
+        if (canvasLive != null && !shots.Contains(canvasLive)) { canvasLive = null; RefreshCanvas(); }
         if (canvasShot == null || canvasRepick || shots.Contains(canvasShot) && !canvasShot.Secret) return;
         canvasRepick = true;
         Dispatcher.BeginInvoke(() =>
         {
             canvasRepick = false;
             if (canvasShot != null && shots.Contains(canvasShot) && !canvasShot.Secret) return;
-            canvasShot = null;
-            ShowOnCanvas(shots.FirstOrDefault(x => !x.Pending && !x.Secret));
+            canvasShot = null; canvasBitmap = null;
+            foreach (var x in shots.Where(x => !x.Pending && !x.Secret)) if (SetCanvasPicture(x)) break;      // the newest that opens
+            RefreshCanvas();          // a live view or start picture stays on top
         }, DispatcherPriority.Background);
     }
 
@@ -99,7 +104,7 @@ public partial class MainWindow
         catch { return 0; }
     }
 
-    // M5: the wheel scrolls the strip sideways, as the editor's results strip does
+    // the wheel scrolls the strip sideways, as the editor's results strip does
     void RecentStrip_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
         if (VisualTreeHelper.GetChildrenCount(RecentStrip) > 0 && VisualTreeHelper.GetChild(RecentStrip, 0) is Border { Child: ScrollViewer sv })
@@ -119,27 +124,12 @@ public partial class MainWindow
 
     void RecentStrip_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (!pickingOnStrip && RecentStrip.SelectedItem is Shot s && s != canvasShot) ShowOnCanvas(s);
+        // the picture under a live view or the start picture brings itself back too
+        if (!pickingOnStrip && RecentStrip.SelectedItem is Shot s && (s != canvasShot || canvasLive != null || StartOnCanvas)) ShowOnCanvas(s);
     }
 
-    void CanvasImage_MouseDown(object sender, MouseButtonEventArgs e) { if (e.ClickCount == 2 && !showingStart) OpenViewer(canvasShot); }
+    void CanvasImage_MouseDown(object sender, MouseButtonEventArgs e) { if (e.ClickCount == 2 && canvasLive == null && !StartOnCanvas) OpenViewer(canvasShot); }
 
-    // Video mode: the start picture the clip begins on, labelled; the picture it covers comes back when it's cleared or Video is left
-    void ShowStartOnCanvas(BitmapSource img)
-    {
-        HideLive();
-        showingStart = true;
-        CanvasImage.Source = img;
-        CanvasImage.Visibility = CanvasLabel.Visibility = Visibility.Visible;
-        CanvasActions.Visibility = CanvasFullBtn.Visibility = CanvasEmpty.Visibility = Visibility.Collapsed;
-        SelectOnStrip(null);
-    }
-
-    void HideStart()
-    {
-        if (!showingStart) return;
-        ShowOnCanvas(canvasShot);
-    }
     void CanvasFull_Click(object sender, RoutedEventArgs e) => OpenViewer(canvasShot);
 
     // Edit and Use prompt act on the picture straight away; Upscale and Make a video run in the full view, where their menu and notes show

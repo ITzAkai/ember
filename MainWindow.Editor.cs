@@ -28,7 +28,7 @@ public partial class MainWindow
     {
         bool edit = EditMode.IsChecked == true, video = VideoMode.IsChecked == true;
         ShowCentre(edit ? Centre.Editor : Centre.Canvas);
-        if (video && startImage != null) ShowStartOnCanvas(startImage); else HideStart();     // Video mode shows its start picture on the canvas
+        ShowStartOnCanvas();      // Video mode shows its start picture on the canvas; the other modes show the picture you're on
         SizeSection.Visibility = CoupleSection.Visibility = WorkflowSection.Visibility = edit || video ? Visibility.Collapsed : Visibility.Visible;
         ShowWorkflow();
         ShowEditExtras();

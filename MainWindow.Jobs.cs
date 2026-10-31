@@ -270,7 +270,7 @@ public partial class MainWindow
             var slot = new Shot { Pending = true, Progress = busy ? "Queued" : label ?? "Starting" };
             job.Slots.Add(slot);
             shots.Insert(0, slot);
-            if (i == 0) ShowLiveOnCanvas(slot);         // the first picture of this Generate shows live on the canvas
+            if (i == 0 && canvasLive == null) ShowLiveOnCanvas(slot);         // the first picture of this Generate shows live, unless one is already running there
             jobs.Add(job);
             queued.Add(job);
         }

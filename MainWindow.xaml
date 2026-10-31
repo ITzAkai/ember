@@ -499,7 +499,6 @@
 
               <Border Style="{StaticResource PanelCard}">
                 <StackPanel>
-              <!-- the style as one row with its picture; the choices open as picture tiles -->
               <!-- the choices made on most pictures, one small button each; their options open below them -->
               <WrapPanel x:Name="ChoiceRow" Margin="0,0,-8,-8">
               <Button x:Name="StyleRow" Style="{StaticResource ChoiceChip}" Click="StyleRow_Click" AutomationProperties.Name="Style"
@@ -517,7 +516,10 @@
               </Popup>
               <Button x:Name="SizeChip" Style="{StaticResource ChoiceChip}" Click="SizeChip_Click" AutomationProperties.Name="Size" ToolTip="Size and shape"
                       Visibility="{Binding Visibility, ElementName=SizeSection}">
-                <TextBlock x:Name="SizeChipText" Text="1:1"/>
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock x:Name="SizeChipText" Text="1:1" VerticalAlignment="Center"/>
+                  <Ellipse Width="7" Height="7" Margin="6,0,0,0" VerticalAlignment="Center" Visibility="{Binding Visibility, ElementName=SizeDot}" Fill="{Binding Fill, ElementName=SizeDot}"/>
+                </StackPanel>
               </Button>
               <Button x:Name="CountChip" Style="{StaticResource ChoiceChip}" Click="CountChip_Click" AutomationProperties.Name="Number of pictures" ToolTip="How many pictures each Generate makes"
                       Visibility="{Binding Visibility, ElementName=CountSection}">
@@ -525,7 +527,10 @@
               </Button>
               <Button x:Name="QualityChip" Style="{StaticResource ChoiceChip}" Click="QualityChip_Click" AutomationProperties.Name="Quality" ToolTip="Fast, Balanced or Best: how many steps"
                       Visibility="{Binding Visibility, ElementName=QualitySection}">
-                <TextBlock x:Name="QualityChipText" Text="Balanced"/>
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock x:Name="QualityChipText" Text="Balanced" VerticalAlignment="Center"/>
+                  <Ellipse Width="7" Height="7" Margin="6,0,0,0" VerticalAlignment="Center" Visibility="{Binding Visibility, ElementName=QualityDot}" Fill="{Binding Fill, ElementName=QualityDot}"/>
+                </StackPanel>
               </Button>
               </WrapPanel>
               <Popup x:Name="SizePopup" PlacementTarget="{Binding ElementName=SizeChip}" Placement="Bottom" VerticalOffset="6" StaysOpen="False"
@@ -648,7 +653,6 @@
                 </DockPanel>
               </StackPanel>
 
-              <!-- create mode: output size -->
 
               <!-- video mode: clip shape and length (Wan 2.1 makes 16 frames a second) -->
               <StackPanel x:Name="VideoSection" Visibility="Collapsed">
@@ -884,7 +888,7 @@
                             Click="ResetSection_Click" ToolTip="Turn every LoRA off" AutomationProperties.Name="Reset LoRAs"/>
                     <Button DockPanel.Dock="Right" Content="+ Add LoRA" Style="{StaticResource Ghost}" Padding="8,3" FontSize="11" Click="AddLoraRow_Click" ToolTip="Add another LoRA to use multiple LoRAs together" AutomationProperties.Name="Add LoRA"/>
                     <Ellipse x:Name="LoraDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
-                    <TextBlock Text="Used together, each at its own strength" Style="{StaticResource Note}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Each at its own strength" TextTrimming="CharacterEllipsis" Style="{StaticResource Note}" VerticalAlignment="Center"/>
                   </DockPanel>
                   <TextBox x:Name="LoraSearch" Style="{StaticResource Input}" Height="30" Padding="8,0" VerticalContentAlignment="Center" Margin="0,0,0,8"
                            Tag="Search LoRAs by name or what they do…" TextChanged="LoraSearch_TextChanged" AutomationProperties.Name="Search LoRAs"/>
@@ -1154,7 +1158,7 @@
             </StackPanel>
           </Grid>
         </Border>
-        <ListBox x:Name="RecentStrip" Grid.Row="1" Height="104" Margin="0,12,0,0" Background="Transparent" BorderThickness="0" Padding="0"
+        <ListBox x:Name="RecentStrip" IsSynchronizedWithCurrentItem="False" Grid.Row="1" Height="104" Margin="0,12,0,0" Background="Transparent" BorderThickness="0" Padding="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled"
                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel"
                  SelectionChanged="RecentStrip_SelectionChanged" PreviewMouseWheel="RecentStrip_PreviewMouseWheel" AutomationProperties.Name="Recent pictures">

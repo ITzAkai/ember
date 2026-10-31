@@ -40,6 +40,7 @@ public partial class MainWindow
     // the video options each model can use: start picture (Wan Fun InP, H3), end picture, longer clips and Motion (H3)
     void ShowVideoOptions()
     {
+        RefreshCanvas();          // the model decides whether the start picture is used, so whether it shows
         if (EndSection == null) return;
         if (CameraBox.Items.Count == 0)
         {
@@ -212,13 +213,13 @@ public partial class MainWindow
         double aspect = (double)img.PixelWidth / img.PixelHeight;           // the clip takes the shape closest to the picture
         Pick(VideoSizeGroup, aspect > 1.2 ? "832x480" : aspect < 0.83 ? "480x832" : "624x624", "832x480");
         startImage = img;
-        if (VideoOn) ShowStartOnCanvas(img);
+        ShowStartOnCanvas();
     }
 
     void RemoveStart_Click(object sender, RoutedEventArgs e)
     {
         startPicture = null; startName = null; startImage = null;
-        HideStart();
+        RefreshCanvas();
         StartCard.Visibility = Visibility.Collapsed;
         ChooseStartBtn.Visibility = Visibility.Visible;
     }

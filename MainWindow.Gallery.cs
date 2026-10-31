@@ -21,7 +21,12 @@ public partial class MainWindow
             unloaded.AddRange(new DirectoryInfo(dir).GetFiles("*.png").OrderByDescending(f => f.LastWriteTime)
                 .Select(f => f.FullName).Where(p => !shots.Any(s => s.FilePath == p)));
         await LoadMore(120);
-        if (canvasShot == null) ShowOnCanvas(shots.FirstOrDefault(s => !s.Pending && !s.Secret));
+        if (canvasShot == null)       // the newest picture that opens; a live view or start picture already showing stays on top
+        {
+            CanvasEmpty.Text = "Your pictures show here. Write a prompt and press Generate";
+            foreach (var s in shots.Where(s => !s.Pending && !s.Secret)) if (SetCanvasPicture(s)) break;
+            RefreshCanvas();
+        }
     }
 
     async Task LoadMore(int count)

@@ -23,6 +23,12 @@ public partial class MainWindow
                 r.Click += (_, _) => popup.IsOpen = false;       // also when the one already picked is clicked again
             }
         }
+        // keyboard: an opened popup puts focus on what's picked; Esc closes it
+        foreach (var (popup, group) in new[] { (SizePopup, (Panel)SizeGroup), (CountPopup, CountGroup), (QualityPopup, QualityGroup) })
+        {
+            popup.Opened += (_, _) => (group.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true) ?? group.Children.OfType<RadioButton>().FirstOrDefault())?.Focus();
+            popup.Child.PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape) { popup.IsOpen = false; e.Handled = true; } };
+        }
         Watch(SizeGroup, SizePopup);
         Watch(CountGroup, CountPopup);
         Watch(QualityGroup, QualityPopup);
@@ -37,10 +43,14 @@ public partial class MainWindow
     {
         if (SizeChipText == null) return;
         static RadioButton On(Panel g) => g.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true);
-        SizeChipText.Text = CustomSizeBox.IsChecked == true ? $"{CustomW.Text} × {CustomH.Text}"
+        SizeChipText.Text = CustomSizeBox.IsChecked == true ? $"{PictureSize().W} × {PictureSize().H}"       // the size that will be made (snapped)
             : On(SizeGroup) is { } s ? AutomationProperties.GetName(s).Split(' ').Last() : "Size";       // "Portrait 2:3" → 2:3
         int n = PickedInt(CountGroup, 1);
         CountChipText.Text = n == 1 ? "1 picture" : $"{n} pictures";
         QualityChipText.Text = On(QualityGroup) is { } q ? AutomationProperties.GetName(q) : "Custom steps";
+        // screen readers hear the value too, not just "Size"
+        AutomationProperties.SetItemStatus(SizeChip, SizeChipText.Text);
+        AutomationProperties.SetItemStatus(CountChip, CountChipText.Text);
+        AutomationProperties.SetItemStatus(QualityChip, QualityChipText.Text);
     }
 }
