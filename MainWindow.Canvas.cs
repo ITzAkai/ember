@@ -35,9 +35,10 @@ public partial class MainWindow
         if (CanvasImage == null) return;
         bool live = canvasLive != null, start = StartOnCanvas;
         CanvasImage.Source = start ? startImage : canvasBitmap;
-        CanvasImage.Visibility = CanvasImage.Source != null ? Visibility.Visible : Visibility.Collapsed;
+        // a picture being made shows alone: the one before it, often another shape, would show around its preview
+        CanvasImage.Visibility = !live && CanvasImage.Source != null ? Visibility.Visible : Visibility.Collapsed;
         CanvasLive.DataContext = canvasLive;
-        CanvasLive.Visibility = live ? Visibility.Visible : Visibility.Collapsed;          // over the picture: its preview covers it once it arrives
+        CanvasLive.Visibility = live ? Visibility.Visible : Visibility.Collapsed;
         CanvasLabel.Visibility = start && !live ? Visibility.Visible : Visibility.Collapsed;
         CanvasActions.Visibility = CanvasFullBtn.Visibility = !live && !start && canvasBitmap != null ? Visibility.Visible : Visibility.Collapsed;
         CanvasEmpty.Visibility = !live && CanvasImage.Source == null ? Visibility.Visible : Visibility.Collapsed;
