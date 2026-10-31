@@ -149,7 +149,7 @@ public partial class MainWindow
     }
 
     void BundlesHeading(string text) =>
-        BundlesList.Children.Add(new TextBlock { Text = text, Style = (Style)FindResource("Heading"), Foreground = Brush("Accent"), Margin = new Thickness(0, 14, 0, 8) });
+        BundlesList.Children.Add(new TextBlock { Text = text, Style = (Style)FindResource("Heading"), Margin = new Thickness(0, 14, 0, 8) });
 
     UIElement Badge(string text, string brush) => new Border
     {
@@ -218,7 +218,7 @@ public partial class MainWindow
         var status = new TextBlock { Style = (Style)FindResource("Note"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
         bool busy = settingUp.Contains(b.Id);
-        var get = new Button { Content = busy ? "Setting up…" : missing.Count == 0 ? "Use" : "Get & set up", Style = (Style)FindResource("Primary"), Height = 34, Padding = new Thickness(16, 0, 16, 0),
+        var get = new Button { Content = busy ? "Setting up…" : missing.Count == 0 ? "Use" : "Get & set up", Style = (Style)FindResource("Ghost"), Height = 34, Padding = new Thickness(16, 0, 16, 0),
             IsEnabled = !busy, ToolTip = missing.Count == 0 ? "Open it as a tab" : $"Download {missing.Count} file{(missing.Count == 1 ? "" : "s")} ({Size(missing.Sum(f => f.Size))}), then open it as a tab" };
         get.Click += async (_, _) => await SetUpBundle(b, status);
         buttons.Children.Add(get);
@@ -238,7 +238,7 @@ public partial class MainWindow
 
         return new Border
         {
-            Background = Brush("Raised"), BorderBrush = b.Recommended ? Brush("Accent") : Brush("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10),
+            Background = Brush("Raised"), BorderBrush = b.Recommended ? Brush("LineStrong") : Brush("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10),
             Padding = new Thickness(16, 12, 14, 12), Margin = new Thickness(0, 0, 0, 10), Child = stack,
         };
     }

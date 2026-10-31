@@ -281,7 +281,7 @@ public partial class MainWindow
 
     void Section(string title, string note = null)
     {
-        ModelsList.Children.Add(new TextBlock { Text = title, Style = (Style)FindResource("Heading"), Foreground = Brush("Accent"), Margin = new Thickness(0, 16, 0, note == null ? 8 : 2) });
+        ModelsList.Children.Add(new TextBlock { Text = title, Style = (Style)FindResource("Heading"), Margin = new Thickness(0, 16, 0, note == null ? 8 : 2) });
         if (note != null) ModelsList.Children.Add(new TextBlock { Text = note, Style = (Style)FindResource("Note"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
     }
 
@@ -337,7 +337,7 @@ public partial class MainWindow
             right.Children.Add(Btn("Cancel", "Ghost", (_, _) => downloads[toGet].Cancel()));
             downloadUi[toGet] = (bar, text);
         }
-        else right.Children.Add(Btn("Download", "Primary", (_, _) => _ = Download(toGet)));
+        else right.Children.Add(Btn("Download", "Ghost", (_, _) => _ = Download(toGet)));       // one per row: quiet, like Use and Show
 
         return new Border
         {
