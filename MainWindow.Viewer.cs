@@ -127,6 +127,7 @@ public partial class MainWindow
     {
         UsePromptOf(viewing?.Meta);
         CloseViewer();
+        PromptTab.IsChecked = true;
         PromptBox.Focus();
         PromptBox.CaretIndex = PromptBox.Text.Length;
     }

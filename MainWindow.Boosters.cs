@@ -253,7 +253,9 @@ public partial class MainWindow
         if (ActiveBoostersText == null) return;
         var on = new (Func<(bool Can, bool On, string Why)> State, string Name)[]
             { (PagState, "PAG"), (RescaleState, "RescaleCFG"), (NagState, "NAG"), (RefineState, "Refine"), (HiResState, "Hi-res fix"), (FacesState, "Fix faces"), (FinishState, "Colour finish") }
-            .Where(x => { var s = x.State(); return s.Can && s.On; }).Select(x => x.Name).ToList();
+            .Where(x => { var s = x.State(); return s.Can && s.On; }).Select(x => x.Name)
+            .Where(n => EditMode.IsChecked != true || n is not ("Refine" or "Hi-res fix" or "Fix faces" or "Colour finish"))   // whole-picture boosters skip edits
+            .ToList();
         ActiveBoostersText.Text = on.Count == 0 ? "" : string.Join(" · ", on) + " on";
         ActiveBoostersText.Visibility = on.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }

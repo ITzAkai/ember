@@ -54,7 +54,7 @@ public partial class MainWindow
             = h3 ? Visibility.Visible : Visibility.Collapsed;
         LengthGroup.Columns = h3 ? 4 : 3;
         BoostersArea.Visibility = VideoOn ? Visibility.Collapsed : Visibility.Visible;            // the boosters are for pictures only
-        AdvancedToggle.Content = VideoOn ? "Advanced video settings" : "Advanced settings";
+        AdvancedToggle.Content = VideoOn ? "More video settings" : "More settings";
         // only once a Wan model is actually picked: H3's 8 / 10 s survive restarts and mode switches (Wan jobs are capped at 81 frames anyway)
         if (VideoOn && Wan && new[] { Length8, Length10, Length15, Length30, Length60 }.Any(l => l.IsChecked == true)) Pick(LengthGroup, "81", "81");
         MotionValue.Text = MotionText;

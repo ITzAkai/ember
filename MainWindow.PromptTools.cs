@@ -46,7 +46,10 @@ public partial class MainWindow
     readonly Dictionary<TextBox, MatchAdorner> findAdorners = new();
 
     // ---------------- Find / Replace ----------------
-    void FindPrompt_Click(object sender, RoutedEventArgs e) => OpenFind(PromptBox);
+    void FindPrompt_Click(object sender, RoutedEventArgs e) => OpenFind(NegativeTab.IsChecked == true ? NegativeBox : PromptBox);
+
+    // Prompt / Negative: a find opened on one box closes when the other shows
+    void PromptTabs_Changed(object sender, RoutedEventArgs e) { if (FindPopup?.IsOpen == true) CloseFind(); }
 
     void OpenFind(TextBox target)
     {
@@ -178,7 +181,7 @@ public partial class MainWindow
         double size = settings.PromptTextSize;
         PromptBox.FontSize = NegativeBox.FontSize = size;
         PromptBox.Height = Math.Round(140 * size / 14.5);      // more lines show as the text grows
-        NegativeBox.Height = Math.Round(66 * size / 14.5);
+        NegativeBox.Height = PromptBox.Height;      // the tabs share one place: same height, no jump
         foreach (var m in findAdorners.Values) m.InvalidateVisual();
     }
 

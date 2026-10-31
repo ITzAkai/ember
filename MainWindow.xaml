@@ -178,7 +178,7 @@
       <Grid.ColumnDefinitions>
         <ColumnDefinition x:Name="RailColumn" Width="52"/>
         <ColumnDefinition/>
-        <ColumnDefinition x:Name="PanelColumn" Width="340"/>
+        <ColumnDefinition x:Name="PanelColumn" Width="360"/>
       </Grid.ColumnDefinitions>
 
       <!-- the rail: what you're doing (create, edit, video), the gallery, and the app's other places -->
@@ -283,9 +283,9 @@
                 <TextBlock x:Name="PromptHeading" Text="Prompt" Visibility="Collapsed"/>
                 <ToggleButton x:Name="NegativeToggle" Visibility="Collapsed" Style="{StaticResource Fold}" Content="Negative prompt" ToolTip="What to keep out of the image. Ctrl+F in the box finds and replaces."/>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                  <RadioButton x:Name="PromptTab" Style="{StaticResource Tab}" GroupName="promptTab" IsChecked="True"
-                               Content="{Binding Text, ElementName=PromptHeading}" AutomationProperties.Name="Prompt"/>
-                  <RadioButton x:Name="NegativeTab" Style="{StaticResource Tab}" GroupName="promptTab" Margin="16,0,0,0" Content="Negative"
+                  <RadioButton x:Name="PromptTab" Style="{StaticResource Tab}" GroupName="promptTab" IsChecked="True" Content="Prompt" Checked="PromptTabs_Changed"
+                               ToolTip="{Binding Text, ElementName=PromptHeading}" AutomationProperties.Name="Prompt"/>
+                  <RadioButton x:Name="NegativeTab" Style="{StaticResource Tab}" GroupName="promptTab" Margin="16,0,0,0" Content="Negative" Checked="PromptTabs_Changed"
                                IsChecked="{Binding IsChecked, ElementName=NegativeToggle, Mode=TwoWay}" AutomationProperties.Name="Negative prompt"
                                ToolTip="What to keep out of the image. Ctrl+F in the box finds and replaces."/>
                 </StackPanel>
@@ -338,7 +338,7 @@
               <!-- the pose picture: on the panel, as it's used on nearly every picture -->
               <Border Style="{StaticResource PanelCard}" Visibility="{Binding Visibility, ElementName=PosePicSection}">
               <StackPanel x:Name="PosePicSection" Visibility="Collapsed" AllowDrop="True" DragOver="Reference_DragOver" Drop="PosePic_Drop" Background="Transparent">
-                <TextBlock Text="Pose picture" Style="{StaticResource Heading}" Margin="0,22,0,8"/>
+                <TextBlock Text="Pose picture" Style="{StaticResource Heading}" Margin="0,0,0,8"/>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                   <Grid x:Name="PosePicThumb" Width="72" Height="72" HorizontalAlignment="Left" Visibility="Collapsed">
                     <Border x:Name="PosePicImage" CornerRadius="8"/>
@@ -372,7 +372,7 @@
 
               <Border Style="{StaticResource PanelCard}" x:Name="ExtrasCard">
                 <StackPanel>
-                  <ToggleButton x:Name="ExtrasToggle" Style="{StaticResource Fold}" Content="Extras" AllowDrop="True" DragOver="Reference_DragOver" Drop="ExtrasDrop" ToolTip="Reference, style and pose pictures, two people described apart, and ComfyUI workflows. Opens by itself when one is in use."/>
+                  <ToggleButton x:Name="ExtrasToggle" Style="{StaticResource Fold}" Content="Extras" AllowDrop="True" DragOver="Reference_DragOver" Drop="ExtrasDrop" ToolTip="Reference and style pictures, two people described apart, and workflows"/>
                   <StackPanel Visibility="{Binding IsChecked, ElementName=ExtrasToggle, Converter={StaticResource BoolVis}}">
               <!-- create mode: a character or a place that new pictures keep exactly as it is -->
               <StackPanel x:Name="ReferenceSection" AllowDrop="True" DragOver="Reference_DragOver" Drop="Reference_Drop" Background="Transparent">
@@ -826,7 +826,7 @@
                   <DockPanel Margin="0,18,0,4">
                     <Ellipse x:Name="CfgDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
                     <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=CfgSlider, StringFormat={}{0:0.0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
-                    <TextBlock Text="Prompt guidance (CFG)" Style="{StaticResource Heading}" Margin="0"/>
+                    <TextBlock Text="CFG" Style="{StaticResource Heading}" Margin="0"/>
                   </DockPanel>
                   <Slider x:Name="CfgSlider" Minimum="1" Maximum="15" TickFrequency="0.5" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"/>
                 </StackPanel>
@@ -834,7 +834,7 @@
                 </StackPanel>
               </Border>
 
-              <!-- the model, the LoRAs and the way into everything else: the rest of the model and LoRA controls are in Advanced -->
+              <!-- the model, its LoRAs, and More settings (sampler, seed, boosters, the model's parts) -->
               <Border Style="{StaticResource PanelCard}">
                 <StackPanel>
                   <DockPanel>
@@ -849,6 +849,8 @@
                   </DockPanel>
                 <StackPanel x:Name="LoraSection">
                   <DockPanel Margin="0,12,0,8" LastChildFill="False">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="26" Margin="6,0,0,0" FontSize="12" Content="&#xE72C;" Tag="loras"
+                            Click="ResetSection_Click" ToolTip="Turn every LoRA off" AutomationProperties.Name="Reset LoRAs"/>
                     <Button DockPanel.Dock="Right" Content="+ Add LoRA" Style="{StaticResource Ghost}" Padding="8,3" FontSize="11" Click="AddLoraRow_Click" ToolTip="Add another LoRA to use multiple LoRAs together" AutomationProperties.Name="Add LoRA"/>
                     <Ellipse x:Name="LoraDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
                     <TextBlock Text="Used together, each at its own strength" Style="{StaticResource Note}" VerticalAlignment="Center"/>
@@ -859,6 +861,7 @@
                   <StackPanel x:Name="LoraRowsPanel"/>
                 </StackPanel>
                   <ToggleButton x:Name="AdvancedToggle" Style="{StaticResource Fold}" Margin="0,14,0,0" Content="More settings" AutomationProperties.Name="More settings"
+                                Checked="MoreToggle_Changed" Unchecked="MoreToggle_Changed"
                                 ToolTip="Sampler, scheduler, seed, quality boosters, the model's parts and the rest"/>
                 </StackPanel>
               </Border>
@@ -866,6 +869,154 @@
           </ScrollViewer>
 
           <!-- action area -->
+          <Border x:Name="MoreDrawer" Grid.Row="1" Panel.ZIndex="1" Background="{DynamicResource Bg}"
+                  Visibility="{Binding IsChecked, ElementName=AdvancedToggle, Converter={StaticResource BoolVis}}">
+            <DockPanel>
+              <DockPanel DockPanel.Dock="Top" Margin="22,12,16,8">
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="12" Width="32" Height="32" Click="CloseMore_Click"
+                        ToolTip="Back to the panel" AutomationProperties.Name="Close more settings"/>
+                <TextBlock Text="More settings" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              </DockPanel>
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <StackPanel Margin="22,0,22,18">
+                    <TextBox x:Name="AdvancedSearch" Style="{StaticResource Input}" Margin="0,0,0,12" Tag="Search settings: sampler, VAE, faces, seed…"
+                             TextChanged="AdvancedSearch_TextChanged" AutomationProperties.Name="Search settings"/>
+                    <Border x:Name="ModelSectionHeader" Style="{StaticResource PanelCard}">
+                    <StackPanel>
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="26" Margin="8,0,-4,0" FontSize="12" Content="&#xE72C;" ToolTip="Reset this section" Tag="model"
+                              Click="ResetSection_Click" AutomationProperties.Name="Reset Model &amp; parts"/>
+                      <ToggleButton x:Name="ModelSectionToggle" Style="{StaticResource Fold}" Content="Model &amp; parts" IsChecked="True" Margin="0" ToolTip="The model, the text encoder and VAE it uses, and how its settings compare with the recommendation"/>
+                    </DockPanel>
+                    <StackPanel x:Name="ModelSectionBody" Visibility="{Binding IsChecked, ElementName=ModelSectionToggle, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,10,0,8"/>
+                    <TextBox x:Name="ModelSearch" Style="{StaticResource Input}" Height="30" Padding="8,0" VerticalContentAlignment="Center" Margin="0,0,0,6"
+                             Tag="Search models by name or what they do…" TextChanged="ModelSearch_TextChanged" AutomationProperties.Name="Search models"/>
+                    <ComboBox x:Name="ModelBox" SelectionChanged="Model_SelectionChanged"/>
+                    <Button x:Name="CompareModelsBtn" Style="{StaticResource Ghost}" Height="26" Padding="10,0" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Left"
+                            Content="Compare with other models…" Click="CompareModels_Click" ToolTip="The same prompt and seed on a few models, one picture each"/>
+                    <TextBlock x:Name="ModelNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+                    <Grid x:Name="PartsSection" Margin="0,10,0,0" Visibility="Collapsed">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition/>
+                      </Grid.ColumnDefinitions>
+                      <StackPanel ToolTip="The part that reads your prompt. Only files that fit this model are listed; the first is picked for you.">
+                        <TextBlock Text="Text encoder" Style="{StaticResource Heading}"/>
+                        <ComboBox x:Name="TeBox" SelectionChanged="Parts_SelectionChanged" AutomationProperties.Name="Text encoder"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" ToolTip="The part that turns the result into pixels. Krea 2, Anima and Wan can use any Wan 2.1-type VAE; some model authors prefer the Wan 2.1 VAE.">
+                        <TextBlock Text="VAE" Style="{StaticResource Heading}"/>
+                        <ComboBox x:Name="VaeBox" SelectionChanged="Parts_SelectionChanged" AutomationProperties.Name="VAE"/>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock x:Name="GuardSummary" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                      <Button Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Content="Reset to recommended"
+                              Click="ResetRecommended_Click" ToolTip="Steps, CFG, sampler and scheduler back to this model's recommendation"/>
+                      <Button Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="6,0,0,0" Content="Check my settings"
+                              Click="CheckSettings_Click" ToolTip="List every setting outside this model's recommended range, with Fix all"/>
+                    </StackPanel>
+                    <StackPanel x:Name="GuardList" Visibility="Collapsed" Margin="0,8,0,0"/>
+
+                    </StackPanel>
+                    </StackPanel>
+                    </Border>
+                    <!-- Video mode, MiniMax H3: settings only videos have -->
+                    <StackPanel x:Name="VideoAdvArea" Visibility="Collapsed">
+                    <Border x:Name="VideoSectionHeader" Style="{StaticResource PanelCard}">
+                    <StackPanel>
+                    <DockPanel>
+                      <ToggleButton x:Name="VideoSectionToggle" Style="{StaticResource Fold}" Content="Video" IsChecked="True" Margin="0" ToolTip="Settings only videos have"/>
+                    </DockPanel>
+                    <StackPanel x:Name="VideoSectionBody" Visibility="{Binding IsChecked, ElementName=VideoSectionToggle, Converter={StaticResource BoolVis}}">
+                        <!-- MiniMax H3: how much changes over the clip (its sampling shift) -->
+                        <StackPanel x:Name="MotionSection">
+                          <DockPanel Margin="0,10,0,8">
+                            <TextBlock x:Name="MotionValue" DockPanel.Dock="Right" Style="{StaticResource Note}" VerticalAlignment="Center"/>
+                            <TextBlock Text="Motion" Style="{StaticResource Heading}" Margin="0"/>
+                          </DockPanel>
+                          <Slider x:Name="MotionSlider" Minimum="6" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" Value="12"
+                                  ValueChanged="Motion_Changed" AutomationProperties.Name="Motion strength"/>
+                          <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="Lively" Style="{StaticResource Note}"/>
+                            <TextBlock Text="Calm" Style="{StaticResource Note}"/>
+                          </DockPanel>
+                        </StackPanel>
+                    </StackPanel>
+                    </StackPanel>
+                    </Border>
+                    </StackPanel>
+                    <Border x:Name="SamplingSectionHeader" Style="{StaticResource PanelCard}">
+                    <StackPanel>
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="26" Margin="8,0,-4,0" FontSize="12" Content="&#xE72C;" ToolTip="Reset this section" Tag="sampling"
+                              Click="ResetSection_Click" AutomationProperties.Name="Reset Sampling"/>
+                      <ToggleButton x:Name="SamplingSectionToggle" Style="{StaticResource Fold}" IsChecked="True" Margin="0" ToolTip="Prompt guidance (CFG), steps, sampler, scheduler and seed">
+                        <DockPanel>
+                          <TextBlock Text="Sampling" Margin="0,0,8,0"/>
+                          <TextBlock FontWeight="Normal" Foreground="{DynamicResource Muted}" TextTrimming="CharacterEllipsis">
+                            <TextBlock.Text><MultiBinding StringFormat="{}CFG {0:0.0} · {1:0} steps · {2}"><Binding Path="Value" ElementName="CfgSlider"/><Binding Path="Value" ElementName="StepsSlider"/><Binding Path="SelectedItem" ElementName="SamplerBox"/></MultiBinding></TextBlock.Text>
+                          </TextBlock>
+                        </DockPanel>
+                      </ToggleButton>
+                    </DockPanel>
+                    <StackPanel x:Name="SamplingSectionBody" Visibility="{Binding IsChecked, ElementName=SamplingSectionToggle, Converter={StaticResource BoolVis}}">
+
+
+
+
+                    <Grid Margin="0,16,0,0">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition/>
+                      </Grid.ColumnDefinitions>
+                      <StackPanel ToolTip="The method that turns noise into a picture, step by step. Each model picks a good one; others change the look slightly.">
+                        <DockPanel>
+                          <Ellipse x:Name="SamplerDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
+                          <TextBlock Text="Sampler" Style="{StaticResource Heading}"/>
+                        </DockPanel>
+                        <ComboBox x:Name="SamplerBox"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" ToolTip="How the steps are spread from rough shapes to fine detail. Leave the model's choice unless you're experimenting.">
+                        <TextBlock Text="Scheduler" Style="{StaticResource Heading}"/>
+                        <ComboBox x:Name="SchedulerBox"/>
+                      </StackPanel>
+                    </Grid>
+
+                    <DockPanel Margin="0,18,0,8">
+                      <CheckBox x:Name="RandomSeed" DockPanel.Dock="Right" Style="{StaticResource Switch}" Content="New seed each time"
+                                ToolTip="Off: the same seed again, so you can change one word or setting and compare"/>
+                      <TextBlock Text="Seed" Style="{StaticResource Heading}" Margin="0"
+                                 ToolTip="The random starting point. The same seed, prompt and settings make the same picture again."/>
+                    </DockPanel>
+                    <TextBox x:Name="SeedBox" Style="{StaticResource Input}" Height="36" Padding="10,0" VerticalContentAlignment="Center"
+                             PreviewTextInput="Seed_PreviewTextInput" Tag="Seed number"/>
+
+                    </StackPanel>
+                    </StackPanel>
+                    </Border>
+                    <!-- pictures only: hidden in Video mode -->
+                    <StackPanel x:Name="BoostersArea">
+                    <Border x:Name="BoostersSectionHeader" Style="{StaticResource PanelCard}">
+                    <StackPanel>
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="26" Margin="8,0,-4,0" FontSize="12" Content="&#xE72C;" ToolTip="Reset this section" Tag="boosters"
+                              Click="ResetSection_Click" AutomationProperties.Name="Reset Quality boosters"/>
+                      <ToggleButton x:Name="BoostersSectionToggle" Style="{StaticResource Fold}" Content="Quality boosters" IsChecked="True" Margin="0" ToolTip="Extra steps that sharpen structure, fix faces or finish colours, each only offered for models where it helps"/>
+                    </DockPanel>
+                    <StackPanel x:Name="BoostersSectionBody" Visibility="{Binding IsChecked, ElementName=BoostersSectionToggle, Converter={StaticResource BoolVis}}">
+                    <StackPanel x:Name="BoostersPanel"/>
+                    </StackPanel>
+                    </StackPanel>
+                    </Border>
+                    </StackPanel>
+                  </StackPanel>
+              </ScrollViewer>
+            </DockPanel>
+          </Border>
           <Border Grid.Row="2" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="22,16,22,18">
             <StackPanel>
               <StackPanel x:Name="ProgressArea" Visibility="Collapsed" Margin="0,0,0,14">
@@ -938,155 +1089,6 @@
         </Grid>
       </Border>
 
-      <!-- More settings: a drawer over the panel (everything not on the panel itself) -->
-      <Border x:Name="MoreDrawer" Grid.Column="2" Panel.ZIndex="1" Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0"
-              Visibility="{Binding IsChecked, ElementName=AdvancedToggle, Converter={StaticResource BoolVis}}">
-        <DockPanel>
-          <DockPanel DockPanel.Dock="Top" Margin="22,16,16,12">
-            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Content="&#xE711;" FontSize="12" Width="32" Height="32" Click="CloseMore_Click"
-                    ToolTip="Back to the panel" AutomationProperties.Name="Close more settings"/>
-            <TextBlock Text="More settings" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
-          </DockPanel>
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
-              <StackPanel Margin="22,0,22,18">
-                <TextBox x:Name="AdvancedSearch" Style="{StaticResource Input}" Margin="0,0,0,12" Tag="Search settings: CFG, VAE, faces, seed…"
-                         TextChanged="AdvancedSearch_TextChanged" AutomationProperties.Name="Search settings"/>
-                <Border x:Name="ModelSectionHeader" Style="{StaticResource PanelCard}">
-                <StackPanel>
-                <DockPanel>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="26" Margin="8,0,-4,0" FontSize="12" Content="&#xE72C;" ToolTip="Reset this section" Tag="model"
-                          Click="ResetSection_Click" AutomationProperties.Name="Reset Model &amp; parts"/>
-                  <ToggleButton x:Name="ModelSectionToggle" Style="{StaticResource Fold}" Content="Model &amp; parts" IsChecked="True" Margin="0" ToolTip="The model, the text encoder and VAE it uses, and how its settings compare with the recommendation"/>
-                </DockPanel>
-                <StackPanel x:Name="ModelSectionBody" Visibility="{Binding IsChecked, ElementName=ModelSectionToggle, Converter={StaticResource BoolVis}}">
-                <TextBlock Text="Model" Style="{StaticResource Heading}" Margin="0,10,0,8"/>
-                <TextBox x:Name="ModelSearch" Style="{StaticResource Input}" Height="30" Padding="8,0" VerticalContentAlignment="Center" Margin="0,0,0,6"
-                         Tag="Search models by name or what they do…" TextChanged="ModelSearch_TextChanged" AutomationProperties.Name="Search models"/>
-                <ComboBox x:Name="ModelBox" SelectionChanged="Model_SelectionChanged"/>
-                <Button x:Name="CompareModelsBtn" Style="{StaticResource Ghost}" Height="26" Padding="10,0" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Left"
-                        Content="Compare with other models…" Click="CompareModels_Click" ToolTip="The same prompt and seed on a few models, one picture each"/>
-                <TextBlock x:Name="ModelNote" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
-                <Grid x:Name="PartsSection" Margin="0,10,0,0" Visibility="Collapsed">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition/>
-                  </Grid.ColumnDefinitions>
-                  <StackPanel ToolTip="The part that reads your prompt. Only files that fit this model are listed; the first is picked for you.">
-                    <TextBlock Text="Text encoder" Style="{StaticResource Heading}"/>
-                    <ComboBox x:Name="TeBox" SelectionChanged="Parts_SelectionChanged" AutomationProperties.Name="Text encoder"/>
-                  </StackPanel>
-                  <StackPanel Grid.Column="2" ToolTip="The part that turns the result into pixels. Krea 2, Anima and Wan can use any Wan 2.1-type VAE; some model authors prefer the Wan 2.1 VAE.">
-                    <TextBlock Text="VAE" Style="{StaticResource Heading}"/>
-                    <ComboBox x:Name="VaeBox" SelectionChanged="Parts_SelectionChanged" AutomationProperties.Name="VAE"/>
-                  </StackPanel>
-                </Grid>
-                <TextBlock x:Name="GuardSummary" Style="{StaticResource Note}" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                  <Button Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Content="Reset to recommended"
-                          Click="ResetRecommended_Click" ToolTip="Steps, CFG, sampler and scheduler back to this model's recommendation"/>
-                  <Button Style="{StaticResource Ghost}" Height="26" Padding="8,0" FontSize="11" Margin="6,0,0,0" Content="Check my settings"
-                          Click="CheckSettings_Click" ToolTip="List every setting outside this model's recommended range, with Fix all"/>
-                </StackPanel>
-                <StackPanel x:Name="GuardList" Visibility="Collapsed" Margin="0,8,0,0"/>
-
-                </StackPanel>
-                </StackPanel>
-                </Border>
-                <!-- Video mode, MiniMax H3: settings only videos have -->
-                <StackPanel x:Name="VideoAdvArea" Visibility="Collapsed">
-                <Border x:Name="VideoSectionHeader" Style="{StaticResource PanelCard}">
-                <StackPanel>
-                <DockPanel>
-                  <ToggleButton x:Name="VideoSectionToggle" Style="{StaticResource Fold}" Content="Video" IsChecked="True" Margin="0" ToolTip="Settings only videos have"/>
-                </DockPanel>
-                <StackPanel x:Name="VideoSectionBody" Visibility="{Binding IsChecked, ElementName=VideoSectionToggle, Converter={StaticResource BoolVis}}">
-                    <!-- MiniMax H3: how much changes over the clip (its sampling shift) -->
-                    <StackPanel x:Name="MotionSection">
-                      <DockPanel Margin="0,10,0,8">
-                        <TextBlock x:Name="MotionValue" DockPanel.Dock="Right" Style="{StaticResource Note}" VerticalAlignment="Center"/>
-                        <TextBlock Text="Motion" Style="{StaticResource Heading}" Margin="0"/>
-                      </DockPanel>
-                      <Slider x:Name="MotionSlider" Minimum="6" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" Value="12"
-                              ValueChanged="Motion_Changed" AutomationProperties.Name="Motion strength"/>
-                      <DockPanel>
-                        <TextBlock DockPanel.Dock="Right" Text="Lively" Style="{StaticResource Note}"/>
-                        <TextBlock Text="Calm" Style="{StaticResource Note}"/>
-                      </DockPanel>
-                    </StackPanel>
-                </StackPanel>
-                </StackPanel>
-                </Border>
-                </StackPanel>
-                <Border x:Name="SamplingSectionHeader" Style="{StaticResource PanelCard}">
-                <StackPanel>
-                <DockPanel>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="26" Margin="8,0,-4,0" FontSize="12" Content="&#xE72C;" ToolTip="Reset this section" Tag="sampling"
-                          Click="ResetSection_Click" AutomationProperties.Name="Reset Sampling"/>
-                  <ToggleButton x:Name="SamplingSectionToggle" Style="{StaticResource Fold}" IsChecked="True" Margin="0" ToolTip="Prompt guidance (CFG), steps, sampler, scheduler and seed">
-                    <DockPanel>
-                      <TextBlock Text="Sampling" Margin="0,0,8,0"/>
-                      <TextBlock FontWeight="Normal" Foreground="{DynamicResource Muted}" TextTrimming="CharacterEllipsis">
-                        <TextBlock.Text><MultiBinding StringFormat="{}CFG {0:0.0} · {1:0} steps · {2}"><Binding Path="Value" ElementName="CfgSlider"/><Binding Path="Value" ElementName="StepsSlider"/><Binding Path="SelectedItem" ElementName="SamplerBox"/></MultiBinding></TextBlock.Text>
-                      </TextBlock>
-                    </DockPanel>
-                  </ToggleButton>
-                </DockPanel>
-                <StackPanel x:Name="SamplingSectionBody" Visibility="{Binding IsChecked, ElementName=SamplingSectionToggle, Converter={StaticResource BoolVis}}">
-
-
-
-
-                <Grid Margin="0,16,0,0">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition/>
-                  </Grid.ColumnDefinitions>
-                  <StackPanel ToolTip="The method that turns noise into a picture, step by step. Each model picks a good one; others change the look slightly.">
-                    <DockPanel>
-                      <Ellipse x:Name="SamplerDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
-                      <TextBlock Text="Sampler" Style="{StaticResource Heading}"/>
-                    </DockPanel>
-                    <ComboBox x:Name="SamplerBox"/>
-                  </StackPanel>
-                  <StackPanel Grid.Column="2" ToolTip="How the steps are spread from rough shapes to fine detail. Leave the model's choice unless you're experimenting.">
-                    <TextBlock Text="Scheduler" Style="{StaticResource Heading}"/>
-                    <ComboBox x:Name="SchedulerBox"/>
-                  </StackPanel>
-                </Grid>
-
-                <DockPanel Margin="0,18,0,8">
-                  <CheckBox x:Name="RandomSeed" DockPanel.Dock="Right" Style="{StaticResource Switch}" Content="New seed each time"
-                            ToolTip="Off: the same seed again, so you can change one word or setting and compare"/>
-                  <TextBlock Text="Seed" Style="{StaticResource Heading}" Margin="0"
-                             ToolTip="The random starting point. The same seed, prompt and settings make the same picture again."/>
-                </DockPanel>
-                <TextBox x:Name="SeedBox" Style="{StaticResource Input}" Height="36" Padding="10,0" VerticalContentAlignment="Center"
-                         PreviewTextInput="Seed_PreviewTextInput" Tag="Seed number"/>
-
-                </StackPanel>
-                </StackPanel>
-                </Border>
-                <!-- pictures only: hidden in Video mode -->
-                <StackPanel x:Name="BoostersArea">
-                <Border x:Name="BoostersSectionHeader" Style="{StaticResource PanelCard}">
-                <StackPanel>
-                <DockPanel>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="26" Margin="8,0,-4,0" FontSize="12" Content="&#xE72C;" ToolTip="Reset this section" Tag="boosters"
-                          Click="ResetSection_Click" AutomationProperties.Name="Reset Quality boosters"/>
-                  <ToggleButton x:Name="BoostersSectionToggle" Style="{StaticResource Fold}" Content="Quality boosters" IsChecked="True" Margin="0" ToolTip="Extra steps that sharpen structure, fix faces or finish colours, each only offered for models where it helps"/>
-                </DockPanel>
-                <StackPanel x:Name="BoostersSectionBody" Visibility="{Binding IsChecked, ElementName=BoostersSectionToggle, Converter={StaticResource BoolVis}}">
-                <StackPanel x:Name="BoostersPanel"/>
-                </StackPanel>
-                </StackPanel>
-                </Border>
-                </StackPanel>
-              </StackPanel>
-          </ScrollViewer>
-        </DockPanel>
-      </Border>
 
       <!-- the canvas: the picture you're on, as large as it fits, with its actions; under it the recent pictures -->
       <Grid x:Name="CanvasPanel" Grid.Column="1" Margin="16,16,16,12">

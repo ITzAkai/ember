@@ -599,7 +599,7 @@ public partial class MainWindow : Window
                 StyleRowPic.Background = new ImageBrush((ImageSource)tile.DataContext) { Stretch = Stretch.UniformToFill };
                 StylePopup.IsOpen = false;
                 if (st.Key == "logo" && ModelBox.SelectedItem != null && Sdxl)
-                    Note("Tip: for lettering in a logo, pick Qwen-Image 2.1 in Advanced settings; this model can't spell.");
+                    Note("Tip: for lettering in a logo, pick Qwen-Image 2.1 in the Model card; this model can't spell.");
             };
             tile.ToolTip = StyleTip(tile, st.Key == "none" ? "No style: only your prompt" : st.Apply("…"));
             if (st.Lora != null) tile.IsEnabled = false;          // until RefreshStyleTiles finds its LoRA
@@ -929,7 +929,7 @@ public partial class MainWindow : Window
         {
             // a TextBlock header, so underscores in a prompt aren't eaten as keyboard shortcuts
             var item = new MenuItem { Header = new TextBlock { Text = p.Length > 60 ? p[..57] + "…" : p }, ToolTip = p, Tag = "" };
-            item.Click += (_, _) => { PromptBox.Text = p; PromptBox.Focus(); PromptBox.CaretIndex = p.Length; };
+            item.Click += (_, _) => { PromptTab.IsChecked = true; PromptBox.Text = p; PromptBox.Focus(); PromptBox.CaretIndex = p.Length; };
             menu.Items.Add(item);
         }
         if (settings.History.Count > 0)

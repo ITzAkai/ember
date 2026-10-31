@@ -53,6 +53,7 @@ public partial class MainWindow
         {
             canvasRepick = false;
             if (canvasShot != null && shots.Contains(canvasShot) && !canvasShot.Secret) return;
+            canvasShot = null;
             ShowOnCanvas(shots.FirstOrDefault(x => !x.Pending && !x.Secret));
         }, DispatcherPriority.Background);
     }

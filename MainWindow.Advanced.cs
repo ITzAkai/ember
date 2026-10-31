@@ -50,6 +50,10 @@ public partial class MainWindow
 
     void CloseMore_Click(object sender, RoutedEventArgs e) => AdvancedToggle.IsChecked = false;
 
+    // the drawer replaces the panel's scroll area: hidden, its controls aren't reachable by Tab under the drawer
+    void MoreToggle_Changed(object sender, RoutedEventArgs e) =>
+        LeftScroll.Visibility = AdvancedToggle.IsChecked == true ? Visibility.Hidden : Visibility.Visible;
+
     void ResetSection_Click(object sender, RoutedEventArgs e)
     {
         var model = ModelBox.SelectedItem as string;

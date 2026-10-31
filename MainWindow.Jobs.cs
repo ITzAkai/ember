@@ -146,7 +146,7 @@ public partial class MainWindow
     async Task Generate(bool newSeed = false, double? expand = null, bool one = false)
     {
         if (!ready) return;
-        if (string.IsNullOrWhiteSpace(PromptBox.Text)) { Note("Write a prompt first.", true); PromptBox.Focus(); return; }
+        if (string.IsNullOrWhiteSpace(PromptBox.Text)) { Note("Write a prompt first.", true); PromptTab.IsChecked = true; PromptBox.Focus(); return; }
         var words = PromptBox.Text + "\n" + CoupleText;           // everything typed that goes into the picture, the two-people boxes too
         if (SexualWithMinor(words) || SexualMinorCharacter(words)) { Note(SexualWithMinor(words) ? MinorNote : CharacterNote, true); return; }       // the uncensored models won't stop it, so the app does (pictures and video)
         Remember(PromptBox.Text.Trim());

@@ -92,7 +92,7 @@ public partial class MainWindow
 
     static readonly (string Group, string Note)[] Groups =
     {
-        ("Picture models", "Press Use, or pick one under Advanced settings."),
+        ("Picture models", "Press Use, or pick one in the Model card."),
         ("Video models", "For the Video tab."),
         ("LoRA add-ons", "Small trained styles or subjects. Each fits one model family and only shows up with it."),
         ("Parts", "Text encoders read your prompt and VAEs turn the result into pixels: a model can't run without its two parts."),
@@ -243,7 +243,6 @@ public partial class MainWindow
         if (video) VideoMode.IsChecked = true;
         else if (VideoOn) CreateMode.IsChecked = true;
         PickModel(item);
-        AdvancedToggle.IsChecked = true;
         Note($"Now using {Path.GetFileNameWithoutExtension(item)}.");
     }
 
@@ -269,7 +268,8 @@ public partial class MainWindow
             else
                 CreateLoraRow(lora, 0.8);
         }
-        AdvancedToggle.IsChecked = true;
+        AdvancedToggle.IsChecked = false;
+        Dispatcher.BeginInvoke(() => LoraSection.BringIntoView(), System.Windows.Threading.DispatcherPriority.Loaded);
         Note($"LoRA add-on on: {Path.GetFileNameWithoutExtension(lora)}.");
     }
 
