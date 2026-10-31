@@ -500,13 +500,14 @@
               <Border Style="{StaticResource PanelCard}">
                 <StackPanel>
               <!-- the style as one row with its picture; the choices open as picture tiles -->
-              <Button x:Name="StyleRow" Style="{StaticResource Row}" Click="StyleRow_Click" AutomationProperties.Name="Style"
-                      ToolTip="Pick a style: each tile is the same picture in that style">
-                <DockPanel>
-                  <Border x:Name="StyleRowPic" Width="40" Height="40" CornerRadius="8" Margin="0,0,12,0" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"/>
-                  <TextBlock x:Name="StyleRowText" DockPanel.Dock="Right" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                  <TextBlock Text="Style" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                </DockPanel>
+              <!-- the choices made on most pictures, one small button each; their options open below them -->
+              <WrapPanel x:Name="ChoiceRow" Margin="0,0,-8,-8">
+              <Button x:Name="StyleRow" Style="{StaticResource ChoiceChip}" Click="StyleRow_Click" AutomationProperties.Name="Style"
+                      ToolTip="Style: each tile is the same picture in that style">
+                <StackPanel Orientation="Horizontal">
+                  <Border x:Name="StyleRowPic" Width="20" Height="20" CornerRadius="4" Margin="0,0,8,0" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1"/>
+                  <TextBlock x:Name="StyleRowText" Foreground="{DynamicResource Ink}" VerticalAlignment="Center" Margin="0"/>
+                </StackPanel>
               </Button>
               <Popup x:Name="StylePopup" PlacementTarget="{Binding ElementName=StyleRow}" Placement="Bottom" VerticalOffset="8" StaysOpen="False"
                      AllowsTransparency="True" PopupAnimation="Fade">
@@ -514,23 +515,24 @@
                   <WrapPanel x:Name="StyleGroup" Width="352"/>
                 </Border>
               </Popup>
-
-              <!-- edit mode: how far to move away from the photo -->
-              <StackPanel x:Name="StrengthSection" Visibility="Collapsed">
-                <DockPanel Margin="0,22,0,4">
-                  <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=StrengthSlider, StringFormat={}{0:P0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
-                  <TextBlock Text="Change strength" Style="{StaticResource Heading}" Margin="0"/>
-                </DockPanel>
-                <Slider x:Name="StrengthSlider" Minimum="0.1" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"/>
-                <DockPanel Margin="0,2,0,0">
-                  <TextBlock DockPanel.Dock="Right" Text="Follow the prompt" Style="{StaticResource Note}" FontSize="11" Foreground="{DynamicResource Faint}"/>
-                  <TextBlock Text="Keep the photo" Style="{StaticResource Note}" FontSize="11" Foreground="{DynamicResource Faint}"/>
-                </DockPanel>
-              </StackPanel>
-
-              <!-- create mode: output size -->
-              <StackPanel x:Name="SizeSection">
-                <DockPanel Margin="0,24,0,8">
+              <Button x:Name="SizeChip" Style="{StaticResource ChoiceChip}" Click="SizeChip_Click" AutomationProperties.Name="Size" ToolTip="Size and shape"
+                      Visibility="{Binding Visibility, ElementName=SizeSection}">
+                <TextBlock x:Name="SizeChipText" Text="1:1"/>
+              </Button>
+              <Button x:Name="CountChip" Style="{StaticResource ChoiceChip}" Click="CountChip_Click" AutomationProperties.Name="Number of pictures" ToolTip="How many pictures each Generate makes"
+                      Visibility="{Binding Visibility, ElementName=CountSection}">
+                <TextBlock x:Name="CountChipText" Text="1 picture"/>
+              </Button>
+              <Button x:Name="QualityChip" Style="{StaticResource ChoiceChip}" Click="QualityChip_Click" AutomationProperties.Name="Quality" ToolTip="Fast, Balanced or Best: how many steps"
+                      Visibility="{Binding Visibility, ElementName=QualitySection}">
+                <TextBlock x:Name="QualityChipText" Text="Balanced"/>
+              </Button>
+              </WrapPanel>
+              <Popup x:Name="SizePopup" PlacementTarget="{Binding ElementName=SizeChip}" Placement="Bottom" VerticalOffset="6" StaysOpen="False"
+                     AllowsTransparency="True" PopupAnimation="Fade">
+                <Border Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="12" Padding="14">
+              <StackPanel x:Name="SizeSection" Width="330">
+                <DockPanel Margin="0,0,0,8">
                   <Ellipse x:Name="SizeDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
                   <TextBlock x:Name="SizeText" DockPanel.Dock="Right" Style="{StaticResource Note}"/>
                   <TextBlock Text="Aspect ratio" Style="{StaticResource Heading}" Margin="0"/>
@@ -580,6 +582,73 @@
                   </StackPanel>
                 </DockPanel>
               </StackPanel>
+                </Border>
+              </Popup>
+              <Popup x:Name="CountPopup" PlacementTarget="{Binding ElementName=CountChip}" Placement="Bottom" VerticalOffset="6" StaysOpen="False"
+                     AllowsTransparency="True" PopupAnimation="Fade">
+                <Border Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="12" Padding="14">
+              <DockPanel x:Name="CountSection" Width="260">
+                <TextBlock Text="Images" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
+                <Border Style="{StaticResource PillHost}" HorizontalAlignment="Right" Width="180">
+                  <UniformGrid x:Name="CountGroup" Rows="1">
+                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="1" Content="1"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="2" Content="2"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="3" Content="3"/>
+                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="4" Content="4"/>
+                  </UniformGrid>
+                </Border>
+              </DockPanel>
+                </Border>
+              </Popup>
+              <Popup x:Name="QualityPopup" PlacementTarget="{Binding ElementName=QualityChip}" Placement="Bottom" VerticalOffset="6" StaysOpen="False"
+                     AllowsTransparency="True" PopupAnimation="Fade">
+                <Border Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="12" Padding="14">
+              <StackPanel x:Name="QualitySection" Width="320">
+              <DockPanel Margin="0,0,0,8">
+                <Ellipse x:Name="QualityDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
+                <TextBlock Text="Quality" Style="{StaticResource Heading}" Margin="0"
+                           ToolTip="How many steps the model takes to draw. More steps add detail but take longer. Each model has its own numbers."/>
+              </DockPanel>
+              <Border Style="{StaticResource PillHost}">
+                <UniformGrid x:Name="QualityGroup" Rows="1">
+                  <RadioButton Style="{StaticResource Pill}" GroupName="quality" Tag="20" AutomationProperties.Name="Fast" Height="42">
+                    <StackPanel>
+                      <TextBlock Text="Fast" HorizontalAlignment="Center"/>
+                      <TextBlock Text="20 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton Style="{StaticResource Pill}" GroupName="quality" Tag="30" AutomationProperties.Name="Balanced" Height="42">
+                    <StackPanel>
+                      <TextBlock Text="Balanced" HorizontalAlignment="Center"/>
+                      <TextBlock Text="30 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton Style="{StaticResource Pill}" GroupName="quality" Tag="45" AutomationProperties.Name="Best" Height="42">
+                    <StackPanel>
+                      <TextBlock Text="Best" HorizontalAlignment="Center"/>
+                      <TextBlock Text="45 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </RadioButton>
+                </UniformGrid>
+              </Border>
+              </StackPanel>
+                </Border>
+              </Popup>
+
+              <!-- edit mode: how far to move away from the photo -->
+              <StackPanel x:Name="StrengthSection" Visibility="Collapsed">
+                <DockPanel Margin="0,20,0,4">
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding Value, ElementName=StrengthSlider, StringFormat={}{0:P0}}" Style="{StaticResource Note}" Foreground="{DynamicResource Ink}"/>
+                  <TextBlock Text="Change strength" Style="{StaticResource Heading}" Margin="0"/>
+                </DockPanel>
+                <Slider x:Name="StrengthSlider" Minimum="0.1" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True"/>
+                <DockPanel Margin="0,2,0,0">
+                  <TextBlock DockPanel.Dock="Right" Text="Follow the prompt" Style="{StaticResource Note}" FontSize="11" Foreground="{DynamicResource Faint}"/>
+                  <TextBlock Text="Keep the photo" Style="{StaticResource Note}" FontSize="11" Foreground="{DynamicResource Faint}"/>
+                </DockPanel>
+              </StackPanel>
+
+              <!-- create mode: output size -->
 
               <!-- video mode: clip shape and length (Wan 2.1 makes 16 frames a second) -->
               <StackPanel x:Name="VideoSection" Visibility="Collapsed">
@@ -768,45 +837,7 @@
                            Text="Over 10 seconds, the video is made in 10-second parts, each going on from the end of the one before, and joined. A minute is 7 parts: expect hours on this PC."/>
               </StackPanel>
 
-              <DockPanel x:Name="CountSection" Margin="0,18,0,0">
-                <TextBlock Text="Images" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center"/>
-                <Border Style="{StaticResource PillHost}" HorizontalAlignment="Right" Width="180">
-                  <UniformGrid x:Name="CountGroup" Rows="1">
-                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="1" Content="1"/>
-                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="2" Content="2"/>
-                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="3" Content="3"/>
-                    <RadioButton Style="{StaticResource Pill}" GroupName="count" Tag="4" Content="4"/>
-                  </UniformGrid>
-                </Border>
-              </DockPanel>
 
-              <DockPanel Margin="0,22,0,8">
-                <Ellipse x:Name="QualityDot" DockPanel.Dock="Right" Width="9" Height="9" Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Ok}"/>
-                <TextBlock Text="Quality" Style="{StaticResource Heading}" Margin="0"
-                           ToolTip="How many steps the model takes to draw. More steps add detail but take longer. Each model has its own numbers."/>
-              </DockPanel>
-              <Border Style="{StaticResource PillHost}">
-                <UniformGrid x:Name="QualityGroup" Rows="1">
-                  <RadioButton Style="{StaticResource Pill}" GroupName="quality" Tag="20" AutomationProperties.Name="Fast" Height="42">
-                    <StackPanel>
-                      <TextBlock Text="Fast" HorizontalAlignment="Center"/>
-                      <TextBlock Text="20 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                  </RadioButton>
-                  <RadioButton Style="{StaticResource Pill}" GroupName="quality" Tag="30" AutomationProperties.Name="Balanced" Height="42">
-                    <StackPanel>
-                      <TextBlock Text="Balanced" HorizontalAlignment="Center"/>
-                      <TextBlock Text="30 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                  </RadioButton>
-                  <RadioButton Style="{StaticResource Pill}" GroupName="quality" Tag="45" AutomationProperties.Name="Best" Height="42">
-                    <StackPanel>
-                      <TextBlock Text="Best" HorizontalAlignment="Center"/>
-                      <TextBlock Text="45 steps" FontSize="11" Opacity="0.65" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                  </RadioButton>
-                </UniformGrid>
-              </Border>
                 <!-- steps and CFG: changed on nearly every picture, so they're here, not in More settings -->
                 <Grid>
                   <Grid.ColumnDefinitions>

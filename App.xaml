@@ -177,6 +177,31 @@
         </Setter.Value>
       </Setter>
     </Style>
+    <!-- a small choice button (Style, Size, number, Quality): its value and a chevron; the options open in a popup -->
+    <Style x:Key="ChoiceChip" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="Height" Value="32"/>
+      <Setter Property="Margin" Value="0,0,8,8"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="B" CornerRadius="8" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" Padding="10,0,8,0">
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <ContentPresenter VerticalAlignment="Center"/>
+                <TextBlock Text="&#xE70D;" FontFamily="{StaticResource Icons}" FontSize="9" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="8,1,0,0"/>
+              </StackPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Muted}"/></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Muted}"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
     <!-- a text tab (Prompt / Negative): the one you're on is brighter, with an ember underline -->
     <Style x:Key="Tab" TargetType="RadioButton">
       <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
