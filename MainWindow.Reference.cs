@@ -432,8 +432,61 @@ public partial class MainWindow
         PosePicValue.Text = settings.PoseStrength.ToString("0.00");
     }
 
+    // a pose picture copied or screenshotted from a web page often has flat white or black bars around the photo: the depth map keeps them
+    // and the picture is drawn with the same bars (measured on a landscape picture: the same photo with bars gave bands in 5 of 6 pictures,
+    // without them in 0 of 3; 28 of the user's 38 landscape pose pictures had them). Edge rows and columns all of one pure white or black are
+    // cut off. Not the built-in mannequins: their plain white background frames the figure on purpose.
+    static BitmapSource TrimBars(BitmapSource img)
+    {
+        var src = new FormatConvertedBitmap(img, PixelFormats.Bgra32, null, 0);
+        int w = src.PixelWidth, h = src.PixelHeight, stride = w * 4;
+        var px = new byte[stride * h];
+        src.CopyPixels(px, stride, 0);
+        int Gray(int x, int y) { int i = y * stride + x * 4; return (px[i] + px[i + 1] + px[i + 2]) / 3; }
+        // a bar line: pure white or black at its start, and every pixel within 6 of that (JPEG noise)
+        bool Flat(int fromX, int fromY, int dx, int dy, int n)
+        {
+            int v = Gray(fromX, fromY);
+            if (v is > 10 and < 245) return false;
+            for (int k = 1; k < n; k++) if (Math.Abs(Gray(fromX + dx * k, fromY + dy * k) - v) > 6) return false;
+            return true;
+        }
+        int top = 0, bottom = h, left = 0, right = w;
+        while (top < bottom && Flat(0, top, 1, 0, w)) top++;
+        while (bottom > top && Flat(0, bottom - 1, 1, 0, w)) bottom--;
+        if (bottom - top < h * 0.3) return img;          // all one colour, or nearly: nothing to keep
+        while (left < right && Flat(left, top, 0, 1, bottom - top)) left++;
+        while (right > left && Flat(right - 1, top, 0, 1, bottom - top)) right--;
+        // nothing worth cutting (under 1%), or nothing much left (all one colour): as it was
+        if (top + h - bottom < h / 100 && left + w - right < w / 100 || bottom - top < h * 0.3 || right - left < w * 0.3) return img;
+        var cut = new CroppedBitmap(src, new Int32Rect(left, top, right - left, bottom - top));
+        cut.Freeze();
+        return cut;
+    }
+
+    // --selftest part: bars around a photo are cut off; a picture without bars, or all one colour, stays as it is
+    static bool SelfTestPoseBars()
+    {
+        var rnd = new Random(1);
+        BitmapSource Make(int w, int h, Func<int, int, int> at)
+        {
+            var px = new byte[w * h * 4];
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++) { int i = (y * w + x) * 4; px[i] = px[i + 1] = px[i + 2] = (byte)at(x, y); px[i + 3] = 255; }
+            return BitmapSource.Create(w, h, 96, 96, PixelFormats.Bgra32, null, px, w * 4);
+        }
+        int Photo() => rnd.Next(40, 200);
+        var pillar = TrimBars(Make(300, 100, (x, y) => x < 100 || x >= 200 ? 255 : Photo()));
+        var letter = TrimBars(Make(100, 300, (x, y) => y < 100 || y >= 200 ? 0 : Photo()));
+        var plain = TrimBars(Make(120, 80, (x, y) => Photo()));
+        var blank = TrimBars(Make(100, 100, (x, y) => 255));
+        return pillar.PixelWidth == 100 && pillar.PixelHeight == 100 && letter.PixelWidth == 100 && letter.PixelHeight == 100
+            && plain.PixelWidth == 120 && plain.PixelHeight == 80 && blank.PixelWidth == 100;
+    }
+
     void SetPosePicture(BitmapSource img, string words = null)
     {
+        if (words == null) img = TrimBars(img);
         double scale = Math.Min(1, 1280.0 / Math.Max(img.PixelWidth, img.PixelHeight));
         if (scale < 1) img = new TransformedBitmap(img, new ScaleTransform(scale, scale));
         img.Freeze();
