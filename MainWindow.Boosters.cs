@@ -384,7 +384,7 @@ public partial class MainWindow
             g["hires"] = Node("KSampler", new()
             {
                 ["model"] = s["model"].DeepClone(), ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["latent_image"] = Link("hires_in", 0),
-                ["seed"] = s["seed"].DeepClone(), ["steps"] = TouchUpSteps(s), ["cfg"] = s["cfg"].DeepClone(),
+                ["seed"] = s["seed"].DeepClone(), ["steps"] = TouchUpSteps(s, b.HiResDenoise), ["cfg"] = s["cfg"].DeepClone(),
                 ["sampler_name"] = s["sampler_name"].DeepClone(), ["scheduler"] = s["scheduler"].DeepClone(), ["denoise"] = b.HiResDenoise,
             });
             g["hires_out"] = Node("VAEDecode", new() { ["samples"] = Link("hires", 0), ["vae"] = vae.DeepClone() });
@@ -399,7 +399,7 @@ public partial class MainWindow
             {
                 ["image"] = save["images"].DeepClone(), ["model"] = s["model"].DeepClone(), ["clip"] = clip.DeepClone(), ["vae"] = vae.DeepClone(),
                 ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["bbox_detector"] = Link("facefinder", 0),
-                ["seed"] = s["seed"].DeepClone(), ["steps"] = TouchUpSteps(s), ["cfg"] = s["cfg"].DeepClone(),
+                ["seed"] = s["seed"].DeepClone(), ["steps"] = TouchUpSteps(s, b.FaceDenoise), ["cfg"] = s["cfg"].DeepClone(),
                 ["sampler_name"] = s["sampler_name"].DeepClone(), ["scheduler"] = s["scheduler"].DeepClone(), ["denoise"] = b.FaceDenoise,
                 ["guide_size"] = 768, ["guide_size_for"] = true, ["max_size"] = 1024, ["feather"] = 5, ["noise_mask"] = true, ["force_inpaint"] = true,
                 ["bbox_threshold"] = 0.5, ["bbox_dilation"] = 10, ["bbox_crop_factor"] = 3.0, ["sam_detection_hint"] = "center-1", ["sam_dilation"] = 0,
@@ -420,12 +420,14 @@ public partial class MainWindow
     }
 
     // steps for a light redraw (Hi-res fix, Fix faces): turbo models (12 steps or fewer) need only 4, measured on Krea 2 at the same quality
-    // as the full count and 3–4× faster; slower models keep 60% of theirs
-    static int TouchUpSteps(JsonObject s)
-    {
-        int steps = s["steps"].GetValue<int>();
-        return steps <= 12 ? Math.Min(steps, 4) : Math.Max(4, (int)Math.Round(steps * 0.6));
-    }
+    // as the full count and 3–4× faster. Slower models: the main steps times the redraw's strength, what the main pass spends on that part
+    // of the schedule (ComfyUI runs the given count over the last part). Measured on PornMaster Moss, 30 steps: Hi-res 18 → 8-10 and faces
+    // 18 → 10-12 gave the same picture (2.7-3.3 of 255 apart, faces as sharp) and took about 55 s off 218 s; 60 % of the steps was twice that work.
+    static int TouchUpSteps(JsonObject s, double denoise) => TouchUpSteps(s["steps"].GetValue<int>(), denoise);
+    static int TouchUpSteps(int steps, double denoise) => steps <= 12 ? Math.Min(steps, 4) : Math.Max(6, (int)Math.Round(steps * denoise));
+
+    // --selftest part: a light redraw's steps (30 at 0.3: 9; 30 at 0.4: 12; turbo 8: 4; never below 6 on a slow model)
+    static bool SelfTestTouchUp() => TouchUpSteps(30, 0.3) == 9 && TouchUpSteps(30, 0.4) == 12 && TouchUpSteps(8, 0.3) == 4 && TouchUpSteps(20, 0.15) == 6;
 
     // Qwen-Image and Anima: the Impact Pack's FaceDetailer fails on their conditioning, so only its face finder is used; the faces are cut out
     // with their surroundings, redrawn at 1024 by the same model and stitched back. One picture at a time (the finder looks at one), and a
@@ -440,7 +442,7 @@ public partial class MainWindow
         g["face_redraw"] = Node("KSampler", new()
         {
             ["model"] = s["model"].DeepClone(), ["positive"] = s["positive"].DeepClone(), ["negative"] = s["negative"].DeepClone(), ["latent_image"] = Link("face_noise", 0),
-            ["seed"] = s["seed"].DeepClone(), ["steps"] = TouchUpSteps(s), ["cfg"] = s["cfg"].DeepClone(),
+            ["seed"] = s["seed"].DeepClone(), ["steps"] = TouchUpSteps(s, denoise), ["cfg"] = s["cfg"].DeepClone(),
             ["sampler_name"] = s["sampler_name"].DeepClone(), ["scheduler"] = s["scheduler"].DeepClone(), ["denoise"] = denoise,
         });
         g["face_out"] = Node("VAEDecode", new() { ["samples"] = Link("face_redraw", 0), ["vae"] = vae.DeepClone() });
