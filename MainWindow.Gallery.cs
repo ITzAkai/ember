@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace ImageForge;
 
@@ -79,6 +80,7 @@ public partial class MainWindow
         else if (secretKey == null && !await OpenSecret()) { AllView.IsChecked = true; return; }
         ExportBtn.Visibility = secret ? Visibility.Collapsed : Visibility.Visible;
         SecretBtn.ToolTip = secret ? "Move out of the secret gallery" : "Move to the secret gallery";
+        SecretBtn.Content = secret ? "Move out of secret" : "Move to secret";
         galleryView.Refresh();
         UpdateCount();
         GalleryScroll.ScrollToTop();
@@ -137,17 +139,116 @@ public partial class MainWindow
         var s = ShotOf(sender);
         if (s?.Pending == true) { OpenLive(s); return; }
         if (s == null) return;
-        if (!selectMode && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) SetSelectMode(true);   // Ctrl+click starts picking
-        if (selectMode) { s.Selected = !s.Selected; UpdateSelection(); }
+        bool run = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        if (!selectMode && (run || Keyboard.Modifiers.HasFlag(ModifierKeys.Control))) SetSelectMode(true);   // Ctrl+ or Shift+click starts picking
+        if (selectMode) Pick(s, run);
         else if (EditMode.IsChecked == true || s.Secret) OpenViewer(s);     // the editor (and its results strip) and the secret tab keep the full view
         else { ShowOnCanvas(s); ShowCentre(Centre.Canvas); }     // the canvas has the full view a double-click away
     }
 
     void Select_Click(object sender, RoutedEventArgs e) => SetSelectMode(!selectMode);
 
+    Shot pickedFrom;        // the last picture clicked while picking: Shift+click picks every picture from it to the one clicked
+
+    // a click while picking: one picture on or off; with Shift, the run from the last one clicked (which stays where the next run starts)
+    void Pick(Shot s, bool run)
+    {
+        if (run && pickedFrom != null) foreach (var x in Between(galleryView.Cast<Shot>().ToList(), pickedFrom, s)) x.Selected = true;
+        else { s.Selected = !s.Selected; pickedFrom = s; }
+        UpdateSelection();
+    }
+
+    // the tick on a card, shown on hover: picks it, and starts picking when it isn't on yet
+    void Check_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;                        // on mouse-down, before the card button takes the click: don't also open the picture
+        if (ShotOf(sender) is not { Pending: false } s) return;
+        if (!selectMode) SetSelectMode(true);
+        Pick(s, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
+    }
+
+    void ClearGalleryPicks_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var s in shots) s.Selected = false;
+        pickedFrom = null;
+        UpdateSelection();
+    }
+
+    // ---------------- picking with a box ----------------
+    // while picking, a press that moves becomes a box over the pictures (like the Windows desktop); everything it touches is picked, on top of
+    // what was picked before. A press on a picked picture still drags the picked pictures out. The press is tracked here rather than read from
+    // the mouse, so the UI test's posted mouse messages draw a box too.
+    Point? boxFrom;                              // where the press began, in the gallery's own coordinates (they scroll with it)
+    bool boxing;
+    HashSet<Shot> pickedBefore;
+    List<(Shot Shot, Rect Bounds)> boxCards;
+
+    void Gallery_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        boxFrom = null;
+        if (!selectMode || e.GetPosition(GalleryScroll).X >= GalleryScroll.ActualWidth - SystemParameters.VerticalScrollBarWidth) return;      // (the scroll bar)
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is Shot { Selected: true }) return;
+        boxFrom = e.GetPosition(GalleryHost);
+    }
+
+    void Gallery_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (boxFrom is not Point from) return;
+        var at = e.GetPosition(GalleryHost);
+        if (!boxing)
+        {
+            if (Math.Abs(at.X - from.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(at.Y - from.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+            boxing = true;
+            pickedBefore = shots.Where(s => s.Selected).ToHashSet();
+            boxCards = CardBounds();
+            GalleryScroll.CaptureMouse();        // the card under the press lets go: no click, no drag-out
+            PickBox.Visibility = Visibility.Visible;
+        }
+        var r = new Rect(from, at);
+        Canvas.SetLeft(PickBox, r.X); Canvas.SetTop(PickBox, r.Y);
+        PickBox.Width = r.Width; PickBox.Height = r.Height;
+        BoxPick(boxCards, pickedBefore, r);
+        UpdateSelection();
+        e.Handled = true;
+    }
+
+    void Gallery_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (boxing) { e.Handled = true; GalleryScroll.ReleaseMouseCapture(); }
+        EndBox();
+    }
+
+    void GalleryScroll_LostMouseCapture(object sender, MouseEventArgs e) { if (boxing) EndBox(); }
+    void GalleryScroll_MouseLeave(object sender, MouseEventArgs e) { if (!boxing) boxFrom = null; }     // let go outside: no box later
+
+    void EndBox()
+    {
+        boxing = false; boxFrom = null; pickedBefore = null; boxCards = null;
+        PickBox.Visibility = Visibility.Collapsed;
+    }
+
+    // every card in the gallery and where it sits, in the gallery's own coordinates
+    List<(Shot, Rect)> CardBounds()
+    {
+        var found = new List<(Shot, Rect)>();
+        void Walk(DependencyObject d)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(d); i++)
+            {
+                var c = VisualTreeHelper.GetChild(d, i);
+                if (c is ContentPresenter { Content: Shot { Pending: false } s } p && p.IsVisible)
+                    found.Add((s, p.TransformToAncestor(GalleryHost).TransformBounds(new Rect(p.RenderSize))));
+                else Walk(c);
+            }
+        }
+        Walk(Gallery);
+        return found;
+    }
+
     void SetSelectMode(bool on)
     {
         selectMode = on;
+        pickedFrom = null;
         foreach (var s in shots) { s.Selecting = on; if (!on) s.Selected = false; }
         SelectionBar.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         UpdateSelection();
@@ -155,11 +256,39 @@ public partial class MainWindow
 
     List<Shot> Picked() => shots.Where(s => s.Selected && !s.Pending).ToList();
 
+    // the pictures from a to b in the order shown, both included and either way round, without placeholders; none when either isn't shown
+    static List<Shot> Between(List<Shot> shown, Shot a, Shot b)
+    {
+        int i = shown.IndexOf(a), j = shown.IndexOf(b);
+        return i < 0 || j < 0 ? new() : shown.Skip(Math.Min(i, j)).Take(Math.Abs(i - j) + 1).Where(x => !x.Pending).ToList();
+    }
+
+    // what the box picks: every card it touches, on top of what was picked before it (shrinking it lets go of the ones it no longer touches)
+    static void BoxPick(List<(Shot Shot, Rect Bounds)> cards, HashSet<Shot> before, Rect box)
+    {
+        foreach (var (s, b) in cards) s.Selected = before.Contains(s) || b.IntersectsWith(box);
+    }
+
+    // --selftest part: Shift+click's run, from the last picture clicked to this one; and the box. (The mouse itself can't be tested on the
+    // hidden desktop: posted mouse messages don't reach the window's controls.)
+    static bool SelfTestPickRun()
+    {
+        var l = Enumerable.Range(0, 6).Select(i => new Shot { Pending = i == 3 }).ToList();
+        bool run = Between(l, l[1], l[4]).SequenceEqual([l[1], l[2], l[4]]) && Between(l, l[5], l[2]).SequenceEqual([l[2], l[4], l[5]])
+            && Between(l, l[0], new Shot()).Count == 0;
+        var cards = new List<(Shot, Rect)> { (l[0], new Rect(0, 0, 100, 100)), (l[1], new Rect(110, 0, 100, 100)), (l[2], new Rect(220, 0, 100, 100)) };
+        l[2].Selected = true;
+        BoxPick(cards, [l[2]], new Rect(50, 50, 100, 10));            // touches the first two; the third was picked before
+        bool wide = l[0].Selected && l[1].Selected && l[2].Selected;
+        BoxPick(cards, [l[2]], new Rect(50, 50, 20, 10));             // shrunk back over the first only
+        return run && wide && l[0].Selected && !l[1].Selected && l[2].Selected;
+    }
+
     void UpdateSelection()
     {
         if (!selectMode) return;
         int n = shots.Count(s => s.Selected);
-        SelectionText.Text = n == 0 ? "Pick images" : $"{n} selected";
+        SelectionText.Text = n == 0 ? "Pick pictures" : $"{n} picked";
     }
 
     void SelectAll_Click(object sender, RoutedEventArgs e)

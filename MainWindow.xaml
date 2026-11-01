@@ -90,7 +90,8 @@
         <Border x:Name="Ring" CornerRadius="10" BorderThickness="1" BorderBrush="#18FFFFFF"/>
         <Border x:Name="SelectTint" CornerRadius="10" Background="#38F0A04B" Visibility="Collapsed"/>
         <Border x:Name="Check" Width="26" Height="26" CornerRadius="13" Background="#99000000" BorderBrush="White" BorderThickness="2"
-                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="9,9,0,0" Visibility="Collapsed">
+                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="9,9,0,0" Visibility="Collapsed" Cursor="Hand"
+                PreviewMouseLeftButtonDown="Check_Click" ToolTip="Pick (Shift: every picture from the last one picked)">
           <TextBlock x:Name="CheckGlyph" Text="&#xE73E;" FontFamily="{StaticResource Icons}" FontSize="12" Foreground="Transparent"
                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Border>
@@ -121,6 +122,7 @@
           <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Accent}"/>
           <Setter TargetName="Ring" Property="BorderThickness" Value="2"/>
           <Setter TargetName="Star" Property="Visibility" Value="Visible"/>
+          <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
           <Trigger.EnterActions>
             <BeginStoryboard>
               <Storyboard><DoubleAnimation Storyboard.TargetName="Overlay" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15"/></Storyboard>
@@ -1239,7 +1241,9 @@
         </StackPanel>
 
         <ScrollViewer x:Name="GalleryScroll" Grid.Row="1" VerticalScrollBarVisibility="Visible" Padding="22,0,12,22" ScrollChanged="Gallery_ScrollChanged"
-                      PreviewMouseWheel="Gallery_PreviewMouseWheel">
+                      PreviewMouseWheel="Gallery_PreviewMouseWheel" PreviewMouseLeftButtonDown="Gallery_PreviewMouseDown" PreviewMouseMove="Gallery_PreviewMouseMove"
+                      PreviewMouseLeftButtonUp="Gallery_PreviewMouseUp" LostMouseCapture="GalleryScroll_LostMouseCapture" MouseLeave="GalleryScroll_MouseLeave">
+          <Grid x:Name="GalleryHost" Background="Transparent">
           <ItemsControl x:Name="Gallery" ItemTemplate="{StaticResource CardTemplate}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -1255,6 +1259,11 @@
               </GroupStyle>
             </ItemsControl.GroupStyle>
           </ItemsControl>
+          <!-- picking: the box being drawn -->
+          <Canvas IsHitTestVisible="False">
+            <Border x:Name="PickBox" Visibility="Collapsed" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" Background="#22F0A04B" CornerRadius="4"/>
+          </Canvas>
+          </Grid>
         </ScrollViewer>
 
         <StackPanel x:Name="EmptyState" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,60">
@@ -1271,12 +1280,14 @@
                 Background="{DynamicResource Raised}" BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" CornerRadius="12" Padding="6">
           <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.45"/></Border.Effect>
           <StackPanel Orientation="Horizontal">
-            <TextBlock x:Name="SelectionText" Text="0 selected" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,14,0" MinWidth="80"/>
-            <Button Style="{StaticResource IconBtn}" Content="&#xE8B3;" FontSize="14" Click="SelectAll_Click" ToolTip="Select all shown (Ctrl+A)" AutomationProperties.Name="Select all"/>
-            <Button Style="{StaticResource IconBtn}" Content="&#xE734;" FontSize="14" Click="FavSelected_Click" ToolTip="Favourite" AutomationProperties.Name="Favourite selected"/>
-            <Button x:Name="ExportBtn" Style="{StaticResource IconBtn}" Content="&#xE896;" FontSize="14" Click="ExportSelected_Click" ToolTip="Copy to a folder…" AutomationProperties.Name="Export selected"/>
-            <Button x:Name="SecretBtn" Style="{StaticResource IconBtn}" Content="&#xE72E;" FontSize="14" Click="SecretSelected_Click" ToolTip="Move to the secret gallery" AutomationProperties.Name="Secret gallery"/>
-            <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" FontSize="14" Click="DeleteSelected_Click" ToolTip="Move to Recycle Bin" AutomationProperties.Name="Delete selected"/>
+            <TextBlock x:Name="SelectionText" Text="Pick pictures" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,14,0" MinWidth="80"/>
+            <Button Style="{StaticResource Ghost}" Height="34" Padding="12,0" Margin="0,0,4,0" Content="Select all" Click="SelectAll_Click" ToolTip="Pick every picture shown (Ctrl+A)" AutomationProperties.Name="Select all"/>
+            <Button Style="{StaticResource Ghost}" Height="34" Padding="12,0" Content="Clear" Click="ClearGalleryPicks_Click" ToolTip="Pick none (picking stays on)" AutomationProperties.Name="Clear selection"/>
+            <Border Width="1" Background="{DynamicResource Line}" Margin="8,6"/>
+            <Button Style="{StaticResource Ghost}" Height="34" Padding="12,0" Margin="0,0,4,0" Content="Favourite" Click="FavSelected_Click" ToolTip="Star the picked pictures" AutomationProperties.Name="Favourite selected"/>
+            <Button x:Name="ExportBtn" Style="{StaticResource Ghost}" Height="34" Padding="12,0" Margin="0,0,4,0" Content="Copy to…" Click="ExportSelected_Click" ToolTip="Copy to a folder…" AutomationProperties.Name="Export selected"/>
+            <Button x:Name="SecretBtn" Style="{StaticResource Ghost}" Height="34" Padding="12,0" Margin="0,0,4,0" Content="Move to secret" Click="SecretSelected_Click" ToolTip="Move to the secret gallery" AutomationProperties.Name="Secret gallery"/>
+            <Button Style="{StaticResource Ghost}" Height="34" Padding="12,0" Content="Delete" Foreground="{DynamicResource Danger}" Click="DeleteSelected_Click" ToolTip="Move to Recycle Bin" AutomationProperties.Name="Delete selected"/>
             <Border Width="1" Background="{DynamicResource Line}" Margin="6,6"/>
             <Button x:Name="SelectDoneBtn" Style="{StaticResource Ghost}" Height="34" Content="Done" Click="Select_Click"/>
           </StackPanel>
