@@ -259,6 +259,32 @@ public partial class MainWindow
         return (W, H, new Rect((W - w * f) / 2, (H - h * f) / 2, w * f, h * f));
     }
 
+    // the expansion scaled back up to the photo's own size, with the photo laid over it unchanged. The soft band Expand repaints reaches
+    // 64 px into the photo (so the join doesn't show), and it redrew what was near the photo's edges (tested: a head near the top got a
+    // hood; that strip differed by 26-30 of 255 from the photo), and on the ~1 MP canvas the photo came out at two thirds of its size.
+    // Its edges fade into the new part over 48 px; edges at the canvas border stay as they are.
+    void KeepPhoto(JsonObject g, string uploaded, double aspect)
+    {
+        var (W, H, at) = ExpandLayout(aspect);
+        double k = at.Width / photo.PixelWidth;                  // the photo's scale on the canvas
+        const int fade = 24;
+        g["keep_up"] = Node("ImageScale", new() { ["image"] = g["9"]["inputs"]["images"].DeepClone(), ["upscale_method"] = "lanczos",
+            ["width"] = (int)Math.Round(W / k), ["height"] = (int)Math.Round(H / k), ["crop"] = "disabled" });
+        g["keep_pic"] = Node("LoadImage", new() { ["image"] = uploaded });
+        g["keep_mask"] = Node("SolidMask", new() { ["value"] = 1.0, ["width"] = photo.PixelWidth, ["height"] = photo.PixelHeight });
+        g["keep_soft"] = Node("FeatherMask", new()
+        {
+            ["mask"] = Link("keep_mask", 0), ["left"] = at.X > 1 ? fade : 0, ["top"] = at.Y > 1 ? fade : 0,
+            ["right"] = at.Right < W - 1 ? fade : 0, ["bottom"] = at.Bottom < H - 1 ? fade : 0,
+        });
+        g["keep"] = Node("ImageCompositeMasked", new()
+        {
+            ["destination"] = Link("keep_up", 0), ["source"] = Link("keep_pic", 0), ["x"] = (int)Math.Round(at.X / k), ["y"] = (int)Math.Round(at.Y / k),
+            ["resize_source"] = false, ["mask"] = Link("keep_soft", 0),
+        });
+        g["9"]["inputs"]["images"] = Link("keep", 0);
+    }
+
     // the canvas to paint (new area transparent = repaint) and a "before" for compare (the photo on plain grey)
     (byte[] Canvas, byte[] Before) ExpandCanvas(double aspect)
     {
@@ -276,13 +302,16 @@ public partial class MainWindow
                 outside[y * W + x] = at.Contains(x + 0.5, y + 0.5) ? (byte)0 : (byte)255;
         FillHoles(canvasPx, outside, W, H);
 
-        // repaint the new area plus a soft band 64 px into the photo, so the join doesn't show
-        // (tried on the anime viking: 24 px left hard vertical seams); sides already at the edge are left alone
-        const double band = 64;
+        // repaint the new area plus a soft band into the photo, so the join doesn't show; sides already at the edge are left alone
+        // (before KeepPhoto, 24 px left hard vertical seams on the anime viking; KeepPhoto's 24 px fade now softens the join)
+        // Since KeepPhoto lays the photo back, a narrow band: the new part has to continue from the photo's own edge. 64 px (plus 48 of
+        // GrowMask) let the model redraw ~110 px of the photo, the new scenery continued from that, and laying the photo back over it
+        // left ghosts (half a coat over the jeans)
+        const double band = 16;
         double l = at.X > 1 ? at.X + band : -50, t = at.Y > 1 ? at.Y + band : -50;
         double r = at.Right < W - 1 ? at.Right - band : W + 50, b = at.Bottom < H - 1 ? at.Bottom - band : H + 50;
         var mask = new Canvas { Width = W, Height = H, Background = Brushes.White, ClipToBounds = true };
-        var keep = new Border { Background = Brushes.Black, Width = r - l, Height = b - t, Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 32 } };
+        var keep = new Border { Background = Brushes.Black, Width = r - l, Height = b - t, Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 16 } };
         Canvas.SetLeft(keep, l); Canvas.SetTop(keep, t);
         mask.Children.Add(keep);
 

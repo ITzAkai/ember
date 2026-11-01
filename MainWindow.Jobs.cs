@@ -178,13 +178,14 @@ public partial class MainWindow
         await Enqueue(count, async job =>
         {
             if (runWorkflow) return new JsonObject { ["prompt"] = WorkflowGraph(seed + job.Number, prompt, negative), ["client_id"] = clientId };
-            string image = null;
+            string image = null, keep = null;
             bool masked = false, small = false;
             double? denoise = null;
             if (expand is double aspect)
             {
                 (var canvas, job.Before) = ExpandCanvas(aspect);
                 image = await Upload(canvas, job);
+                keep = await Upload(PngOf(photo), job);          // laid back over the result unchanged (KeepPhoto)
                 // the new area is painted from scratch; with the soft join and Differential Diffusion (see Soften) Krea 2 at full
                 // strength continued the scene naturally, where 0.9 left blurry strips of the carried-out edge colours
                 (masked, denoise) = (true, 1.0);
@@ -222,7 +223,7 @@ public partial class MainWindow
                 prompt: pose != null && newPicture && Moss && posePicture?.Words is string poseWords ? prompt.TrimEnd() + " " + poseWords : prompt, negative: negative);
             // painted edits: Fibo 2.0 Edit Turbo when installed (made for it, 4 steps), then Qwen-Image 2.1 (both follow the description);
             // otherwise, and for expansions, the picked model, or the inpainting model when the setting is on. Expand's soft join reaches
-            // 48 px into the photo, so the join is painted too.
+            // 16 px into the photo, so the join is painted too; KeepPhoto then lays the photo back unchanged.
             if (fibo) UseFiboEdit(g, prompt, photo.PixelWidth, photo.PixelHeight, refs, pose, whole: refs is { Length: > 0 } || pose != null || !small);
             else if (expand == null && edit && masked && !UsingInpaintModel && QwenEditModel is string qwenEdit) UseQwenEdit(g, qwenEdit, prompt);
             else
@@ -232,8 +233,9 @@ public partial class MainWindow
                 // continued the park itself. Krea 2 continued it well, so other families keep the picked model.
                 if (masked && (UsingInpaintModel || expand != null && Sdxl && inpaintModel != null && baseCheckpoint != null)) UseInpaintModel(g);
                 if (small && nodeNames.Contains("InpaintCropImproved")) UseCropAndStitch(g);
-                else if (masked) Soften(g, expand != null ? 48 : 8, expand != null ? 10 : 6);
+                else if (masked) Soften(g, 8, 6);
             }
+            if (expand is double shape && keep != null) KeepPhoto(g, keep, shape);
             if (!g.ContainsKey("q_model")) ApplyBoosters(g, newPicture);     // the picked model's boosters don't fit Qwen-Image
             if (style != null) UseStylePicture(g, style);
             if (pose != null && newPicture) UsePosePicture(g, pose);
