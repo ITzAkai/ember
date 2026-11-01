@@ -12,7 +12,9 @@ namespace ImageForge;
 
 public partial class MainWindow
 {
-    static string CutterModel => Path.Combine(Root, "ComfyUI", "models", "onnx", "BiRefNet_lite.onnx");   // a property: static fields in other files may run before Root is set
+    // the full model when installed (finer hair and edges; about 3× slower on the CPU), else the lite one
+    static string CutterModel => new[] { "BiRefNet.onnx", "BiRefNet_lite.onnx" }.Select(f => Path.Combine(Root, "ComfyUI", "models", "onnx", f))
+        .FirstOrDefault(File.Exists) ?? Path.Combine(Root, "ComfyUI", "models", "onnx", "BiRefNet_lite.onnx");   // a property: static fields in other files may run before Root is set
     static InferenceSession cutter;     // loaded on first use, then kept
     static readonly object cutterLock = new();
     const int CutSize = 1024;           // the model's fixed input size
@@ -61,20 +63,21 @@ public partial class MainWindow
         var px = new byte[w * h * 4];
         new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0).CopyPixels(px, w * 4, 0);
 
-        // the model sees a 1024×1024 copy, normalised the way it was trained (ImageNet mean and spread)
+        // the model sees a smoothly scaled 1024×1024 copy (every n-th pixel made jagged edges), normalised the way it was trained (ImageNet mean and spread)
+        var small = new FormatConvertedBitmap(new TransformedBitmap(src, new ScaleTransform((double)CutSize / w, (double)CutSize / h)), PixelFormats.Bgra32, null, 0);
+        int sw = small.PixelWidth, sh = small.PixelHeight;          // 1024, or a pixel off from rounding
+        var sp = new byte[sw * sh * 4];
+        small.CopyPixels(sp, sw * 4, 0);
         var input = new DenseTensor<float>(new[] { 1, 3, CutSize, CutSize });
         float[] mean = { 0.485f, 0.456f, 0.406f }, spread = { 0.229f, 0.224f, 0.225f };
         for (int y = 0; y < CutSize; y++)
-        {
-            int sy = Math.Min(h - 1, y * h / CutSize);
             for (int x = 0; x < CutSize; x++)
             {
-                int i = (sy * w + Math.Min(w - 1, x * w / CutSize)) * 4;
-                input[0, 0, y, x] = (px[i + 2] / 255f - mean[0]) / spread[0];      // R (pixels are stored B, G, R, A)
-                input[0, 1, y, x] = (px[i + 1] / 255f - mean[1]) / spread[1];
-                input[0, 2, y, x] = (px[i] / 255f - mean[2]) / spread[2];
+                int i = (Math.Min(sh - 1, y) * sw + Math.Min(sw - 1, x)) * 4;
+                input[0, 0, y, x] = (sp[i + 2] / 255f - mean[0]) / spread[0];      // R (pixels are stored B, G, R, A)
+                input[0, 1, y, x] = (sp[i + 1] / 255f - mean[1]) / spread[1];
+                input[0, 2, y, x] = (sp[i] / 255f - mean[2]) / spread[2];
             }
-        }
         float[] mask;
         lock (cutterLock)
         {
@@ -118,7 +121,10 @@ public partial class MainWindow
     static InferenceSession OpenCutter()
     {
         var o = new SessionOptions { EnableMemoryPattern = false, ExecutionMode = ExecutionMode.ORT_SEQUENTIAL };   // what DirectML needs
-        try { o.AppendExecutionProvider_DML(0); } catch { /* no DirectML: the CPU does it, slower */ }
+        // the full model on the CPU only: through DirectML, beside ComfyUI's models, it ran 1.5-3 minutes a cut and then hung the graphics card
+        // (Windows reset the driver: "The GPU will not respond to more commands"). On the CPU it takes about 30 s. The lite one fits the card.
+        if (Path.GetFileName(CutterModel) == "BiRefNet_lite.onnx")
+            try { o.AppendExecutionProvider_DML(0); } catch { /* no DirectML: the CPU does it, slower */ }
         return new InferenceSession(CutterModel, o);
     }
 }
