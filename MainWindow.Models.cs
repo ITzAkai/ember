@@ -158,7 +158,7 @@ public partial class MainWindow
                 "qwen_image" => ("Picture models", "qwen_image", "Lettering, logos, and edits by instruction."),
                 "anima" => ("Picture models", "anima", "Anime and illustration."),
                 "moss_image" => ("Picture models", "moss_image", "Photos and art, with clear lettering and long prompts."),
-                "fibo2" => ("Tools", "fibo2", "Makes painted edits: follows what you write and keeps the rest of the picture."),
+                "fibo2" => ("Tools", "fibo2", "Makes painted edits and Expand: follows what you write and keeps the rest of the picture."),
                 _ => ("Other files", null, null),
             },
             "text_encoders" or "vae" => ("Parts", PartFamily(folder, file), null),

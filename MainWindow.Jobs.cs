@@ -181,9 +181,13 @@ public partial class MainWindow
             string image = null, keep = null;
             bool masked = false, small = false;
             double? denoise = null;
+            // expanding with Fibo 2.0 Edit when installed: told to fill the grey border, it sees the whole photo and continues it.
+            // Tested on a zoom-out of a woman in a park: MOSS-Image painted the coat on where the legs go, with seams at the photo's
+            // edges; Fibo continued the jeans, the path and the trees, in 33 s instead of 112 s
+            bool fiboExpand = expand != null && FiboReady && !UsingInpaintModel;
             if (expand is double aspect)
             {
-                (var canvas, job.Before) = ExpandCanvas(aspect);
+                (var canvas, job.Before) = ExpandCanvas(aspect, grey: fiboExpand);
                 image = await Upload(canvas, job);
                 keep = await Upload(PngOf(photo), job);          // laid back over the result unchanged (KeepPhoto)
                 // the new area is painted from scratch; with the soft join and Differential Diffusion (see Soften) Krea 2 at full
@@ -222,9 +226,15 @@ public partial class MainWindow
             var g = Graph(seed + job.Number, image, masked, denoise, plain: masked, count: 1, refs: refs, looks: string.Join(", ", looks.Where(t => !string.IsNullOrEmpty(t))),
                 prompt: pose != null && newPicture && Moss && posePicture?.Words is string poseWords ? prompt.TrimEnd() + " " + poseWords : prompt, negative: negative);
             // painted edits: Fibo 2.0 Edit Turbo when installed (made for it, 4 steps), then Qwen-Image 2.1 (both follow the description);
-            // otherwise, and for expansions, the picked model, or the inpainting model when the setting is on. Expand's soft join reaches
-            // 16 px into the photo, so the join is painted too; KeepPhoto then lays the photo back unchanged.
+            // otherwise, and for expansions without Fibo, the picked model, or the inpainting model when the setting is on. Expand's soft
+            // join reaches 16 px into the photo, so the join is painted too; KeepPhoto then lays the photo back unchanged.
             if (fibo) UseFiboEdit(g, prompt, photo.PixelWidth, photo.PixelHeight, refs, pose, whole: refs is { Length: > 0 } || pose != null || !small);
+            else if (fiboExpand && expand is double grown)
+            {
+                // the prompt stays out: in Edit photo it's usually the last edit's words (a description of the scene changed nothing)
+                var (W, H, _) = ExpandLayout(grown);
+                UseFiboEdit(g, ExpandWords, W, H, whole: true);
+            }
             else if (expand == null && edit && masked && !UsingInpaintModel && QwenEditModel is string qwenEdit) UseQwenEdit(g, qwenEdit, prompt);
             else
             {

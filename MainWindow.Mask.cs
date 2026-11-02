@@ -192,6 +192,9 @@ public partial class MainWindow
     bool FiboEditing => EditMode.IsChecked == true && !VideoOn && FiboReady && !UsingInpaintModel;
     bool FiboRefs => references.Count > 0 && FiboEditing;
     bool FiboPose => poseMapPng != null && FiboEditing;
+    // Expand's instruction: the photo sits on a grey canvas (ExpandCanvas). Tested: "Outpaint the grey area" worked as well
+    const string ExpandWords = "Zoom out: fill the plain grey border around the photo with more of the same scene, so the picture continues past "
+        + "its edges. Continue the person's body, clothes and the background naturally and completely. Keep the photo in the middle exactly as it is.";
 
     // refs (reference pictures: characters) and pose (a pose picture) go in as more pictures, which the instruction names <image_2>, ...
     // whole: keep Fibo's whole picture instead of pasting back only the marked part. Tested: when a person changes (a character, a pose,

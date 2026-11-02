@@ -285,22 +285,23 @@ public partial class MainWindow
         g["9"]["inputs"]["images"] = Link("keep", 0);
     }
 
-    // the canvas to paint (new area transparent = repaint) and a "before" for compare (the photo on plain grey)
-    (byte[] Canvas, byte[] Before) ExpandCanvas(double aspect)
+    // the canvas to paint (new area transparent = repaint) and a "before" for compare (the photo on plain grey).
+    // grey: the new area plain grey, for Fibo 2.0, which is told to fill the grey border (on white it kept the border white)
+    (byte[] Canvas, byte[] Before) ExpandCanvas(double aspect, bool grey = false)
     {
         var (W, H, at) = ExpandLayout(aspect);
         Image Photo() => new() { Source = photo, Stretch = Stretch.Fill, Width = at.Width, Height = at.Height,
             HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(at.X, at.Y, 0, 0) };
 
         // starting colours for the new area: the photo's edges carried outwards (FillHoles), so the model keeps its palette
-        var canvas = new Grid { Width = W, Height = H, Background = Brushes.Black };
+        var canvas = new Grid { Width = W, Height = H, Background = grey ? new SolidColorBrush(Color.FromRgb(128, 128, 128)) : Brushes.Black };
         canvas.Children.Add(Photo());
         var canvasPx = RenderPixels(canvas, W, H);
         var outside = new byte[W * H];
         for (int y = 0; y < H; y++)
             for (int x = 0; x < W; x++)
                 outside[y * W + x] = at.Contains(x + 0.5, y + 0.5) ? (byte)0 : (byte)255;
-        FillHoles(canvasPx, outside, W, H);
+        if (!grey) FillHoles(canvasPx, outside, W, H);
 
         // repaint the new area plus a soft band into the photo, so the join doesn't show; sides already at the edge are left alone
         // (before KeepPhoto, 24 px left hard vertical seams on the anime viking; KeepPhoto's 24 px fade now softens the join)
