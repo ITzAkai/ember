@@ -287,9 +287,6 @@ public partial class MainWindow
     static string TextKey(JsonObject inputs) =>
         new[] { "text", "prompt", "text_g", "value" }.FirstOrDefault(k => inputs[k] is JsonValue v && v.TryGetValue<string>(out _));
 
-    // the under-18 block covers every word that goes into the picture, not only the boxes (all its texts but the negative, which
-    // lists what to keep out, as Ember's own check leaves it out too; file names aside); and a workflow that loads pictures is held
-    // to the reference-picture rule: they may show a real person, so never with a nude or sexual prompt
     string WorkflowBlocked(string prompt, string negative)
     {
         var g = WorkflowGraph(0, prompt, negative);
