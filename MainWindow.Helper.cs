@@ -35,27 +35,6 @@ public partial class MainWindow
         "Character names are who is in the picture, never text to show in it: no sign, poster or caption with their names. " +
         "When the idea asks for a character's adult or older version, write \"adult\" before their name and draw them as adults. ";
 
-    // well-known characters who are children or teenagers in their own series: with sexual words they're blocked like MinorWords.
-    // Tested: the helper models can't judge this themselves (the 8B named no one, the 4B called Tifa 17 and 2B 15), so it's fixed lists.
-    // ponytail: word lists of the best-known ones; add names as they come up. Adults are never on them, so they never block them.
-    static readonly Regex MinorCharacters = new(@"\b(himiko toga|toga himiko|" +
-        @"nezuko|tanjiro|zenitsu|inosuke|kanao|boruto|sarada uchiha|uchiha sarada|himawari uzumaki|uzumaki himawari|yuji itadori|itadori yuji|" +
-        @"megumi fushiguro|fushiguro megumi|nobara|kugisaki|anya forger|denji|asuka langley|soryu asuka|rei ayanami|ayanami rei|" +
-        @"madoka kaname|kaname madoka|homura akemi|akemi homura|sayaka miki|chibiusa|hitori gotoh?|gotoh? hitori|bocchi|" +
-        @"taiga aisaka|aisaka taiga|ruby hoshino|hoshino ruby|ash ketchum|marin kitagawa|kitagawa marin)\b", RegexOptions.IgnoreCase);
-    // teenagers through most of their story who are shown grown up later (My Hero Academia's epilogue 8 years on, Haikyu!!'s timeskip…):
-    // their name alone means the teenager most pictures show, so only their adult version, asked for in words, goes into a sexual picture
-    static readonly Regex GrownUpLater = new(@"\b(midoriya|izuku|deku|bakugou?|shoto todoroki|todoroki shoto|uraraka|ochaco|tenya iida|iida tenya|" +
-        @"ashido|kirishima eijirou?|eijirou? kirishima|yaoyorozu|tsuyu asui|asui tsuyu|froppy|kyoka jiro|jirou? kyoka|kaminari|hagakure|" +
-        @"shinji ikari|usagi tsukino|tsukino usagi|kaguya shinomiya|shinomiya kaguya|shoyo hinata|hinata shoyo|tobio kageyama|kageyama tobio)\b",
-        RegexOptions.IgnoreCase);
-    const string CharacterNote = MinorNote + " For a character shown grown up later in their story, ask for that version: \"adult Mina Ashido\".";
-    static readonly Regex AdultVersion = new(@"\b(adult|grown[- ]?up|older|years later|time ?skip|epilogue)\b", RegexOptions.IgnoreCase);
-    static bool SexualMinorCharacter(string text)
-    {
-        text = text.Replace('_', ' ');
-        return SexualWords.IsMatch(text) && (MinorCharacters.IsMatch(text) || GrownUpLater.IsMatch(text) && !AdultVersion.IsMatch(text));
-    }
     const string PlainWords = "For nude or sexual ideas, name body parts and acts with the user's own explicit words, or plain everyday ones " +
         "(breasts, nipples, pussy, penis, sex, blowjob…), and describe them directly; never soften them into words like intimate, sensual, " +
         "suggestive or private areas. ";

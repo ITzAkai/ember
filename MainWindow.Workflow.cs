@@ -297,9 +297,6 @@ public partial class MainWindow
         var words = string.Join("\n", g.Select(kv => kv.Value?["inputs"] as JsonObject).Where(i => i != null && i != neg)
             .SelectMany(i => i.Select(p => p.Value)).OfType<JsonValue>().Select(v => v.TryGetValue<string>(out var s) ? s : null)
             .Where(s => s != null && !Regex.IsMatch(s, @"\.(safetensors|gguf|ckpt|pth?|onnx|png|jpe?g|webp|mp4)(\s*\[\w+\])?$", RegexOptions.IgnoreCase)));
-        if (SexualWithMinor(words)) return MinorNote;
-        if (g.Any(kv => kv.Value?["class_type"]?.ToString() == "LoadImage") && SexualWords.IsMatch(words))
-            return "A workflow that loads pictures can't be used for nude or sexual pictures: they may show a real person.";
         return null;
     }
 
